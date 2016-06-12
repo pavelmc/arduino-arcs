@@ -3,15 +3,17 @@
 
 _**Amateur Radio Control & Clocks Solution**_
 
-This is an amateur approach to a radio control solution with clock (RF sources) generation (VFO, XFO and BFO) for homebrew and old (not frequency synthesized) transceivers; of curse based on the Arduino platform.
+This is an amateur approach to a radio control solution with clock (RF sources) generation (VFO, XFO and BFO) for homebrewed and old (not frequency synthesized) transceivers; of curse based on the Arduino platform.
+
+You can [take a peek here](http://www.qrz.com/db/wj6c) to see what's it looks like in the bench.
 
 ## Motivations ##
 
-This project arose as a solution for the Cuban hams that build simple QRP transceivers but lacks the principal part: a modern controller for the radio logic and precise frequency control.
+This project arose as a solution for the Cuban hams that has built a simple QRP transceivers but lacks the principal part: a modern controller for the radio logic and precise frequency control.
 
-[WJ6C](http://www.qrz.com/db/wj6c) and many others hams was playing with some Arduino sketches out there until I, [CO7WT](http://www.qrz.com/db/co7wt) jump on the wagon to help with the Arduino programming.
+[WJ6C](http://www.qrz.com/db/wj6c) and many others hams was playing with some Arduino sketches out there until [CO7WT](http://www.qrz.com/db/co7wt) (me) jump on the wagon to help with the Arduino programming.
 
-This code is the result of a group of Cubans that joint together to fulfill the expectations for a simple, affordable and yet modern radio logic controller that any ham in the world can use.
+This code is the result of a group of Cubans that joint together to fulfill the expectations for a simple, affordable and yet modern radio logic controller for homebrewed radios that any ham in the world can use.
 
 This work is and always will be in constant development.
 
@@ -50,23 +52,23 @@ This are the wish list so far, with no particular order.
 
 ## Si5351 Clock generator issues ##
 
-There are some founded worries about the use of the Si5351 Clock generator in RF transceiver business, but none of the possible bad point are properly characterized yet (with good technical data in a build transceiver), the most important of the claimed problems are this:
+There are some founded worries about the use of the Si5351 Clock generator in RF transceiver business, but none of the possible bad point are fully characterized yet (with good technical data in a build transceiver), the most important of the claimed problems are this:
 
 ### Crosstalk ###
 
 Some users are pointing that the outputs of the chip is not clean enough for the use in heterodyne transceivers, [here you can see of what we are talking about](http://nt7s.com/2014/12/si5351a-investigations-part-8/), as you can see some of the signal of one output can sneak into the other output, this is a proved bad thing.
 
-Then the question now is: ** how bad is it? **
+Then the question now is: **how bad is it?**
 
 The graphs in the last link shows the worst scenario, you can see that the worst case is only about -35 dB down the main frequency, that will result in about 25mW on the output of a signal with 100W of the fundamental frequency.
 
-Whit proper measures in design and other tricks (Band Stop filters) you can get that crosstalk down below 50dB and the problem can be minimized at the point to be almost eliminated.
+With proper measures in design and other tricks (Band Stop filters) you can get that crosstalk down below 50dB and the problem can be minimized at the point to be almost eliminated.
 
 ### Square wave output ###
 
 Thanks to Mr. Fourier we know that square waves are the fundamental frequency plus all the harmonics of it... but a signal full of it's harmonics is a bad thing in a VFO or any other place where we need a pure sine signal.
 
-That's why we designed the sketch to always use a real VFO frequency ** above ** the fundamental RF frequency and all the outputs of the chips will be followed with a matched low pass filter or a band pass filter to get rid of the most of the harmonics to minimize this problem.
+That's why we designed the sketch to always use a real VFO frequency **above** the fundamental RF frequency and all the outputs of the chips will be followed with a matched low pass filter or a band pass filter to get rid of the most of the harmonics to minimize this problem.
 
 ### Jitter ###
 
