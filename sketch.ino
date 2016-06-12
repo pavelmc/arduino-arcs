@@ -618,22 +618,22 @@ void showStep() {
     // show it
     switch (step) {
         case 0:
-            lcd.print("  1hz "); // this has a extra space after to clean in setup
+            lcd.print("  1hz"); // this has a extra space after to clean in setup
             break;
         case 1:
-            lcd.print(" 10hz ");
+            lcd.print(" 10hz");
             break;
         case 2:
-            lcd.print("100hz ");
+            lcd.print("100hz");
             break;
         case 3:
-            lcd.print(" 2.5k ");
+            lcd.print(" 2.5k");
             break;
         case 4:
-            lcd.print("  10k ");
+            lcd.print("  10k");
             break;
         case 5:
-            lcd.print(" 100k ");
+            lcd.print(" 100k");
             break;
     }
 }
@@ -734,11 +734,19 @@ void changeMode() {
 void changeStep() {
     // calculating the next step
     if (step == STEP_MAX) {
-        // overflow, reset with a trick: the 1 hz is only allowed on SETUP mode
+        // overflow, reset
         if (run_mode == NORMAL_MODE) {
+            // if normal mode the minimum step is 10hz
             step = 1;
         } else {
-            step = 0;
+            // if setup mode the min step depends on the item
+            if ((config == CONFIG_LSB) or (config == CONFIG_USB) or (config == CONFIG_PPM)) {
+                // overflow, 1 hz is only allowed on SETUP mode and on the LSB/USB/PPM
+                step = 0;
+            } else {
+                // the minimum step is 10hz
+                step = 1;
+            }
         }
     } else {
         // simple increment
@@ -1136,6 +1144,10 @@ void loop() {
 
                 // show setup
                 showConfig();
+
+                // reset the minimum step if set (1hz > 10 hz)
+                if (step == 0)
+                    step += 1;
             }
         }
 
