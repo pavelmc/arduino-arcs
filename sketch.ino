@@ -372,6 +372,20 @@ void showConfig() {
 }
 
 
+// show the ppm as a signed long
+void showConfigValuePpm(signed long val) {
+    lcd.print("PPM: ");
+    if (val > 0)
+        lcd.print("+");
+    if (val < 0)
+        lcd.print("-");
+    if (val == 0)
+        lcd.print(" ");
+
+    formatFreq(abs(val));
+}
+
+
 // Show the value for the setup item
 void showConfigValue(unsigned long val) {
     lcd.print("Val:");
@@ -381,12 +395,7 @@ void showConfigValue(unsigned long val) {
     if (run_mode == NORMAL_MODE) {
         lcd.print("0hz");
     } else {
-        // if si5351 we must change the ending part
-        if (config == CONFIG_PPM) {
-            lcd.print(" ppb");
-        } else {
-            lcd.print("hz");
-        }
+        lcd.print("hz");
     }
 }
 
@@ -420,7 +429,7 @@ void showModConfig() {
             showConfigValue(lsb);
             break;
         case CONFIG_PPM:
-            showConfigValue(si5351_ppm);
+            showConfigValuePpm(si5351_ppm);
             break;
     }
 }
