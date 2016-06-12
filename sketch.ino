@@ -1053,11 +1053,22 @@ void loop() {
 
         // VFO A/B
         if (dbBtnVfo.fell()) {
+            // we force to deactivate the RIT on VFO change, as it will confuse
+            // the users and have a non logical use, only if activated and
+            // BEFORE we change the active VFO
+            if (rit_active) {
+                rit_active = false;
+                changeRit();
+            }
+
+            // now we change the VFO.
             active_vfo = !active_vfo;
 
             // update VFO/BFO and instruct to update the LCD
             setFreqToVFO();
             setFreqBFO();
+
+            // set the LCD update flag
             update = true;
         }
 
