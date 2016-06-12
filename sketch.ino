@@ -200,7 +200,7 @@ void updateFreq(short dir) {
     signed long delta = dir;
     if (rit_active) {
         // we fix the steps to 100 Hz in rit mode
-        delta = steps[1] * dir;
+        delta = steps[2] * dir;
     } else {
         delta *= steps[step];
     }
