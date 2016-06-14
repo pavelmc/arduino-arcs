@@ -3,19 +3,19 @@
 
 _**Amateur Radio Control & Clocks Solution**_
 
-This is an amateur approach to a radio control solution with clock (RF sources) generation (VFO, XFO and BFO) for homebrewed and old (not frequency synthesized) transceivers; of curse based on the Arduino platform.
+This is an amateur approach to a radio control solution with clock (RF sources) generation (VFO, XFO and BFO) for homebrewed and old (not frequency synthesized) transceivers; of course based on the Arduino platform.
 
 You can [take a peek here](http://www.qrz.com/db/wj6c) to see what's it looks like in the bench.
 
 ## Motivations ##
 
-This project arose as a solution for the Cuban hams that has built a simple QRP transceivers but lacks the principal part: a modern controller for the radio logic and precise frequency control.
+This project arose as a solution for the Cuban hams who have built a simple QRP transceivers but they lack the principal part; a digital controller to avoid the "DRIFT".
 
-[WJ6C](http://www.qrz.com/db/wj6c) and many others hams was playing with some Arduino sketches out there until [CO7WT](http://www.qrz.com/db/co7wt) (me) jump on the wagon to help with the Arduino programming.
+[WJ6C](http://www.qrz.com/db/wj6c) and many others hams were trying with some Arduino sketches found on the network until [I](http://www.qrz.com/db/co7wt) decided to give a hand using my skills and expertises around these issues.
 
 This code is the result of a group of Cubans that joint together to fulfill the expectations for a simple, affordable and yet modern radio logic controller for homebrewed radios that any ham in the world can use.
 
-This work is and always will be in constant development.
+This work is and always will be in constant development, this is considered a Beta version.
 
 ## Hardware ##
 
