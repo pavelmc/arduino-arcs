@@ -57,13 +57,26 @@
 // to work on this project, so be it: 2016 June 1st
 #define EEPROMfingerprint "20160601"
 
-//                      !!! WARNING !!!
-// be aware that the library use the freq on 1/100 hz resolution, so 10 Khz
-// is expressed as 10 000 00 (note the two extra zeros)
+/*******************************************************************************
+ *
+ *                               !!! WARNING !!!
+ *
+ * Be aware that the library use the freq on 1/10 hz resolution, so 10 Khz
+ * is expressed as 10 000 0 (note the extra zero)
+ *
+ * This will allow us to climb up to 160 Mhz & we don't need the extra accuracy
+ *
+ * Check you have in the Si5351 this param defined as this:
+ *     #define SI5351_FREQ_MULT                    10ULL
+ *
+ * Also we use a module with a 27 Mhz xtal, check this also
+ *     #define SI5351_XTAL_FREQ                    27000000
+ *
+* *******************************************************************************/
 
 // the limits of the VFO, the one the user see, for now just 40m for now
-#define F_MIN       690000000    // 6.900.000
-#define F_MAX       750000000    // 7.500.000
+#define F_MIN       69000000    // 6.900.000
+#define F_MAX       75000000    // 7.500.000
 
 // encoder pins
 #define ENC_A    3      // Encoder pin A
@@ -102,20 +115,20 @@ Rotary encoder = Rotary(ENC_A, ENC_B);
 
 // the used variables
 // mental note: the used on ISR routines has to be declared as volatiles
-unsigned long lsb =   50000000;     // BFO for the lsb
-unsigned long usb =   50310000;     // BFO for the usb
-unsigned long cw =    50060000;     // BFO for the cw
-unsigned long xfo =          0;     // second conversion XFO, zero to disable it
-unsigned long vfoa = 711000000;     // default starting VFO A freq
-unsigned long vfob = 712500000;     // default starting VFO A freq
-unsigned long tvfo =         0;     // temporal VFO storage for RIT usage
-unsigned long steps[] = {100, 1000, 10000, 250000, 1000000, 10000000};
+unsigned long lsb =   5000000;     // BFO for the lsb
+unsigned long usb =   5031000;     // BFO for the usb
+unsigned long cw =    5006000;     // BFO for the cw
+unsigned long xfo =         0;     // second conversion XFO, zero to disable it
+unsigned long vfoa = 71100000;     // default starting VFO A freq
+unsigned long vfob = 71250000;     // default starting VFO A freq
+unsigned long tvfo =         0;    // temporal VFO storage for RIT usage
+unsigned long steps[] = {10, 100, 1000, 25000, 100000, 1000000};
       // defined steps : 1hz, 10hz, 100hz, 2.5Khz, 10Khz,   100Khz
       // for practical and logical reasons we restrict the 1hz step to the
       // SETUP procedures, as 10hz is fine for everyday work.
-byte step = 2;                      // default steps position index: 100hz
-unsigned long ifreq =    50000000;  // intermediate freq
-boolean update =    true;           // lcd update flag in normal mode
+byte step = 2;                     // default steps position index: 100hz
+unsigned long ifreq =    5000000;  // intermediate freq
+boolean update =    true;          // lcd update flag in normal mode
 volatile byte encoderState = DIR_NONE;   // encoder state, this is volatile
 byte fourBytes[4];                  // swap array to long to/from eeprom conversion
 byte config = 0;                    // holds the configuration item selected
