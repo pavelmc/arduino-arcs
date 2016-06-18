@@ -40,7 +40,7 @@
  *    > CLK1 is used for the BFO (this is changed corresponding to the SSB we choose)
  *    > CLK2 will be used optionally as a XFO for transceivers with a second conversion
  *
- *  * Please have in mind that this IC has SQUARE wave output and you need to
+ *  * Please have in mind that this IC has a SQUARE wave output and you need to
  *    apply some kind of low-pass filtering to smooth it and get rid of the
  *    nasty harmonics
  ******************************************************************************/
@@ -277,7 +277,7 @@ void updateSetupValues(short dir) {
                 showModeSetup(vfoa_mode);
                 break;
             case CONFIG_MODE_B:
-                // change the mode for the VFOa
+                // change the mode for the VFOb
                 active_vfo = !VFO_A_ACTIVE;
                 changeMode();
                 // set the default mode in the VFO B
