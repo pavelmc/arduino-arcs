@@ -139,8 +139,8 @@ word showStepCounter =  showStepTimer; // the timer counter
 #define STEP_MAX  6                 // count of the max steps to show
 
 // run mode constants
-#define NORMAL_MODE true
-#define VFO_A_ACTIVE true
+#define NORMAL_MODE     1
+#define VFO_A_ACTIVE    1
 #define MODE_LSB 0
 #define MODE_USB 1
 #define MODE_CW  2
@@ -278,7 +278,7 @@ void updateSetupValues(short dir) {
                 break;
             case CONFIG_MODE_B:
                 // change the mode for the VFOb
-                active_vfo = !VFO_A_ACTIVE;
+                active_vfo = 0;     // B_ACTIVE
                 changeMode();
                 // set the default mode in the VFO B
                 showModeSetup(vfob_mode);
@@ -512,7 +512,7 @@ void updateLcd() {
     }
 
     // show OTHER vfo or RIT
-    if ((rit_active) & (active_vfo == !VFO_A_ACTIVE)) {
+    if ((rit_active) & (active_vfo == 0)) {
         // show RIT of the other VFO
         showRit(vfob);
     } else {
@@ -525,7 +525,7 @@ void updateLcd() {
     // second line
     lcd.setCursor(0, 1);
     // active b?
-    if (active_vfo == !VFO_A_ACTIVE) {
+    if (active_vfo == 0) {
         lcd.print(">");
     } else {
         lcd.print(" ");
@@ -551,10 +551,10 @@ void showRit(unsigned long vfo) {
      *
      *   |0123456789abcdef|
      *   |----------------|
-     *   | RIT -9.99 Khz  |
+     *   | RIT -9.990 Khz |
      *   |----------------|
      *
-     *             WARNING !!!!!!!!!!!!!!!!!!!!1
+     *             WARNING !!!!!!!!!!!!!!!!!!!!
      *  If the user change the VFO we need to *RESET* disable the RIT before.
      *
      **************************************************************************/
