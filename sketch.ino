@@ -37,8 +37,8 @@
  *  * We are fine with that specs, as we need the VFO source to be unique
  *   (it has it's own PLL) to minimize the crosstalk between outputs
  *    > CLK0 is used to VFO (the VFO will *always* be above the RF freq)
- *    > CLK1 is used for the BFO (this is changed corresponding to the SSB we choose)
- *    > CLK2 will be used optionally as a XFO for transceivers with a second conversion
+ *    > CLK1 will be used optionally as a XFO for transceivers with a second conversion
+ *    > CLK2 is used for the BFO (this is changed corresponding to the SSB we choose)
  *
  *  * Please have in mind that this IC has a SQUARE wave output and you need to
  *    apply some kind of low-pass filtering to smooth it and get rid of the
@@ -716,7 +716,7 @@ void setFreqToVFO() {
 void setFreqBFO() {
     // get the active vfo mode freq and get it out
     unsigned long frec = getActiveBFOFreq();
-    si5351.set_freq(frec, 0, SI5351_CLK1);
+    si5351.set_freq(frec, 0, SI5351_CLK2);
 }
 
 
