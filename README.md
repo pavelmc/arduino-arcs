@@ -11,9 +11,9 @@ You can [take a peek here](http://www.qrz.com/db/wj6c) to see what's it looks li
 
 This project arose as a solution for the Cuban hams who have built a simple QRP transceivers but they lack the principal part; a digital controller to avoid the "DRIFT".
 
-[WJ6C](http://www.qrz.com/db/wj6c) and many others hams were trying with some Arduino sketches found on the network until [I](http://www.qrz.com/db/co7wt) decided to give a hand using my skills and expertises around these issues.
+[Juan Carlos (WJ6C)](http://www.qrz.com/db/wj6c), Axel, [Heriberto (CM2KMK)](http://www.qrz.com/db/wj6c) and many others hams were trying with some Arduino sketches found on the network until [I (CO7WT)](http://www.qrz.com/db/co7wt) decided to give a hand using my skills and expertises on MCU programming with [Jal for the PICs](http://www.justanotherlanguage.com)  & [Arduino](http://www.arduino.cc).
 
-This code is the result of a group of Cubans that joint together to fulfill the expectations for a simple, affordable and yet modern radio logic controller for homebrewed radios that any ham in the world can use.
+This code is the result of a group of Cubans that joint together to fulfill the expectations for a simple, affordable and yet modern radio logic controller for homebrewed radios that any ham in the world can use. As a user has pointed recentry: _"That sketch can be named the universal radio front panel"_
 
 This work is and always will be in constant development, this is considered a Beta version.
 
@@ -24,16 +24,18 @@ We are using the ubiquitous Arduino board for the main brain, a list of the hard
 - Arduino as the brain (developed for the Arduino Uno R3 as base, but it's adaptable to other boards)
 - LCD 16 columns and 2 lines as display (LiquidCrystal default Arduino lib)
 - Si5351 as VFO, BFO and optionally a XFO for a second conversion radios, any if the breakout board out here will work, we use the [Arduino Si5351 Etherkit library](https://github.com/etherkit/Si5351Arduino)
-- [Push buttons](https://github.com/thomasfredericks/Bounce2/) and a [rotary encoder](https://github.com/mathertel/RotaryEncoder) with push button as HID
+- [Digital push buttons](https://github.com/thomasfredericks/Bounce2/), [analog push buttons](https://github.com/pavelmc/AnaButtons/) and a [rotary encoder](https://github.com/mathertel/RotaryEncoder) with a push button as HID
 
 You can see a wiring example in the Schematics.jpg file.
+
+** WARNING ** the circuit has changed with the use of the analog buttons, this will be updated soon.
 
 ## Features implemented by now ##
 
 - Usual features of normal commercial transceivers.
     - Two VFO (A/B)
     - RIT with +/- 9.99 Khz
-    - Variable VFO speed (steps: 10hz, 100hz, 2.5khz, 10khz, 100khz)
+    - Variable VFO speed (steps: 10hz, 100hz, 1khz, 10khz, 100khz, 1Mhz)
 - Initially mono-band in 40m.
 - Full user customization of the IF & BFOs and more via configuration menus.
 - Hot tunning of the parameters when in configuration mode for ease the adjust.
