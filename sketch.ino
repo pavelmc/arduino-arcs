@@ -112,11 +112,11 @@ Si5351 si5351;
 // rotary encoder library setup
 Rotary encoder = Rotary(ENC_A, ENC_B);
 
-// the used variables
+// the variables
 // mental note: the used on ISR routines has to be declared as volatiles
-unsigned long lsb =   5000000;     // BFO for the lsb
-unsigned long usb =   5031000;     // BFO for the usb
-unsigned long cw =    5006000;     // BFO for the cw
+signed long lsb =       15000;     // BFO for the lsb (offset from the FI)
+signed long usb =      -15000;     // BFO for the usb (offset from the FI)
+signed long cw =        -6000;     // BFO for the cw (offset from the FI)
 unsigned long xfo =         0;     // second conversion XFO, zero to disable it
 unsigned long vfoa = 71100000;     // default starting VFO A freq
 unsigned long vfob = 71250000;     // default starting VFO A freq
@@ -385,8 +385,14 @@ void showConfig() {
 
 
 // show the ppm as a signed long
-void showConfigValuePpm(signed long val) {
-    lcd.print("PPM: ");
+void showConfigValueSigned(signed long val) {
+    if (config == CONFIG_PPM) {
+        lcd.print("PPM: ");
+    } else {
+        lcd.print("Val:");
+    }
+
+    // detect the sign
     if (val > 0)
         lcd.print("+");
     if (val < 0)
@@ -435,13 +441,13 @@ void showModConfig() {
             showModeSetup(vfob_mode);
             break;
         case CONFIG_USB:
-            showConfigValue(usb);
+            showConfigValueSigned(usb);
             break;
         case CONFIG_LSB:
-            showConfigValue(lsb);
+            showConfigValueSigned(lsb);
             break;
         case CONFIG_PPM:
-            showConfigValuePpm(si5351_ppm);
+            showConfigValueSigned(si5351_ppm);
             break;
     }
 }
@@ -677,18 +683,18 @@ unsigned long getActiveVFOFreq() {
 // get the active mode BFO freq
 unsigned long getActiveBFOFreq() {
     // obtener el modo activo
-    int mode = getActiveVFOMode();
+    byte mode = getActiveVFOMode();
 
     // return it
      switch (mode) {
         case MODE_USB:
-            return lsb;
+            return ifreq + lsb;
             break;
         case MODE_LSB:
-            return usb;
+            return ifreq + usb;
             break;
         case MODE_CW:
-            return cw;
+            return ifreq + cw;
             break;
     }
 
@@ -886,6 +892,9 @@ void initEeprom() {
      *
     /**************************************************************************/
 
+    // temp var
+    unsigned long temp = 0;
+
     // write the fingerprint
     for (byte i=0; i<8; i++) {
         EEPROM.write(i, EEPROMfingerprint[i]);
@@ -901,10 +910,12 @@ void initEeprom() {
     EEPROMWriteLong(vfob, 16);
 
     // BFO for the LSB mode
-    EEPROMWriteLong(lsb, 20);
+    temp = lsb + 2147483647;
+    EEPROMWriteLong(temp, 20);
 
     // BFO for the USB mode
-    EEPROMWriteLong(usb, 24);
+    temp = usb + 2147483647;
+    EEPROMWriteLong(temp, 24);
 
     // Encoded byte with the default modes for VFO A/B
     byte toStore = byte(vfoa_mode << 4) + vfob_mode;
@@ -912,13 +923,16 @@ void initEeprom() {
 
     // Si5351 PPM correction value
     // this is a signed value, so we need to scale it to a unsigned
-    unsigned long ppm = si5351_ppm + 2147483647;
-    EEPROMWriteLong(ppm, 29);
+    temp = si5351_ppm + 2147483647;
+    EEPROMWriteLong(temp, 29);
 }
 
 
 // load the eprom contents
 void loadEEPROMConfig() {
+    //temp var
+    unsigned long temp = 0;
+
     // get the IF value
     ifreq = EEPROMReadLong(8);
 
@@ -929,10 +943,12 @@ void loadEEPROMConfig() {
     vfob = EEPROMReadLong(16);
 
     // get BFO lsb freq.
-    lsb = EEPROMReadLong(20);
+    temp = EEPROMReadLong(20);
+    lsb = temp - 2147483647;
 
     // BFO lsb freq.
-    usb = EEPROMReadLong(24);
+    temp = EEPROMReadLong(24);
+    usb = temp - 2147483647;
 
     // get the deafult modes for each VFO
     char salvar = EEPROM.read(28);
@@ -941,8 +957,8 @@ void loadEEPROMConfig() {
 
     // Si5351 PPM correction value
     // this is a signed value, so we need to scale it to a unsigned
-    unsigned long ppm = EEPROMReadLong(29);
-    si5351_ppm = ppm - 2147483647;
+    temp = EEPROMReadLong(29);
+    si5351_ppm = temp - 2147483647;
     // now set it up
     si5351.set_correction(si5351_ppm);
 }
