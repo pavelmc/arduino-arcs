@@ -941,6 +941,11 @@ void loadEEPROMConfig() {
 
 // main setup procedure: get all ready to rock
 void setup() {
+    // buttons debounce encoder push
+    pinMode(btnPush,INPUT_PULLUP);
+    dbBtnPush.attach(btnPush);
+    dbBtnPush.interval(debounceInterval);
+
     // LCD init
     lcd.begin(16, 2);
     lcd.clear();
@@ -990,11 +995,6 @@ void setup() {
     delay(1000);        // wait for 1 second
     lcd.clear();
 
-    // buttons debounce encoder push
-    pinMode(btnPush,INPUT_PULLUP);
-    dbBtnPush.attach(btnPush);
-    dbBtnPush.interval(debounceInterval);
-
     // Check for setup mode
     if (digitalRead(btnPush) == LOW) {
         // we are in the setup mode
@@ -1014,8 +1014,6 @@ void setup() {
 
         // setting up hot mode on VFO a
         active_vfo = VFO_A_ACTIVE;
-        setFreqToVFO();
-        setFreqBFO();
     }
 
     // start the VFOa and it's mode
