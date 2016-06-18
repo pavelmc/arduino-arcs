@@ -45,11 +45,12 @@
  *    nasty harmonics
  ******************************************************************************/
 
-#include <Rotary.h>     // from here https://github.com/mathertel/RotaryEncoder
-#include <si5351.h>     // from here https://github.com/thomasfredericks/Bounce2/
-#include <Bounce2.h>    // from here https://github.com/etherkit/Si5351Arduino
-#include <EEPROM.h>     // default
-#include <Wire.h>       // default
+#include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
+#include <si5351.h>         // https://github.com/thomasfredericks/Bounce2/
+#include <Bounce2.h>        // https://github.com/etherkit/Si5351Arduino/
+#include <anabuttons.h>     // https://github.com/pavelmc/AnaButtons/
+#include <EEPROM.h>         // default
+#include <Wire.h>           // default
 #include <LiquidCrystal.h>  // default
 
 // the fingerprint to know the EEPROM is initialized, we need to stamp something
@@ -75,34 +76,32 @@
 * *******************************************************************************/
 
 // the limits of the VFO, the one the user see, for now just 40m for now
-#define F_MIN       69000000    // 6.900.000
-#define F_MAX       75000000    // 7.500.000
+#define F_MIN        5000000    // 6.900.000
+#define F_MAX      160000000    // 7.500.000
 
 // encoder pins
 #define ENC_A    3      // Encoder pin A
 #define ENC_B    2      // Encoder pin B
 #define btnPush  11     // Encoder Button
-
-// lcd pins assuming a 1602 (16x2) at 4 bits
-#define LCD_RS      5
-#define LCD_E       6
-#define LCD_D4      7
-#define LCD_D5      8
-#define LCD_D6      9
-#define LCD_D7      10
-
-// front panel buttons, be aware that the encoder push button is already declared above
-#define btnMode      4
-#define btnRit       13
-#define btnVfo       12
 #define debounceInterval  10        // in milliseconds
 
 // the debounce instances
-Bounce dbBtnMode =      Bounce();
-Bounce dbBtnVfo =       Bounce();
-Bounce dbBtnRit =       Bounce();
 Bounce dbBtnPush =      Bounce();
-//Bounce dbBtnPtt =     Bounce();      // to be defined later
+
+// define the analog pin to handle the buttons
+#define KEYS_PIN  2
+
+// analog buttons library declaration (constructor)
+AnaButtons ab = AnaButtons(KEYS_PIN);
+byte anab = 0;  // thi is to handle the buttons output
+
+// lcd pins assuming a 1602 (16x2) at 4 bits
+#define LCD_RS      8    // 14
+#define LCD_E       7    // 13
+#define LCD_D4      6    // 12
+#define LCD_D5      5    // 11
+#define LCD_D6      10   // 16
+#define LCD_D7      9    // 15
 
 // lcd library setup
 LiquidCrystal lcd(LCD_RS, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
@@ -454,7 +453,7 @@ void formatFreq(unsigned long freq) {
     unsigned long t;
 
     // get the freq in Hz as the lib needs in 1/100 hz resolution
-    freq /= 100;
+    freq /= 10;
 
     // Mhz part
     t = freq / 1000000;
@@ -991,26 +990,13 @@ void setup() {
     delay(1000);        // wait for 1 second
     lcd.clear();
 
-    // buttons debounce
-    // mode
-    pinMode(btnMode,INPUT_PULLUP);
-    dbBtnMode.attach(btnMode);
-    dbBtnMode.interval(debounceInterval);
-    // rit
-    pinMode(btnRit,INPUT_PULLUP);
-    dbBtnRit.attach(btnRit);
-    dbBtnRit.interval(debounceInterval);
-    // step
+    // buttons debounce encoder push
     pinMode(btnPush,INPUT_PULLUP);
     dbBtnPush.attach(btnPush);
     dbBtnPush.interval(debounceInterval);
-    // vfo
-    pinMode(btnVfo,INPUT_PULLUP);
-    dbBtnVfo.attach(btnVfo);
-    dbBtnVfo.interval(debounceInterval);
 
     // Check for setup mode
-    if (digitalRead(btnMode) == LOW) {
+    if (digitalRead(btnPush) == LOW) {
         // we are in the setup mode
         lcd.setCursor(0, 0);
         lcd.print(" You are in the ");
@@ -1072,17 +1058,18 @@ void loop() {
         update = false;
     }
 
-    // update of the debouce
-    dbBtnVfo.update();
-    dbBtnMode.update();
+    // debouce for the push
     dbBtnPush.update();
-    dbBtnRit.update();
+
+    // analog buttons
+    anab = ab.getStatus();
+
 
     if (run_mode == NORMAL_MODE) {
         // we are in normal mode
 
         // VFO A/B
-        if (dbBtnVfo.fell()) {
+        if (anab == ABUTTON1_PRESS) {
             // we force to deactivate the RIT on VFO change, as it will confuse
             // the users and have a non logical use, only if activated and
             // BEFORE we change the active VFO
@@ -1102,7 +1089,7 @@ void loop() {
             update = true;
         }
 
-        if (dbBtnMode.fell()) {
+        if (anab == ABUTTON2_PRESS) {
             // mode change
             changeMode();
             update = true;
@@ -1114,7 +1101,7 @@ void loop() {
             update = true;
         }
 
-        if (dbBtnRit.fell()) {
+        if (anab == ABUTTON3_PRESS) {
             // toggle rit mode
             rit_active = !rit_active;
             changeRit();
@@ -1174,7 +1161,7 @@ void loop() {
         }
 
         // cancel
-        if (dbBtnMode.fell()) {
+        if (anab == ABUTTON2_PRESS) {
             if (setup_in) {
                 // get out of here
                 setup_in = false;
@@ -1190,14 +1177,14 @@ void loop() {
         }
 
         // step but just in setup mode
-        if ((dbBtnRit.fell()) and (setup_in)) {
+        if ((anab == ABUTTON3_PRESS) and (setup_in)) {
             // change the step and show it on the LCD
             changeStep();
             showStep();
         }
 
         // reset the USB/LSB values to the IF values
-        if ((dbBtnVfo.fell()) and (setup_in)) {
+        if ((anab == ABUTTON1_PRESS) and (setup_in)) {
             // where we are ?
             if (config == CONFIG_USB) {
                 // reset, activate and lcd update
