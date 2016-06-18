@@ -121,8 +121,8 @@ unsigned long xfo =         0;     // second conversion XFO, zero to disable it
 unsigned long vfoa = 71100000;     // default starting VFO A freq
 unsigned long vfob = 71250000;     // default starting VFO A freq
 unsigned long tvfo =         0;    // temporal VFO storage for RIT usage
-unsigned long steps[] = {10,  100,  1000,  10000, 1000000, 10000000};
-      // defined steps : 1hz, 10hz, 100hz, 10Khz, 100Khz,  1Mhz
+unsigned long steps[] = {10,  100,  1000,  10000, 100000, 1000000, 10000000};
+      // defined steps : 1hz, 10hz, 100hz, 1Khz,  10Khz,  100Khz,  1Mhz
       // for practical and logical reasons we restrict the 1hz step to the
       // SETUP procedures, as 10hz is fine for everyday work.
 byte step = 2;                     // default steps position index: 100hz
@@ -136,7 +136,7 @@ boolean setup_in = false;           // the setup mode, just looking or modifying
 boolean showMode = true;            // show mode or step in the normal mode
 #define showStepTimer    50000      // a relative amount of time to show the mode
 word showStepCounter =  showStepTimer; // the timer counter
-#define STEP_MAX  5                 // count of the max steps to show
+#define STEP_MAX  6                 // count of the max steps to show
 
 // run mode constants
 #define NORMAL_MODE true
@@ -648,12 +648,15 @@ void showStep() {
             lcd.print("100hz");
             break;
         case 3:
-            lcd.print("  10k");
+            lcd.print(" 1Khz");
             break;
         case 4:
-            lcd.print(" 100k");
+            lcd.print("  10k");
             break;
         case 5:
+            lcd.print(" 100k");
+            break;
+        case 6:
             lcd.print(" 1Mhz");
             break;
     }
