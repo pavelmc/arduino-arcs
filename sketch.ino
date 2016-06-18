@@ -167,7 +167,7 @@ boolean rit_active =    false;
 // put the value here if you have the default ppm corrections for you Si535
 // if you set it here it will be stored on the EEPROM on the initial start,
 // otherwise you can set it up via the SETUP menu
-signed long si5351_ppm = 0;
+signed long si5351_ppm = 299900;    // it has the *10 included (29.990)
 
 
 // interrupt routine
@@ -911,7 +911,9 @@ void initEeprom() {
     EEPROM.write(28, toStore);
 
     // Si5351 PPM correction value
-    EEPROMWriteLong(si5351_ppm, 29);
+    // this is a signed value, so we need to scale it to a unsigned
+    unsigned long ppm = si5351_ppm + 2147483647;
+    EEPROMWriteLong(ppm, 29);
 }
 
 
@@ -938,7 +940,11 @@ void loadEEPROMConfig() {
     vfob_mode = salvar & 15;
 
     // Si5351 PPM correction value
-    si5351_ppm = EEPROMReadLong(29);
+    // this is a signed value, so we need to scale it to a unsigned
+    unsigned long ppm = EEPROMReadLong(29);
+    si5351_ppm = ppm - 2147483647;
+    // now set it up
+    si5351.set_correction(si5351_ppm);
 }
 
 
@@ -959,10 +965,6 @@ void setup() {
     // Interrupt init, the arduino way
     attachInterrupt(0, IR, CHANGE);
     attachInterrupt(1, IR, CHANGE);
-
-    // set the Si5351 cal ppm if you defined it before
-    if (si5351_ppm != 0)
-        si5351.set_correction(si5351_ppm);
 
     // Xtal capacitive load
     si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0);
