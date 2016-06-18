@@ -82,11 +82,11 @@
 // encoder pins
 #define ENC_A    3      // Encoder pin A
 #define ENC_B    2      // Encoder pin B
-#define btnPush  11     // Encoder Button
+#define btnPush  4     // Encoder Button
 #define debounceInterval  10        // in milliseconds
 
 // the debounce instances
-Bounce dbBtnPush =      Bounce();
+Bounce dbBtnPush = Bounce();
 
 // define the analog pin to handle the buttons
 #define KEYS_PIN  2
@@ -121,8 +121,8 @@ unsigned long xfo =         0;     // second conversion XFO, zero to disable it
 unsigned long vfoa = 71100000;     // default starting VFO A freq
 unsigned long vfob = 71250000;     // default starting VFO A freq
 unsigned long tvfo =         0;    // temporal VFO storage for RIT usage
-unsigned long steps[] = {10, 100, 1000, 25000, 100000, 1000000};
-      // defined steps : 1hz, 10hz, 100hz, 2.5Khz, 10Khz,   100Khz
+unsigned long steps[] = {10,  100,  1000,  10000, 1000000, 10000000};
+      // defined steps : 1hz, 10hz, 100hz, 10Khz, 100Khz,  1Mhz
       // for practical and logical reasons we restrict the 1hz step to the
       // SETUP procedures, as 10hz is fine for everyday work.
 byte step = 2;                     // default steps position index: 100hz
@@ -145,7 +145,7 @@ word showStepCounter =  showStepTimer; // the timer counter
 #define MODE_USB 1
 #define MODE_CW  2
 #define MODE_MAX 2              // the highest mode to cycle
-#define MAX_RIT 999000
+#define MAX_RIT 99900
 
 // config constants
 #define CONFIG_IF       0
@@ -580,7 +580,7 @@ void showRit(unsigned long vfo) {
 
     // print the freq now, we have a max of 10 Khz (9.990 Khz)
     // get the freq in Hz as the lib needs in 1/100 hz resolution
-    diff = abs(diff) / 100;
+    diff = abs(diff) / 10;
 
     // Khz part
     word t = diff / 1000;
@@ -648,13 +648,13 @@ void showStep() {
             lcd.print("100hz");
             break;
         case 3:
-            lcd.print(" 2.5k");
-            break;
-        case 4:
             lcd.print("  10k");
             break;
-        case 5:
+        case 4:
             lcd.print(" 100k");
+            break;
+        case 5:
+            lcd.print(" 1Mhz");
             break;
     }
 }
@@ -1053,17 +1053,16 @@ void loop() {
 
     // LCD update check in normal mode
     if ((update == true) and (run_mode == NORMAL_MODE)) {
-        // update nd reset the flag
+        // update and reset the flag
         updateLcd();
         update = false;
     }
 
-    // debouce for the push
-    dbBtnPush.update();
-
     // analog buttons
     anab = ab.getStatus();
 
+    // debouce for the push
+    dbBtnPush.update();
 
     if (run_mode == NORMAL_MODE) {
         // we are in normal mode
@@ -1089,18 +1088,20 @@ void loop() {
             update = true;
         }
 
+        // mode change
         if (anab == ABUTTON2_PRESS) {
-            // mode change
             changeMode();
             update = true;
         }
 
+        // step (push button)
         if (dbBtnPush.fell()) {
             // VFO step change
             changeStep();
             update = true;
         }
 
+        // RIT
         if (anab == ABUTTON3_PRESS) {
             // toggle rit mode
             rit_active = !rit_active;
@@ -1123,7 +1124,7 @@ void loop() {
     } else {
         // setup mode
 
-        // step
+        // OK (step)
         if (dbBtnPush.fell()) {
             if (!setup_in) {
                 // I'm going to setup a element
@@ -1160,7 +1161,7 @@ void loop() {
             }
         }
 
-        // cancel
+        // cancel (mode)
         if (anab == ABUTTON2_PRESS) {
             if (setup_in) {
                 // get out of here
@@ -1176,14 +1177,14 @@ void loop() {
             }
         }
 
-        // step but just in setup mode
+        // step but just in setup mode (RIT)
         if ((anab == ABUTTON3_PRESS) and (setup_in)) {
             // change the step and show it on the LCD
             changeStep();
             showStep();
         }
 
-        // reset the USB/LSB values to the IF values
+        // reset the USB/LSB values to the IF values (VFO)
         if ((anab == ABUTTON1_PRESS) and (setup_in)) {
             // where we are ?
             if (config == CONFIG_USB) {
