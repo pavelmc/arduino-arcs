@@ -134,7 +134,7 @@ byte config = 0;                    // holds the configuration item selected
 boolean setup_in = false;           // the setup mode, just looking or modifying
 #define CONFIG_MAX 7                // the amount of configure options
 boolean showMode = true;            // show mode or step in the normal mode
-#define showStepTimer    50000      // a relative amount of time to show the mode
+#define showStepTimer    15000      // a relative amount of time to show the mode
 word showStepCounter =  showStepTimer; // the timer counter
 #define STEP_MAX  6                 // count of the max steps to show
 
