@@ -77,7 +77,7 @@
 
 // the limits of the VFO, the one the user see, for now just 40m for now
 #define F_MIN        5000000    // 6.900.000
-#define F_MAX      160000000    // 7.500.000
+#define F_MAX     1600000000    // 7.500.000
 
 // encoder pins
 #define ENC_A    3      // Encoder pin A
