@@ -26,9 +26,11 @@ We are using the ubiquitous Arduino board for the main brain, a list of the hard
 - Si5351 as VFO, BFO and optionally a XFO for a second conversion radios, any if the breakout board out here will work, we use the [Arduino Si5351 Etherkit library](https://github.com/etherkit/Si5351Arduino)
 - [Digital push buttons](https://github.com/thomasfredericks/Bounce2/), [analog push buttons](https://github.com/pavelmc/AnaButtons/) and a [rotary encoder](https://github.com/mathertel/RotaryEncoder) with a push button as HID
 
-You can see a wiring example in the Schematics.jpg file.
+About the schematics I can offer this files made with [Fritzing](http://www.fritzing.org):
 
-** WARNING ** the circuit has changed with the use of the analog buttons, this will be updated soon.
+- Whole Fritzin file: sketch.fzz (the PCB view is a proposal and it's not recomended for production as it's)
+- Arduino wiring diagram: sketch_bb.png
+- Schematic diagram: sketch_esquema.png
 
 ## Features implemented by now ##
 
