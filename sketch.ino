@@ -1208,14 +1208,14 @@ void loop() {
             // where we are ?
             if (config == CONFIG_USB) {
                 // reset, activate and lcd update
-                usb = ifreq;
+                usb = -15000;
                 setFreqBFO();
                 showModConfig();
             }
 
             if (config == CONFIG_LSB){
                 // reset, activate and lcd update
-                lsb = ifreq;
+                lsb = 15000;
                 setFreqBFO();
                 showModConfig();
             }
