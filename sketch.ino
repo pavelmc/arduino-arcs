@@ -126,7 +126,7 @@ unsigned long steps[] = {10,  100,  1000,  10000, 100000, 1000000, 10000000};
       // for practical and logical reasons we restrict the 1hz step to the
       // SETUP procedures, as 10hz is fine for everyday work.
 byte step = 2;                     // default steps position index: 100hz
-unsigned long ifreq =    5000000;  // intermediate freq
+unsigned long ifreq =   250000000;  // intermediate freq
 boolean update =    true;          // lcd update flag in normal mode
 volatile byte encoderState = DIR_NONE;   // encoder state, this is volatile
 byte fourBytes[4];                  // swap array to long to/from eeprom conversion
