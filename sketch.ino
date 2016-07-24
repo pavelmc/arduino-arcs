@@ -114,9 +114,9 @@ Rotary encoder = Rotary(ENC_A, ENC_B);
 
 // the variables
 // mental note: the used on ISR routines has to be declared as volatiles
-signed long lsb =       15000;     // BFO for the lsb (offset from the FI)
-signed long usb =      -15000;     // BFO for the usb (offset from the FI)
-signed long cw =        -6000;     // BFO for the cw (offset from the FI)
+signed long lsb =           0;     // BFO for the lsb (offset from the FI)
+signed long usb =      +37000;     // BFO for the usb (offset from the FI)
+signed long cw =        +6000;     // BFO for the cw (offset from the FI)
 unsigned long xfo =         0;     // second conversion XFO, zero to disable it
 unsigned long vfoa = 71100000;     // default starting VFO A freq
 unsigned long vfob = 71250000;     // default starting VFO A freq
@@ -126,7 +126,7 @@ unsigned long steps[] = {10,  100,  1000,  10000, 100000, 1000000, 10000000};
       // for practical and logical reasons we restrict the 1hz step to the
       // SETUP procedures, as 10hz is fine for everyday work.
 byte step = 2;                     // default steps position index: 100hz
-unsigned long ifreq =   250000000;  // intermediate freq
+unsigned long ifreq =   249923000;  // intermediate freq
 boolean update =    true;          // lcd update flag in normal mode
 volatile byte encoderState = DIR_NONE;   // encoder state, this is volatile
 byte fourBytes[4];                  // swap array to long to/from eeprom conversion
@@ -686,20 +686,19 @@ unsigned long getActiveBFOFreq() {
     byte mode = getActiveVFOMode();
 
     // return it
-     switch (mode) {
+    switch (mode) {
         case MODE_USB:
-            return ifreq + lsb;
-            break;
-        case MODE_LSB:
             return ifreq + usb;
             break;
-        case MODE_CW:
-            return ifreq + cw;
+        case MODE_LSB:
+            return ifreq + lsb;
             break;
     }
 
-    // it must return something if something goes wrong
     return 0;
+
+    // it must return something if something goes wrong
+    //~ return 0;
 }
 
 
@@ -707,6 +706,17 @@ unsigned long getActiveBFOFreq() {
 void setFreqToVFO() {
     // get the active VFO freq, calculate the final freq+IF and get it out
     unsigned long frec = getActiveVFOFreq();
+    byte mode = getActiveVFOMode();
+
+    switch (mode) {
+        case MODE_USB:
+            frec += usb;
+            break;
+        case MODE_LSB:
+            frec += lsb;
+            break;
+    }
+
     frec += ifreq;
     si5351.set_freq(frec, 0, SI5351_CLK0);
 }
