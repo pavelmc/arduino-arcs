@@ -318,7 +318,7 @@ void showModeSetup(byte mode) {
 
     // now I have to print it out
     lcd.setCursor(0, 1);
-    lcd.print("           ");
+    lcd.print(F("           "));
     showModeLcd(mode);
 }
 
@@ -346,28 +346,28 @@ void updateShowConfig(short dir) {
 void showConfigLabels() {
     switch (config) {
         case CONFIG_IF:
-            lcd.print("  IF frequency  ");
+            lcd.print(F("  IF frequency  "));
             break;
         case CONFIG_VFO_A:
-            lcd.print("VFO A start freq");
+            lcd.print(F("VFO A start freq"));
             break;
         case CONFIG_VFO_B:
-            lcd.print("VFO B start freq");
+            lcd.print(F("VFO B start freq"));
             break;
         case CONFIG_MODE_A:
-            lcd.print("VFO A start mode");
+            lcd.print(F("VFO A start mode"));
             break;
         case CONFIG_MODE_B:
-            lcd.print("VFO B start mode");
+            lcd.print(F("VFO B start mode"));
             break;
         case CONFIG_USB:
-            lcd.print(" BFO freq. USB  ");
+            lcd.print(F(" BFO freq. USB  "));
             break;
         case CONFIG_LSB:
-            lcd.print(" BFO freq. LSB  ");
+            lcd.print(F(" BFO freq. LSB  "));
             break;
         case CONFIG_PPM:
-            lcd.print("Si5351 PPM error");
+            lcd.print(F("Si5351 PPM error"));
             break;
     }
 }
@@ -377,7 +377,7 @@ void showConfigLabels() {
 void showConfig() {
     // we have update the whole LCD screen
     lcd.setCursor(0, 0);
-    lcd.print("#> SETUP MENU <#");
+    lcd.print(F("#> SETUP MENU <#"));
     lcd.setCursor(0, 1);
     // show the specific item label
     showConfigLabels();
@@ -387,9 +387,9 @@ void showConfig() {
 // show the ppm as a signed long
 void showConfigValueSigned(signed long val) {
     if (config == CONFIG_PPM) {
-        lcd.print("PPM: ");
+        lcd.print(F("PPM: "));
     } else {
-        lcd.print("Val:");
+        lcd.print(F("Val:"));
     }
 
     // detect the sign
@@ -406,14 +406,14 @@ void showConfigValueSigned(signed long val) {
 
 // Show the value for the setup item
 void showConfigValue(unsigned long val) {
-    lcd.print("Val:");
+    lcd.print(F("Val:"));
     formatFreq(val);
 
     // if on config mode we must show up to hz part
     if (run_mode == NORMAL_MODE) {
-        lcd.print("0hz");
+        lcd.print(F("0hz"));
     } else {
-        lcd.print("hz");
+        lcd.print(F("hz"));
     }
 }
 
@@ -611,13 +611,13 @@ void showModeLcd(byte mode) {
         // print it
         switch (mode) {
             case MODE_USB:
-              lcd.print("USB  ");
+              lcd.print(F("USB  "));
               break;
             case MODE_LSB:
-              lcd.print("LSB  ");
+              lcd.print(F("LSB  "));
               break;
             case MODE_CW:
-              lcd.print("CW   ");
+              lcd.print(F("CW   "));
               break;
         }
     } else {
@@ -645,25 +645,25 @@ void showStep() {
     // show it
     switch (step) {
         case 0:
-            lcd.print("  1hz"); // this has a extra space after to clean in setup
+            lcd.print(F("  1hz"));
             break;
         case 1:
-            lcd.print(" 10hz");
+            lcd.print(F(" 10hz"));
             break;
         case 2:
-            lcd.print("100hz");
+            lcd.print(F("100hz"));
             break;
         case 3:
-            lcd.print(" 1Khz");
+            lcd.print(F(" 1Khz"));
             break;
         case 4:
-            lcd.print("  10k");
+            lcd.print(F("  10k"));
             break;
         case 5:
-            lcd.print(" 100k");
+            lcd.print(F(" 100k"));
             break;
         case 6:
-            lcd.print(" 1Mhz");
+            lcd.print(F(" 1Mhz"));
             break;
     }
 }
@@ -994,9 +994,9 @@ void setup() {
     boolean eepromOk = checkInitEEPROM();
     if (!eepromOk) {
         lcd.setCursor(0, 0);
-        lcd.print("Init EEPROM...  ");
+        lcd.print(F("Init EEPROM...  "));
         lcd.setCursor(0, 1);
-        lcd.print("Please wait...  ");
+        lcd.print(F("Please wait...  "));
         initEeprom();
         delay(1000);        // wait for 1 second
         lcd.clear();
@@ -1007,12 +1007,12 @@ void setup() {
 
     // Welcome screen
     lcd.setCursor(0, 0);
-    lcd.print("  Aduino Arcs  ");
+    lcd.print(F("  Aduino Arcs  "));
     lcd.setCursor(0, 1);
-    lcd.print("Fv:001   Mfv:002");
+    lcd.print(F("Fv:001   Mfv:002"));
     delay(1000);        // wait for 1 second
     lcd.setCursor(0, 0);
-    lcd.print(" by Pavel CO7WT ");
+    lcd.print(F(" by Pavel CO7WT "));
     delay(1000);        // wait for 1 second
     lcd.clear();
 
@@ -1020,9 +1020,9 @@ void setup() {
     if (digitalRead(btnPush) == LOW) {
         // we are in the setup mode
         lcd.setCursor(0, 0);
-        lcd.print(" You are in the ");
+        lcd.print(F(" You are in the "));
         lcd.setCursor(0, 1);
-        lcd.print("   SETUP MODE   ");
+        lcd.print(F("   SETUP MODE   "));
         initEeprom();
         delay(1000);        // wait for 1 second
         lcd.clear();
@@ -1168,7 +1168,7 @@ void loop() {
 
                 // lcd delay to show it pro perly (user feedback)
                 lcd.setCursor(0, 0);
-                lcd.print("##   SAVED    ##");
+                lcd.print(F("##   SAVED    ##"));
                 delay(250);
 
                 // show setup
@@ -1188,7 +1188,7 @@ void loop() {
 
                 // user feedback
                 lcd.setCursor(0, 0);
-                lcd.print(" #  Canceled  # ");
+                lcd.print(F(" #  Canceled  # "));
                 delay(250);
 
                 // show it
