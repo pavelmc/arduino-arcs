@@ -115,8 +115,8 @@ Rotary encoder = Rotary(ENC_A, ENC_B);
 // the variables
 // mental note: the used on ISR routines has to be declared as volatiles
 signed long lsb =           0;     // BFO for the lsb (offset from the FI)
-signed long usb =      +37000;     // BFO for the usb (offset from the FI)
-signed long cw =        +6000;     // BFO for the cw (offset from the FI)
+signed long usb =      +30000;     // BFO for the usb (offset from the FI)
+signed long cw =       +24000;     // BFO for the cw (offset from the FI)
 unsigned long xfo =         0;     // second conversion XFO, zero to disable it
 unsigned long vfoa = 71100000;     // default starting VFO A freq
 unsigned long vfob = 71250000;     // default starting VFO A freq
@@ -167,7 +167,7 @@ boolean rit_active =    false;
 // put the value here if you have the default ppm corrections for you Si535
 // if you set it here it will be stored on the EEPROM on the initial start,
 // otherwise you can set it up via the SETUP menu
-signed long si5351_ppm = 299900;    // it has the *10 included (29.990)
+signed long si5351_ppm = 300580;    // it has the *10 included 30.058)
 
 
 // interrupt routine
@@ -685,40 +685,60 @@ unsigned long getActiveBFOFreq() {
     // obtener el modo activo
     byte mode = getActiveVFOMode();
 
+    /* ***********************
+     * Remember we use allways up conversion so...
+     *
+     * LSB: the VFO is at the right spot as the ifreq
+     * USB: we displace the VFO & BFO up in a BW amout (usb)
+     * CW: we displace the VFO & BFO up in a BW amout (cw)
+     *
+     * */
+
     // return it
     switch (mode) {
+        case MODE_LSB:
+            return ifreq + lsb;  // zero
+            break;
         case MODE_USB:
             return ifreq + usb;
             break;
-        case MODE_LSB:
-            return ifreq + lsb;
+        case MODE_CW:
+            return ifreq + cw;
             break;
     }
-
-    return 0;
-
-    // it must return something if something goes wrong
-    //~ return 0;
 }
 
 
 // set the calculated freq to the VFO
 void setFreqToVFO() {
     // get the active VFO freq, calculate the final freq+IF and get it out
-    unsigned long frec = getActiveVFOFreq();
+    unsigned long freq = getActiveVFOFreq();
     byte mode = getActiveVFOMode();
 
+    /* ***********************
+     * Remember we use allways up conversion so...
+     *
+     * LSB: the VFO is at the right spot as the ifreq
+     * USB: we displace the VFO & BFO up in a BW amout (usb)
+     * CW: we displace the VFO & BFO up in a BW amout (cw)
+     *
+     * */
+
+    // return it
     switch (mode) {
         case MODE_USB:
-            frec += usb;
+            freq += usb;
             break;
         case MODE_LSB:
-            frec += lsb;
+            freq += lsb;    // ZERO
+            break;
+        case MODE_CW:
+            freq += cw;
             break;
     }
 
-    frec += ifreq;
-    si5351.set_freq(frec, 0, SI5351_CLK0);
+    freq += ifreq;
+    si5351.set_freq(freq, 0, SI5351_CLK0);
 }
 
 
@@ -765,7 +785,8 @@ void changeMode() {
 
     setActiveVFOMode(mode);
 
-    // get it out
+    // Apply the changes
+    setFreqToVFO();
     setFreqBFO();
 }
 
@@ -999,6 +1020,15 @@ void setup() {
     si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
     si5351.set_ms_source(SI5351_CLK1, SI5351_PLLB);
     si5351.set_ms_source(SI5351_CLK2, SI5351_PLLB);
+
+    // use low power on the Si5351
+    si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_2MA);
+    si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_2MA);
+
+    // disable clk1 that is not used
+    si5351.output_enable(SI5351_CLK0, 1);
+    si5351.output_enable(SI5351_CLK1, 0);
+    si5351.output_enable(SI5351_CLK2, 1);
 
     // check the EEPROM to know if I need to initialize it
     boolean eepromOk = checkInitEEPROM();
