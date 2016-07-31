@@ -137,7 +137,6 @@ volatile byte encoderState = DIR_NONE;   // encoder state, ### this is volatile
 byte fourBytes[4];                 // swap array to long to/from eeprom conversion
 byte config = 0;                   // holds the configuration item selected
 boolean inSetup = false;           // the setup mode, just looking or modifying
-#define CONFIG_MAX 7               // the amount of configure options
 boolean showMode = true;           // show mode or step in the normal mode
 #define showStepTimer    15000     // a relative amount of time to show the mode
 word showStepCounter = showStepTimer; // the timer counter
@@ -163,6 +162,8 @@ word showStepCounter = showStepTimer; // the timer counter
 #define CONFIG_MODE_B   7
 #define CONFIG_XFO      8
 #define CONFIG_PPM      9
+// --
+#define CONFIG_MAX 9               // the amount of configure options
 
 // run variables
 boolean runMode =      NORMAL_MODE;
