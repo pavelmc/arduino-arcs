@@ -1067,7 +1067,7 @@ void loadEEPROMConfig() {
     vfob = EEPROMReadLong(17);
 
     // get XFO freq.
-    vfoa = EEPROMReadLong(21);
+    xfo = EEPROMReadLong(21);
 
     // get BFO lsb freq.
     temp = EEPROMReadLong(25);
@@ -1170,7 +1170,7 @@ void setup() {
         lcd.setCursor(0, 1);
         lcd.print(F("   SETUP MODE   "));
         initEeprom();
-        delay(1000);        // wait for 1 second
+        delay(2000);        // wait for 1 second
         lcd.clear();
 
         // rise the flag of setup mode for every body to see it.
@@ -1179,9 +1179,10 @@ void setup() {
         // show setup mode
         showConfig();
 
-        // setting up hot mode on VFO a
-        activeVFO = VFO_A_ACTIVE;
     }
+
+    // setting up hot mode on VFO a
+    activeVFO = VFO_A_ACTIVE;
 
     // Enable the Si5351 outputs
     si5351.output_enable(SI5351_CLK0, 1);
