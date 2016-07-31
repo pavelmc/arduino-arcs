@@ -1155,7 +1155,7 @@ void setup() {
     lcd.print(F("Fv: "));
     lcd.print(FMW_VER);
     lcd.print(F("  Mfv: "));
-    lcd.print(FMW_VER);
+    lcd.print(EEP_VER);
     delay(2000);        // wait for 1 second
     lcd.setCursor(0, 0);
     lcd.print(F(" by Pavel CO7WT "));
