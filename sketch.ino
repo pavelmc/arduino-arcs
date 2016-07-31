@@ -75,6 +75,11 @@
  *
 * *******************************************************************************/
 
+// the eeprom & sketch version; if the eeprom version is lower than the one on the
+// sketck we force an update (init) to make a consistent work on upgrades
+#define EEP_VER     3
+#define FMW_VER     5
+
 // the limits of the VFO, the one the user see, for now just 40m for now
 #define F_MIN      65000000     // 6.500.000
 #define F_MAX      75000000     // 7.500.000
@@ -892,7 +897,15 @@ boolean checkInitEEPROM() {
         }
     }
 
-    return true;
+    //ok, the eeprom is initialized, but it's the same version of the sketck?
+    byte eepVer = EEPROM.read(8);
+    if (eepVer == EEP_VER) {
+        //ok
+        return true;
+    } else {
+        // not the same version, return false to reset
+        return false;
+    }
 }
 
 
@@ -945,23 +958,25 @@ void EEPROMWriteLong(unsigned long val, word pos) {
 // initialize the EEPROM mem, also used to store the values in the setup mode
 void initEeprom() {
     /***************************************************************************
-     * EEPROM structure (version 002)
+     * EEPROM structure
      * Example: @00 (8): comment
      *  @##: start of the content of the eeprom var (always decimal)
      *  (#): how many bytes are stored there
      *
      * =========================================================================
      * @00 (8): EEPROMfingerprint, see the corresponding #define at the code start
-     * @08 (4): IF freq in 4 bytes
-     * @12 (4): VFO A in 4 bytes
-     * @16 (4): VFO B in 4 bytes
-     * @20 (4): BFO feq for the LSB mode
-     * @24 (4): BFO feq for the USB mode
-     * @28 (1): Encoded Byte in 4 + 4 bytes representing the USB and LSB mode
+     * @08 (1): EEP_VER
+     * @09 (4): IF freq in 4 bytes
+     * @13 (4): VFO A in 4 bytes
+     * @17 (4): VFO B in 4 bytes
+     * @21 (4): XFO freq in 4 bytes
+     * @25 (4): BFO feq for the LSB mode
+     * @29 (4): BFO feq for the USB mode
+     * @33 (4): CW the offset for the CW mode in TX
+     * @37 (1): Encoded Byte in 4 + 4 bytes representing the USB and LSB mode
      *          of the A/B VFO
-     * @29 (4): PPM correction for the Si5351
-     * @33 (4): XFO freq in 4 bytes
-     * @37 (4): CW the offset for the CW mode in TX
+     * @38 (4): PPM correction for the Si5351
+     *
      * =========================================================================
      *
     /**************************************************************************/
@@ -974,81 +989,108 @@ void initEeprom() {
         EEPROM.write(i, EEPROMfingerprint[i]);
     }
 
+    // EEPROM version
+    EEPROM.write(8, EEP_VER);
+
     // IF
-    EEPROMWriteLong(ifreq, 8);
+    EEPROMWriteLong(ifreq, 9);
 
     // VFO a freq
-    EEPROMWriteLong(vfoa, 12);
+    EEPROMWriteLong(vfoa, 13);
 
     // VFO B freq
-    EEPROMWriteLong(vfob, 16);
+    EEPROMWriteLong(vfob, 17);
+
+    // XFO freq
+    EEPROMWriteLong(xfo, 21);
 
     // BFO for the LSB mode
     temp = lsb + 2147483647;
-    EEPROMWriteLong(temp, 20);
+    EEPROMWriteLong(temp, 25);
 
     // BFO for the USB mode
     temp = usb + 2147483647;
-    EEPROMWriteLong(temp, 24);
+    EEPROMWriteLong(temp, 29);
+
+    // BFO for the CW  mode
+    temp = usb + 2147483647;
+    EEPROMWriteLong(temp, 33);
 
     // Encoded byte with the default modes for VFO A/B
     byte toStore = byte(VFOAMode << 4) + VFOBMode;
-    EEPROM.write(28, toStore);
+    EEPROM.write(37, toStore);
 
     // Si5351 PPM correction value
     // this is a signed value, so we need to scale it to a unsigned
     temp = si5351_ppm + 2147483647;
-    EEPROMWriteLong(temp, 29);
+    EEPROMWriteLong(temp, 38);
 
-    // XFO freq
-    EEPROMWriteLong(xfo, 33);
-
-    // BFO for the CW  mode
-    temp = usb + 2147483647;
-    EEPROMWriteLong(temp, 37);
 }
 
 
 // load the eprom contents
 void loadEEPROMConfig() {
+    /***************************************************************************
+     * EEPROM structure
+     * Example: @00 (8): comment
+     *  @##: start of the content of the eeprom var (always decimal)
+     *  (#): how many bytes are stored there
+     *
+     * =========================================================================
+     * @00 (8): EEPROMfingerprint, see the corresponding #define at the code start
+     * @08 (1): EEP_VER
+     * @09 (4): IF freq in 4 bytes
+     * @13 (4): VFO A in 4 bytes
+     * @17 (4): VFO B in 4 bytes
+     * @21 (4): XFO freq in 4 bytes
+     * @25 (4): BFO feq for the LSB mode
+     * @29 (4): BFO feq for the USB mode
+     * @33 (4): CW the offset for the CW mode in TX
+     * @37 (1): Encoded Byte in 4 + 4 bytes representing the USB and LSB mode
+     *          of the A/B VFO
+     * @38 (4): PPM correction for the Si5351
+     *
+     * =========================================================================
+     *
+    /**************************************************************************/
     //temp var
     unsigned long temp = 0;
 
     // get the IF value
-    ifreq = EEPROMReadLong(8);
+    ifreq = EEPROMReadLong(9);
 
     // get VFOa freq.
-    vfoa = EEPROMReadLong(12);
+    vfoa = EEPROMReadLong(13);
 
-    //  get VFOb freq.
-    vfob = EEPROMReadLong(16);
+    // get VFOb freq.
+    vfob = EEPROMReadLong(17);
+
+    // get XFO freq.
+    vfoa = EEPROMReadLong(21);
 
     // get BFO lsb freq.
-    temp = EEPROMReadLong(20);
+    temp = EEPROMReadLong(25);
     lsb = temp -2147483647;
 
     // BFO lsb freq.
-    temp = EEPROMReadLong(24);
+    temp = EEPROMReadLong(29);
     usb = temp -2147483647;
 
+    // BFO CW freq.
+    temp = EEPROMReadLong(33);
+    cw = temp - 2147483647;
+
     // get the deafult modes for each VFO
-    char salvar = EEPROM.read(28);
+    char salvar = EEPROM.read(37);
     VFOAMode = salvar >> 4;
     VFOBMode = salvar & 15;
 
     // Si5351 PPM correction value
     // this is a signed value, so we need to scale it to a unsigned
-    temp = EEPROMReadLong(29);
+    temp = EEPROMReadLong(38);
     si5351_ppm = temp - 2147483647;
     // now set it up
     si5351.set_correction(si5351_ppm);
-
-    // get XFO freq.
-    vfoa = EEPROMReadLong(33);
-
-    // BFO CW freq.
-    temp = EEPROMReadLong(37);
-    cw = temp - 2147483647;
 }
 
 
@@ -1105,14 +1147,18 @@ void setup() {
     }
 
     // Welcome screen
-    lcd.setCursor(0, 0);
+    lcd.clear();
+    //lcd.setCursor(0, 0);
     lcd.print(F("  Aduino Arcs  "));
     lcd.setCursor(0, 1);
-    lcd.print(F("Fv:010   Mfv:003"));
-    delay(1000);        // wait for 1 second
+    lcd.print(F("Fv: "));
+    lcd.print(FMW_VER);
+    lcd.print(F("  Mfv: "));
+    lcd.print(FMW_VER);
+    delay(2000);        // wait for 1 second
     lcd.setCursor(0, 0);
     lcd.print(F(" by Pavel CO7WT "));
-    delay(1000);        // wait for 1 second
+    delay(2000);        // wait for 1 second
     lcd.clear();
 
     // Check for setup mode
