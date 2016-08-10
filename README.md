@@ -37,22 +37,22 @@ About the schematics I can offer this files made with [Fritzing](http://www.frit
 - Usual features of normal commercial transceivers.
     - Two VFO (A/B)
     - RIT with +/- 9.99 Khz
-    - Variable VFO speed (steps: 10hz, 100hz, 1khz, 10khz, 100khz, 1Mhz)
+    - Variable VFO speed (steps: 10hz, 100hz, 1khz, 10khz, 100khz, 1Mhz) with the push of the encoder
+- S-meter in the LCD ([WARNING], by now the reference is the internal 1.1V one)
 - Initially mono-band in 40m.
 - Full user customization of the IF & BFOs and more via configuration menus.
+- Full user customization of the XFO for radios with a second conversion on the IF.
 - Hot tunning of the parameters when in configuration mode for ease the adjust.
 
 ## Features in the TODO list ##
 
 This are the wish list so far, with no particular order.
 
-- Split, we are working on it now.
-- XFO for radios with a second conversion radios.
+- Split, we are working on it now. {[90% completion]}
 - Memories, with an external EEPROM (24Cxx) on the already existent I2C bus, the amount of the memories will be proportional to the size of the EEPROM and the kind of it will be auto-detected (I2C bus scan) and can be fine tuned via configuration.
 - The VFO status is remembered with the power off/on cycles (require the use of an external EEPROM)
-- A fast step with the push and rotation of the encoder.
 - Multi-band support with a function to jump quickly from band to band.
-- CAT control, simulating a professional transceiver by using a protocol for a widely deployed radio model ( Yaesu FT-817ND?)
+- CAT control, simulating a professional transceiver by using a protocol for a widely deployed radio model ( Yaesu FT-817ND?) {[10% completion]}
 
 ## Si5351 Clock generator issues ##
 
