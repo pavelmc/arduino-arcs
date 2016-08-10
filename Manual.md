@@ -48,7 +48,7 @@ STEP button _(encoder push button)_
 
 The encoder push button has the control of the steps in the rotation of the encoder, pushing it will cycle steps in 10hz, 100hz, 1khz, 10khz, 100khz and 1 Mhz and then back to 10hz.
 
-Upon the modification of the step, the LCD will show the value in the area used to show the mode for the actual VFO for about two seconds, then will switch back to the mode.
+Upon the modification of the step, the LCD will show the value in the area used to show the S-meter bargraph for about three seconds.
 
 Encoder
 -------
@@ -66,10 +66,12 @@ In the setup mode you will find a menu with the following options to select and 
  * IF frequency
  * VFO A start frequency
  * VFO B start frequency
- * VFO A start mode
- * VFO B start mode
  * VFO frequency for the LSB mode
  * VFO frequency for the USB mode
+ * VFO frequency for the CW mode
+ * VFO A start mode
+ * VFO B start mode
+ * XFO frequency
  * Si5351 PPM error correction
 
 All this options are cycled via the encoder rotation in one or another direction and selected via the encoder push button; we will describe the buttons use in the setup mode and be aware that they change a little in the setup mode, we will name it as the usual function and will name the special function between parenthesis.
@@ -94,6 +96,7 @@ VFO button _(Reset)_
 
 This button has a special meaning in the options refereed to LSB & USB BFO frequencies and the Si5351 PPM correction. Pressing this buttons will reset the values of that option to it's default values as this:
 
- * BFO LSB frequency = 15000
- * BFO USB frequency = -15000
+ * BFO LSB frequency = -15000
+ * BFO USB frequency = +15000
+ * BFO CW frequency = +10000
  * Si5351 PPM error correction = 0
