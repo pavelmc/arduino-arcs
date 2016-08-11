@@ -1141,6 +1141,23 @@ void showBarGraph() {
 }
 
 
+// encoder processing
+void checkEncoder() {
+    if (encoderState != DIR_NONE) {
+        if (encoderState == DIR_CW) {
+            // FWD
+            encoderMoved(+1);
+        } else {
+            // RWD
+            encoderMoved(-1);
+        }
+
+        // encoder reset satate
+        encoderState = DIR_NONE;
+    }
+}
+
+
 // main setup procedure: get all ready to rock
 void setup() {
     // disable the outputs from the begining
@@ -1255,18 +1272,7 @@ void setup() {
 // let's get the party started
 void loop() {
     // encoder check
-    if (encoderState != DIR_NONE) {
-        if (encoderState == DIR_CW) {
-            // FWD
-            encoderMoved(+1);
-        } else {
-            // RWD
-            encoderMoved(-1);
-        }
-
-        // encoder reset satate
-        encoderState = DIR_NONE;
-    }
+    checkEncoder();
 
     // LCD update check in normal mode
     if ((update == true) and (runMode == NORMAL_MODE)) {
