@@ -648,7 +648,7 @@ void showRit() {
         lcd.print("0");
     lcd.print(t);
     // second dot
-    lcd.print(" khz");
+    lcd.print("kHz");
 }
 
 
