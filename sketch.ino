@@ -87,7 +87,7 @@
 // the eeprom & sketch version; if the eeprom version is lower than the one on the
 // sketck we force an update (init) to make a consistent work on upgrades
 #define EEP_VER     3
-#define FMW_VER     5
+#define FMW_VER     6
 
 // the limits of the VFO, the one the user see, for now just 40m for now
 #define F_MIN      65000000     // 6.500.000
@@ -147,7 +147,7 @@ byte fourBytes[4];                 // swap array to long to/from eeprom conversi
 byte config = 0;                   // holds the configuration item selected
 boolean inSetup = false;           // the setup mode, just looking or modifying
 boolean mustShowStep = false;      // var to show the step instead the bargraph
-#define showStepTimer    300       // a relative amount of time to show the mode
+#define showStepTimer   8000       // a relative amount of time to show the mode
                                    // aprox 3 secs
 word showStepCounter = showStepTimer; // the timer counter
 #define STEP_MAX  6                // count of the max steps to show
@@ -590,7 +590,16 @@ void updateLcd() {
     }
 
     // here goes the rx/tx bar graph or the other infos as RIT or STEPS
-    // it's handled by another procedure
+
+    // if we have a RIT or steps we manage it here and the bar will hold
+    if (ritActive) {
+        showRit();
+    }
+
+    // show the step if it must
+    if (mustShowStep) {
+        showStep();
+    }
 }
 
 
@@ -1328,24 +1337,28 @@ void loop() {
             update = true;
         }
 
-        // Second line of the LCD, I must show the bargraph/RIT/Step
-        if (ritActive) {
-            // Rit is active
-            showRit();
-        } else if (mustShowStep) {
-            // decrement the counter, but show it on the LCD just once
-            if (showStepCounter == showStepTimer) {
-                showStep();
-            } else {
-                showStepCounter -= 1;
-                if (showStepCounter == 0) {
-                    // game over, reset and return to normal
-                    mustShowStep = false;
-                }
-            }
-        } else {
+        // Second line of the LCD, I must show the bargraph only if not rit nor steps
+        if (!ritActive and !mustShowStep) {
             // just show the bar graph
             showBarGraph();
+        }
+
+        // decrement step counter
+        if (mustShowStep) {
+            // decrement the counter
+            showStepCounter -= 1;
+
+            // compare to show it just once, as showing it continuosly generate
+            //RQM from the arduino
+            if (showStepCounter == (showStepTimer - 1)) {
+                showStep();
+            }
+
+            // detect the count end and restore to normal
+            if (showStepCounter == 0) {
+                // reset the flag
+                 mustShowStep = false;
+            }
         }
 
     } else {
