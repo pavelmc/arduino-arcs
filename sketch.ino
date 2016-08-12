@@ -49,6 +49,7 @@
 #include <si5351.h>         // https://github.com/thomasfredericks/Bounce2/
 #include <Bounce2.h>        // https://github.com/etherkit/Si5351Arduino/
 #include <anabuttons.h>     // https://github.com/pavelmc/AnaButtons/
+#include <MsTimer2.h>       // https://github.com/PaulStoffregen/MsTimer2
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
 #include <LiquidCrystal.h>  // default
@@ -182,6 +183,9 @@ byte VFOAMode =        MODE_LSB;
 byte VFOBMode =        MODE_USB;
 boolean ritActive =    false;
 boolean tx =           false;
+word pep[15];                   // s-meter readings storage
+byte smeterCount =     0;       // how many readings are done so far
+boolean smeterOk = false;
 
 // put the value here if you have the default ppm corrections for you Si5351
 // if you set it here it will be stored on the EEPROM on the initial start,
@@ -1117,36 +1121,25 @@ void loadEEPROMConfig() {
 
 // show the bar graph for the RX or TX modes
 void showBarGraph() {
-    // we a re working on a 2x16 and we have -3 chars, so we have 13 bars
+    // we are working on a 2x16 and we have 14 bars (0-13) calculate the average
+    byte ave = 0;
 
-    // we are sensing a value that must move in the 0-1.1v so internal reference
-    analogReference(INTERNAL);
-    // read the value
-    word val = analogRead(A0);
-
-    // there is a DC offset in the RX sensing so we have to take it into account
-    // for our testing it's around 250
-    word Soffset = 0;
-    if (val > Soffset) {
-        val = val - Soffset;
+    for (byte i = 0; i < 15; i++) {
+      ave += pep[i];
     }
-
-    // map the values for the bar procedure
-    val = map(val, Soffset, 1023, 0, 13);
+    ave /= 15;
 
     // LCD position & print the bars
     lcd.setCursor(3, 1);
     byte i;
-    for (i = 0; i < val; i++) {
+    for (i = 0; i < ave; i++) {
         lcd.print(char(255));
     }
+
     // print spaces to erase the old bar
-    for (i = 0; i < 13 - val; i++) {
+    for (i = 0; i < 13 - ave; i++) {
         lcd.print(" ");
     }
-
-    // reset the reference for the buttons handling
-    analogReference(DEFAULT);
 }
 
 
@@ -1163,6 +1156,38 @@ void checkEncoder() {
 
         // encoder reset satate
         encoderState = DIR_NONE;
+    }
+}
+
+
+// smeter reading, this take a sample of the smeter/txpower each time; an will
+// rise a flag when they have rotated the array of measurements 2/3 times to
+// have a moving average
+void smeter() {
+    // it has rotated already?
+    if (smeterCount == 9) {
+        // rise the flag about the need to show the bar graph and reset the count
+        smeterOk = true;
+        smeterCount = 0;
+    } else {
+        // take a measure and rotate the array
+        // we are sensing a value that must move in the 0-1.1v so internal reference
+        analogReference(INTERNAL);
+        // read the value and map it for 14 chars in the LCD bar
+        word val = analogRead(A0);
+        val = map(val, 0, 1023, 0, 13);
+
+        //rotate it
+        for (byte i = 0; i < 14; i++) {
+            pep[i] = pep[i+1];
+        }
+        pep[14] = val;
+
+        // reset the reference for the buttons handling
+        analogReference(DEFAULT);
+
+        // increment counter
+        smeterCount += 1;
     }
 }
 
@@ -1264,6 +1289,10 @@ void setup() {
 
     // start the VFOa and it's mode
     updateAllFreq();
+
+    // init the timers
+    MsTimer2::set(30, smeter); // smeter reading period 1 readings
+    MsTimer2::start();
 }
 
 
@@ -1338,8 +1367,9 @@ void loop() {
         }
 
         // Second line of the LCD, I must show the bargraph only if not rit nor steps
-        if (!ritActive and !mustShowStep) {
-            // just show the bar graph
+        if ((!ritActive and !mustShowStep) and smeterOk) {
+            // just show the bar graph about 3 times per second
+            // it makes RQM on the receiver if left continously updating
             showBarGraph();
         }
 
