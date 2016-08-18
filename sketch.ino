@@ -83,6 +83,9 @@
  *
  * *****************************************************************************/
 
+// board selection flags
+// if you have the Arduno Pro Mini and the COLAB shield uncomment this
+#define COLAB_MINI  1
 
 // the eeprom & sketch version; if the eeprom version is lower than the one on the
 // sketck we force an update (init) to make a consistent work on upgrades
@@ -96,7 +99,14 @@
 // encoder pins
 #define ENC_A    3              // Encoder pin A
 #define ENC_B    2              // Encoder pin B
-#define btnPush  4              // Encoder Button
+#if defined (COLAB_MINI)
+    // COLAB shield + Arduino Mini Board
+    #define btnPush  11              // Encoder Button
+#else
+    // Pavel's hardware
+    #define btnPush  4              // Encoder Button
+#endif
+
 #define debounceInterval  10    // in milliseconds
 
 // the debounce instances
@@ -110,12 +120,23 @@ AnaButtons ab = AnaButtons(KEYS_PIN);
 byte anab = 0;  // this is to handle the buttons output
 
 // lcd pins assuming a 1602 (16x2) at 4 bits
-#define LCD_RS      8    // 14 < Real pins in a 28PDID
-#define LCD_E       7    // 13
-#define LCD_D4      6    // 12
-#define LCD_D5      5    // 11
-#define LCD_D6      10   // 16
-#define LCD_D7      9    // 15
+#if defined (COLAB_MINI)
+    // COLAB shield + Arduino Mini Board
+    #define LCD_RS      5
+    #define LCD_E       6
+    #define LCD_D4      7
+    #define LCD_D5      8
+    #define LCD_D6      9
+    #define LCD_D7      10
+#else
+    // Pavel's hardware
+    #define LCD_RS      8    // 14 < Real pins in a 28PDID
+    #define LCD_E       7    // 13
+    #define LCD_D4      6    // 12
+    #define LCD_D5      5    // 11
+    #define LCD_D6      10   // 16
+    #define LCD_D7      9    // 15
+#endif
 
 // lcd library setup
 LiquidCrystal lcd(LCD_RS, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
