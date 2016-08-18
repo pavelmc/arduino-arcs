@@ -49,7 +49,6 @@
 #include <si5351.h>         // https://github.com/thomasfredericks/Bounce2/
 #include <Bounce2.h>        // https://github.com/etherkit/Si5351Arduino/
 #include <anabuttons.h>     // https://github.com/pavelmc/AnaButtons/
-#include <MsTimer2.h>       // https://github.com/PaulStoffregen/MsTimer2
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
 #include <LiquidCrystal.h>  // default
@@ -91,7 +90,7 @@
 #define FMW_VER     6
 
 // the limits of the VFO, the one the user see, for now just 40m for now
-#define F_MIN      65000000     // 6.500.000
+#define F_MIN      45000000     // 6.500.000
 #define F_MAX      75000000     // 7.500.000
 
 // encoder pins
@@ -176,6 +175,10 @@ word showStepCounter = showStepTimer; // the timer counter
 // --
 #define CONFIG_MAX 9               // the amount of configure options
 
+// sampling interval for the AGC, 30 milli averaged every 10 reads: gives 3
+// updates per second and a good visual effect
+#define SM_SAMPLING_INTERVAL  30
+
 // run variables
 boolean runMode =      NORMAL_MODE;
 boolean activeVFO =    VFO_A_ACTIVE;
@@ -184,6 +187,7 @@ byte VFOBMode =        MODE_USB;
 boolean ritActive =    false;
 boolean tx =           false;
 word pep[15];                   // s-meter readings storage
+unsigned long lastMilis = 0;    // to track the last sampled time
 byte smeterCount =     0;       // how many readings are done so far
 boolean smeterOk = false;
 
@@ -1289,10 +1293,6 @@ void setup() {
 
     // start the VFOa and it's mode
     updateAllFreq();
-
-    // init the timers
-    MsTimer2::set(30, smeter); // smeter reading period 1 readings
-    MsTimer2::start();
 }
 
 
@@ -1484,6 +1484,14 @@ void loop() {
                 showModConfig();
             }
         }
+    }
+
+    // sample and process the S-meter in RX & TX
+    if ((millis() - lastMilis) >= SM_SAMPLING_INTERVAL) {
+        // I must sample the input
+        smeter();
+        // and reset the lastreading to keep track
+        lastMilis = millis();
     }
 }
 
