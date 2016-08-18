@@ -83,9 +83,9 @@
  *
  * *****************************************************************************/
 
-// board selection flags
-// if you have the Arduno Pro Mini and the COLAB shield uncomment this
-#define COLAB_MINI  1
+/*    USER BOARD SELECTION     */
+// if you have the any of the COLAB shields uncomment this
+#define COLAB True
 
 // the eeprom & sketch version; if the eeprom version is lower than the one on the
 // sketck we force an update (init) to make a consistent work on upgrades
@@ -99,8 +99,8 @@
 // encoder pins
 #define ENC_A    3              // Encoder pin A
 #define ENC_B    2              // Encoder pin B
-#if defined (COLAB_MINI)
-    // COLAB shield + Arduino Mini Board
+#if defined (COLAB)
+    // Any of the COLAB shields
     #define btnPush  11              // Encoder Button
 #else
     // Pavel's hardware
@@ -120,7 +120,7 @@ AnaButtons ab = AnaButtons(KEYS_PIN);
 byte anab = 0;  // this is to handle the buttons output
 
 // lcd pins assuming a 1602 (16x2) at 4 bits
-#if defined (COLAB_MINI)
+#if defined (COLAB)
     // COLAB shield + Arduino Mini Board
     #define LCD_RS      5
     #define LCD_E       6
@@ -130,7 +130,7 @@ byte anab = 0;  // this is to handle the buttons output
     #define LCD_D7      10
 #else
     // Pavel's hardware
-    #define LCD_RS      8    // 14 < Real pins in a 28PDID
+    #define LCD_RS      8    // 14 < Real pins in a 28PDIP
     #define LCD_E       7    // 13
     #define LCD_D4      6    // 12
     #define LCD_D5      5    // 11
@@ -1219,6 +1219,17 @@ void smeter() {
 
 // main setup procedure: get all ready to rock
 void setup() {
+    // LCD init
+    lcd.begin(16, 2);
+    lcd.clear();
+
+    // DEBUG
+    lcd.setCursor(0, 0);
+    lcd.print(F("HOLA"));
+
+    // I2C init
+    Wire.begin();
+
     // disable the outputs from the begining
     si5351.output_enable(SI5351_CLK0, 0);
     si5351.output_enable(SI5351_CLK1, 0);
@@ -1228,13 +1239,6 @@ void setup() {
     pinMode(btnPush,INPUT_PULLUP);
     dbBtnPush.attach(btnPush);
     dbBtnPush.interval(debounceInterval);
-
-    // LCD init
-    lcd.begin(16, 2);
-    lcd.clear();
-
-    // I2C init
-    Wire.begin();
 
     // Interrupt init, the arduino way
     attachInterrupt(0, IR, CHANGE);
