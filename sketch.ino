@@ -101,7 +101,7 @@
 #define ENC_B    2              // Encoder pin B
 #if defined (COLAB)
     // Any of the COLAB shields
-    #define btnPush  11              // Encoder Button
+    #define btnPush  11             // Encoder Button
 #else
     // Pavel's hardware
     #define btnPush  4              // Encoder Button
@@ -1218,14 +1218,11 @@ void smeter() {
 
 
 // main setup procedure: get all ready to rock
+
 void setup() {
     // LCD init
     lcd.begin(16, 2);
     lcd.clear();
-
-    // DEBUG
-    lcd.setCursor(0, 0);
-    lcd.print(F("HOLA"));
 
     // I2C init
     Wire.begin();
@@ -1245,7 +1242,7 @@ void setup() {
     attachInterrupt(1, IR, CHANGE);
 
     // Xtal capacitive load
-    si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0);
+    si5351.init(SI5351_CRYSTAL_LOAD_10PF, 0);
 
     // setup the PLL usage
     si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
@@ -1318,6 +1315,7 @@ void setup() {
 
     // start the VFOa and it's mode
     updateAllFreq();
+
 }
 
 
