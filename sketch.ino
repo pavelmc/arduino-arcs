@@ -775,13 +775,13 @@ unsigned long getActiveBFOFreq() {
     // return it
     switch (mode) {
         case MODE_LSB:
-            return ifreq + lsb;
+            return ifreq - xfo + lsb;
             break;
         case MODE_USB:
-            return ifreq + usb;
+            return ifreq - xfo + usb;
             break;
         case MODE_CW:
-            //return ifreq + cw; // < =====================================
+            return ifreq -xfo + cw;
             return 0;
             break;
     }
