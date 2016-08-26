@@ -78,8 +78,12 @@
 /*******************************************************************************
  * SOME DATA TO TAKE INTO ACCOUNT
  *
- * IF Filter for FT-747GX IF = 8.214800, LSB = -1.500, USB = + 1.500 ::: DEFAULTS
- *
+ * IF Filter for FT-747GX in a BitX-40 single IF:
+ *      IF =  8.214800, XFO =  0.000000, LSB = -1.500, USB = + 1.500 ::: DEFAULTS
+ * IF Filter for SEG-15 double conversion: *
+ *      IF = 28.200000, XFO = 28.000000, LSB = -1.500, USB = + 1.500
+ * IF Filter for 500kc 500H filter, single conversion: *
+ *      IF =   0.50150, XFO =  0.000000, LSB = -1.500, USB = + 1.500
  *
  * *****************************************************************************/
 
