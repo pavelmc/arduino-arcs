@@ -79,9 +79,9 @@
  * SOME DATA TO TAKE INTO ACCOUNT
  *
  * IF Filter for FT-747GX in a BitX-40 single IF:
- *      IF =  8.214800, XFO =  0.000000, LSB = -1.500, USB = + 1.500 ::: DEFAULTS
+ *      IF =  8.214800, XFO =  0.000000, LSB = -1.350, USB = + 1.350 ::: DEFAULTS
  * IF Filter for SEG-15 double conversion: *
- *      IF = 28.200000, XFO = 28.000000, LSB = -1.500, USB = + 1.500
+ *      IF = 28.200000, XFO = 28.001500, LSB = -1.500, USB = + 1.500
  * IF Filter for 500kc 500H filter, single conversion: *
  *      IF =   0.50150, XFO =  0.000000, LSB = -1.500, USB = + 1.500
  *
@@ -89,7 +89,12 @@
 
 /*    USER BOARD SELECTION     */
 // if you have the any of the COLAB shields uncomment this
-#define COLAB True
+//#define COLAB true
+
+/*    DEBUG BY SERIAL     */
+// if you like to have a debug info by the serial port just uncomment this and
+// attach a serial terminal to the arduino 57600 @ 8N1
+//#define SDEBUG true
 
 // the eeprom & sketch version; if the eeprom version is lower than the one on the
 // sketck we force an update (init) to make a consistent work on upgrades
@@ -97,12 +102,13 @@
 #define FMW_VER     6
 
 // the limits of the VFO, the one the user see, for now just 40m for now
-#define F_MIN      45000000     // 6.500.000
+#define F_MIN      65000000     // 6.500.000
 #define F_MAX      75000000     // 7.500.000
 
 // encoder pins
 #define ENC_A    3              // Encoder pin A
 #define ENC_B    2              // Encoder pin B
+#define PTT     13              // PTT Line with pullup
 #if defined (COLAB)
     // Any of the COLAB shields
     #define btnPush  11             // Encoder Button
@@ -144,38 +150,73 @@ byte anab = 0;  // this is to handle the buttons output
 
 // lcd library setup
 LiquidCrystal lcd(LCD_RS, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+// defining the chars
+
+byte bar[8] = {
+  B11111,
+  B11111,
+  B11111,
+  B11111,
+  B11111,
+  B11111,
+  B11111
+};
+
+byte s1[8] = {
+  B11111,
+  B10011,
+  B11011,
+  B11011,
+  B11011,
+  B10001,
+  B11111
+};
+
+byte s3[8] = {
+  B11111,
+  B10001,
+  B11101,
+  B10001,
+  B11101,
+  B10001,
+  B11111
+};
+
+byte s5[8] = {
+  B11111,
+  B10001,
+  B10111,
+  B10001,
+  B11101,
+  B10001,
+  B11111
+};
+
+byte s7[8] = {
+  B11111,
+  B10001,
+  B11101,
+  B11011,
+  B11011,
+  B11011,
+  B11111
+};
+
+byte s9[8] = {
+  B11111,
+  B10001,
+  B10101,
+  B10001,
+  B11101,
+  B11101,
+  B11111
+};
 
 // Si5351 library setup
 Si5351 si5351;
 
 // rotary encoder library setup
 Rotary encoder = Rotary(ENC_A, ENC_B);
-
-// the variables
-signed long lsb =      -15000;     // BFO for the lsb (offset from the FI)
-signed long usb =       15000;     // BFO for the usb (offset from the FI)
-signed long cw =            0;     // BFO for the cw (offset from the FI)
-signed long xfo =           0;     // second conversion XFO, zero to disable it
-                                   // This is always negative
-unsigned long vfoa = 71100000;     // default starting VFO A freq
-unsigned long vfob = 71250000;     // default starting VFO A freq
-unsigned long tvfo =         0;    // temporal VFO storage for RIT usage
-unsigned long steps[] = {10,  100,  1000,  10000, 100000, 1000000, 10000000};
-      // defined steps : 1hz, 10hz, 100hz, 1Khz,  10Khz,  100Khz,  1Mhz
-      // for practical and logical reasons we restrict the 1hz step to the
-      // SETUP procedures, as 10hz is fine for everyday work.
-byte step = 2;                     // default steps position index: 100hz
-unsigned long ifreq = 82148000;    // intermediate freq
-boolean update = true;             // lcd update flag in normal mode
-volatile byte encoderState = DIR_NONE;   // encoder state, ### this is volatile
-byte fourBytes[4];                 // swap array to long to/from eeprom conversion
-byte config = 0;                   // holds the configuration item selected
-boolean inSetup = false;           // the setup mode, just looking or modifying
-boolean mustShowStep = false;      // var to show the step instead the bargraph
-#define showStepTimer   8000       // a relative amount of time to show the mode
-                                   // aprox 3 secs
-word showStepCounter = showStepTimer; // the timer counter
-#define STEP_MAX  6                // count of the max steps to show
 
 // run mode constants
 #define NORMAL_MODE true
@@ -189,37 +230,64 @@ word showStepCounter = showStepTimer; // the timer counter
 // config constants
 #define CONFIG_IF       0
 #define CONFIG_VFO_A    1
-#define CONFIG_VFO_B    2
-#define CONFIG_LSB      3
-#define CONFIG_USB      4
-#define CONFIG_CW       5
-#define CONFIG_MODE_A   6
-#define CONFIG_MODE_B   7
+#define CONFIG_MODE_A   2
+#define CONFIG_VFO_B    3
+#define CONFIG_MODE_B   4
+#define CONFIG_LSB      5
+#define CONFIG_USB      6
+#define CONFIG_CW       7
 #define CONFIG_XFO      8
 #define CONFIG_PPM      9
 // --
 #define CONFIG_MAX 9               // the amount of configure options
 
-// sampling interval for the AGC, 30 milli averaged every 10 reads: gives 3
+// sampling interval for the AGC, 33 milli averaged every 10 reads: gives 3
 // updates per second and a good visual effect
-#define SM_SAMPLING_INTERVAL  30
-
-// run variables
-boolean runMode =      NORMAL_MODE;
-boolean activeVFO =    VFO_A_ACTIVE;
-byte VFOAMode =        MODE_LSB;
-byte VFOBMode =        MODE_USB;
-boolean ritActive =    false;
-boolean tx =           false;
-word pep[15];                   // s-meter readings storage
-unsigned long lastMilis = 0;    // to track the last sampled time
-byte smeterCount =     0;       // how many readings are done so far
-boolean smeterOk = false;
+#define SM_SAMPLING_INTERVAL  33
 
 // put the value here if you have the default ppm corrections for you Si5351
 // if you set it here it will be stored on the EEPROM on the initial start,
 // otherwise set it to zero and you can set it up via the SETUP menu
-signed long si5351_ppm = 300580;    // it has the *10 included 30.058)
+signed long si5351_ppm = 225080;    // it has the *10 included 30.058)
+
+// the variables
+signed long lsb =  -13500;        // BFO for the lsb (offset from the FI)
+signed long usb =  13500;         // BFO for the usb (offset from the FI)
+signed long cw =  0;              // BFO for the cw (offset from the FI)
+signed long xfo =  0;             // second conversion XFO, zero to disable it
+unsigned long vfoa = 71100000;    // default starting VFO A freq
+unsigned long vfob = 71755000;    // default starting VFO B freq
+unsigned long tvfo = 0;           // temporal VFO storage for RIT usage
+unsigned long txSplitVfo =  0;    // temporal VFO storage for RIT usage when TX
+unsigned long steps[] = {10,  100,  1000,  10000, 100000, 1000000, 10000000};
+      // defined steps : 1hz, 10hz, 100hz, 1Khz,  10Khz,  100Khz,  1Mhz
+      // for practical and logical reasons we restrict the 1hz step to the
+      // SETUP procedures, as 10hz is fine for everyday work.
+byte step = 2;                     // default steps position index: 100hz
+unsigned long ifreq = 82148000;    // intermediate freq
+boolean update = true;             // lcd update flag in normal mode
+volatile byte encoderState = DIR_NONE;   // encoder state ### this is volatile
+byte fourBytes[4];                 // swap array to long to/from eeprom conversion
+byte config = 0;                   // holds the configuration item selected
+boolean inSetup = false;           // the setup mode, just looking or modifying
+boolean mustShowStep = false;      // var to show the step instead the bargraph
+#define showStepTimer   8000       // a relative amount of time to show the mode
+                                   // aprox 3 secs
+word showStepCounter = showStepTimer; // the timer counter
+#define STEP_MAX  6                // count of the max steps to show
+boolean runMode =      NORMAL_MODE;
+boolean activeVFO =    VFO_A_ACTIVE;
+byte VFOAMode =        MODE_LSB;
+byte VFOBMode =        MODE_LSB;
+boolean ritActive =    false;
+boolean tx =           false;
+word pep[15];                      // s-meter readings storage
+unsigned long lastMilis = 0;       // to track the last sampled time
+byte smeterCount =     0;          // how many readings are done so far
+boolean smeterOk = false;
+
+// temp vars
+boolean tbool   = false;
 
 
 // interrupt routine
@@ -303,6 +371,18 @@ void updateAllFreq() {
     setFreqVFO();
     setFreqBFO();
     setFreqXFO();
+
+    #if defined (SDEBUG)
+    Serial.print(F("LSB: "));
+    Serial.println(lsb, DEC);
+    Serial.print(F("USB: "));
+    Serial.println(usb, DEC);
+    Serial.print(F(" CW: "));
+    Serial.println(cw, DEC);
+    Serial.print(F("RVFO: "));
+    Serial.println(getActiveVFOFreq(), DEC);
+    Serial.println(F("-----------------------"));
+    #endif
 }
 
 
@@ -316,47 +396,66 @@ void updateSetupValues(short dir) {
         // I'm modifying, switch on the config item
         switch (config) {
             case CONFIG_IF:
+                // change the VFO to A by default
+                activeVFO = VFO_A_ACTIVE;
                 // change the IF value
                 ifreq += steps[step] * dir;
                 // hot swap it
                 updateAllFreq();
                 break;
             case CONFIG_VFO_A:
+                // change the VFO
+                activeVFO = VFO_A_ACTIVE;
                 // change VFOa
                 vfoa += steps[step] * dir;
                 // hot swap it
                 updateAllFreq();
                 break;
             case CONFIG_VFO_B:
+                // change the VFO
+                activeVFO = !VFO_A_ACTIVE;
                 // change VFOb, this is not hot swapped
                 vfob += steps[step] * dir;
                 break;
             case CONFIG_MODE_A:
                 // change the mode for the VFOa
-                activeVFO = true;
+                activeVFO = VFO_A_ACTIVE;
                 changeMode();
                 // set the default mode in the VFO A
                 showModeSetup(VFOAMode);
                 break;
             case CONFIG_MODE_B:
                 // change the mode for the VFOb
-                activeVFO = false;
+                activeVFO =  !VFO_A_ACTIVE;
                 changeMode();
                 // set the default mode in the VFO B
                 showModeSetup(VFOBMode);
                 break;
             case CONFIG_USB:
+                // force the VFO A
+                activeVFO = VFO_A_ACTIVE;
+                // change the mode to USB
+                setActiveVFOMode(MODE_USB);
                 // change the USB BFO
                 usb += steps[step] * dir;
                 // hot swap it
                 updateAllFreq();
+                break;
             case CONFIG_LSB:
+                // force the VFO A
+                activeVFO = VFO_A_ACTIVE;
+                // change the mode to LSB
+                setActiveVFOMode(MODE_LSB);
                 // change the LSB BFO
                 lsb += steps[step] * dir;
                 // hot swap it
                 updateAllFreq();
                 break;
             case CONFIG_CW:
+                // force the VFO A
+                activeVFO = VFO_A_ACTIVE;
+                // change the mode to CW
+                setActiveVFOMode(MODE_CW);
                 // change the CW BFO
                 cw += steps[step] * dir;
                 // hot swap it
@@ -616,10 +715,10 @@ void updateLcd() {
 
     // second line
     lcd.setCursor(0, 1);
-    if (tx == false) {
-        lcd.print("RX ");
-    } else {
+    if (tx == true) {
         lcd.print("TX ");
+    } else {
+        lcd.print("RX ");
     }
 
     // here goes the rx/tx bar graph or the other infos as RIT or STEPS
@@ -785,8 +884,7 @@ unsigned long getActiveBFOFreq() {
             return ifreq - xfo + usb;
             break;
         case MODE_CW:
-            return ifreq -xfo + cw;
-            return 0;
+            return ifreq - xfo + cw;
             break;
     }
 
@@ -803,9 +901,8 @@ void setFreqVFO() {
     /* ***********************
      * Remember we allways use up conversion so...
      *
-     * LSB: the VFO is at the right spot as the ifreq
-     * USB: we displace the VFO & BFO up in a BW amout (usb)
-     * CW: we displace the VFO & BFO up in a BW amout (cw)
+     * LSB & USB: we displace the VFO & BFO up in a BW/2 amout
+     * CW: TBD
      *
      * */
 
@@ -824,6 +921,12 @@ void setFreqVFO() {
 
     freq += ifreq;
     si5351.set_freq(freq, 0, SI5351_CLK0);
+
+    #if defined (SDEBUG)
+    // DEBUG: Spit the freq sent to the VFO
+    Serial.print(F("VFO: "));
+    Serial.println(freq, DEC);
+    #endif
 }
 
 
@@ -831,7 +934,26 @@ void setFreqVFO() {
 void setFreqBFO() {
     // get the active vfo mode freq and get it out
     unsigned long frec = getActiveBFOFreq();
-    si5351.set_freq(frec, 0, SI5351_CLK2);
+    // deactivate it if zero
+    if (frec == 0) {
+        // deactivate it
+        si5351.output_enable(SI5351_CLK2, 0);
+
+        #if defined (SDEBUG)
+        // DEBUG: disabled
+        Serial.println(F("XFO: Disabled"));
+        #endif
+    } else {
+        // output it
+        si5351.output_enable(SI5351_CLK2, 1);
+        si5351.set_freq(frec, 0, SI5351_CLK2);
+
+        #if defined (SDEBUG)
+        // DEBUG: Spit the freq sent to the BFO
+        Serial.print(F("BFO: "));
+        Serial.println(frec, DEC);
+        #endif
+    }
 }
 
 
@@ -841,10 +963,21 @@ void setFreqXFO() {
     if (xfo == 0) {
         // this is only enabled if we have a freq to send outside
         si5351.output_enable(SI5351_CLK1, 0);
+
+        #if defined (SDEBUG)
+        // DEBUG: disabled
+        Serial.println(F("XFO: Disabled"));
+        #endif
     } else {
         si5351.output_enable(SI5351_CLK1, 1);
         si5351.set_freq(xfo, 0, SI5351_CLK1);
         // WARNING This has a shared PLL with the BFO, maybe we need to reset the BFO?
+
+        #if defined (SDEBUG)
+        // DEBUG: Spit the freq sent to the XFO
+        Serial.print(F("XFO: "));
+        Serial.println(xfo, DEC);
+        #endif
     }
 }
 
@@ -861,7 +994,7 @@ byte getActiveVFOMode() {
 
 // set the active VFO mode
 void setActiveVFOMode(byte mode) {
-    if (activeVFO == true) {
+    if (activeVFO == 1) {
         VFOAMode = mode;
     } else {
         VFOBMode = mode;
@@ -1067,7 +1200,7 @@ void initEeprom() {
     EEPROMWriteLong(temp, 29);
 
     // BFO for the CW  mode
-    temp = usb + 2147483647;
+    temp = cw + 2147483647;
     EEPROMWriteLong(temp, 33);
 
     // Encoded byte with the default modes for VFO A/B
@@ -1162,7 +1295,26 @@ void showBarGraph() {
     lcd.setCursor(3, 1);
     byte i;
     for (i = 0; i < ave; i++) {
-        lcd.print(char(255));
+        switch (i) {
+            case 0:
+                 lcd.write(byte(1));
+                 break;
+            case 2:
+                 lcd.write(byte(2));
+                 break;
+            case 4:
+                 lcd.write(byte(3));
+                 break;
+            case 6:
+                 lcd.write(byte(4));
+                 break;
+            case 8:
+                 lcd.write(byte(5));
+                 break;
+            default:
+                lcd.write(byte(0));
+                break;
+        }
     }
 
     // print spaces to erase the old bar
@@ -1221,10 +1373,36 @@ void smeter() {
 }
 
 
+// set a freq to the active VFO
+void setActiveVFO(unsigned long f) {
+    if (activeVFO == VFO_A_ACTIVE) {
+        vfoa = f;
+    } else {
+        vfob = f;
+    }
+}
+
+
 // main setup procedure: get all ready to rock
 
 void setup() {
-    // LCD init
+    // start serial port at 57600 bps:
+    Serial.begin(57600);
+
+    #if defined (SDEBUG)
+    // Welcome to the Serial mode
+    Serial.println("");
+    Serial.println(F("Arduino-ARCS Ready."));
+    #endif
+
+    // LCD init, create the custom chard first
+    lcd.createChar(0, bar);
+    lcd.createChar(1, s1);
+    lcd.createChar(2, s3);
+    lcd.createChar(3, s5);
+    lcd.createChar(4, s7);
+    lcd.createChar(5, s9);
+    // now load the library
     lcd.begin(16, 2);
     lcd.clear();
 
@@ -1237,9 +1415,12 @@ void setup() {
     si5351.output_enable(SI5351_CLK2, 0);
 
     // buttons debounce encoder push
-    pinMode(btnPush,INPUT_PULLUP);
+    pinMode(btnPush, INPUT_PULLUP);
     dbBtnPush.attach(btnPush);
     dbBtnPush.interval(debounceInterval);
+
+    // pin mode of the PTT
+    pinMode(PTT, INPUT_PULLUP);
 
     // Interrupt init, the arduino way
     attachInterrupt(0, IR, CHANGE);
@@ -1262,6 +1443,12 @@ void setup() {
     // check the EEPROM to know if I need to initialize it
     boolean eepromOk = checkInitEEPROM();
     if (!eepromOk) {
+        #if defined (SDEBUG)
+        // serial advice
+        Serial.println(F("Init EEPROM"));
+        #endif
+
+        // LCD
         lcd.setCursor(0, 0);
         lcd.print(F("Init EEPROM...  "));
         lcd.setCursor(0, 1);
@@ -1272,6 +1459,9 @@ void setup() {
     } else {
         // just if it's already ok
         loadEEPROMConfig();
+        #if defined (SDEBUG)
+        Serial.println(F("EEPROM data loaded."));
+        #endif
     }
 
     // Welcome screen
@@ -1306,9 +1496,12 @@ void setup() {
         // show setup mode
         showConfig();
 
+        #if defined (SDEBUG)
+        Serial.println(F("You are in SETUP mode"));
+        #endif
     }
 
-    // setting up hot mode on VFO a
+    // setting up VFO A as principal.
     activeVFO = VFO_A_ACTIVE;
 
     // Enable the Si5351 outputs
@@ -1329,7 +1522,7 @@ void setup() {
  * - Mode: it's "Cancel & back to main menu"
  * - RIT: Frequency step control.
  * - VFO A/B:
- *   - On the USB/LSB freq. setup menus, this set the selected value to the IF
+ *   - On the USB/LSB/CW freq. setup menus, this set the selected value to zero
  *   - On the PPM adjust it reset it to zero
  ******************************************************************************/
 
@@ -1344,6 +1537,40 @@ void loop() {
         // update and reset the flag
         updateLcd();
         update = false;
+    }
+
+    // check PTT and make the RX/TX changes
+    tbool = digitalRead(PTT);
+    if (tbool == 1 and tx == true) {
+        // PTT released, going to RX
+        tx = false;
+
+        // make changes if tx goes active when RIT is active
+        if (ritActive) {
+            // get the TX vfo and store it as the reference for the RIT
+            tvfo = getActiveVFOFreq();
+            // restore the rit VFO to the actual VFO
+            setActiveVFO(txSplitVfo);
+        }
+
+        // rise the update flag
+        update = true;
+    }
+
+    if (tbool == 0 and tx == false) {
+        // PTT asserted, going into TX
+        tx = true;
+
+        // make changes if tx goes active when RIT is active
+        if (ritActive) {
+            // save the actual rit VFO
+            txSplitVfo = getActiveVFOFreq();
+            // set the TX freq to the active VFO
+            setActiveVFO(tvfo);
+        }
+
+        // rise the update flag
+        update = true;
     }
 
     // analog buttons
@@ -1453,8 +1680,7 @@ void loop() {
                 showConfig();
 
                 // reset the minimum step if set (1hz > 10 hz)
-                if (step == 0)
-                    step += 1;
+                if (step == 0) step += 1;
             }
         }
 
@@ -1484,7 +1710,7 @@ void loop() {
             // where we are ?
             if (config == CONFIG_USB) {
                 // reset, activate and lcd update
-                usb = 28000;
+                usb = 0;
                 updateAllFreq();
                 showModConfig();
             }
@@ -1498,7 +1724,7 @@ void loop() {
 
             if (config == CONFIG_CW){
                 // reset, activate and lcd update
-                cw = 22000;
+                cw = 0;
                 updateAllFreq();
                 showModConfig();
             }
