@@ -1354,11 +1354,20 @@ void smeter() {
         // take a measure and rotate the array
         // we are sensing a value that must move in the 0-1.1v so internal reference
         analogReference(INTERNAL);
-        // read the value and map it for 14 chars in the LCD bar
-        word val = analogRead(A0);
+        // read the value and map it for 13 chars in the LCD bar
+        word val = 0;
+        if (tx == true) {
+            // we are on TX, sensing via A1
+            val = analogRead(A1);
+        } else {
+            // we are in RX, sensing via A0
+            val = analogRead(A0);
+        }
+
+        // scale it to 0-14 blocks
         val = map(val, 0, 1023, 0, 13);
 
-        //rotate it
+        // push it in the array
         for (byte i = 0; i < 14; i++) {
             pep[i] = pep[i+1];
         }
