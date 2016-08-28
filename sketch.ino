@@ -75,33 +75,52 @@
  *
 * *******************************************************************************/
 
-/*******************************************************************************
- * SOME DATA TO TAKE INTO ACCOUNT
- *
- * IF Filter for FT-747GX in a BitX-40 single IF:
- *      IF =  8.214800, XFO =  0.000000, LSB = -1.350, USB = + 1.350 ::: DEFAULTS
- * IF Filter for SEG-15 double conversion: *
- *      IF = 28.200000, XFO = 28.001500, LSB = -1.500, USB = + 1.500
- * IF Filter for 500kc 500H filter, single conversion: *
- *      IF =   0.50150, XFO =  0.000000, LSB = -1.500, USB = + 1.500
- *
- * *****************************************************************************/
+/*********************** USER BOARD SELECTION **********************************
+ * if you have the any of the COLAB shields uncomment the following line.
+ * (the sketch is configures for my particular hardware)
+ *******************************************************************************/
+//#define COLAB
 
-/*    USER BOARD SELECTION     */
-// if you have the any of the COLAB shields uncomment this
-//#define COLAB true
+/***********************  DEBUG BY SERIAL  *************************************
+ * If you like to have a debug info by the serial port just uncomment this and
+ * attach a serial terminal to the arduino 57600 @ 8N1. This is a temporal helper
+ * in the future it will support a CAT protocol to interact with the radio */
+#define SDEBUG
 
-/*    DEBUG BY SERIAL     */
-// if you like to have a debug info by the serial port just uncomment this and
-// attach a serial terminal to the arduino 57600 @ 8N1
-//#define SDEBUG true
+/*************************  FILTER PRE-CONFIGURATIONS **************************
+ * As this project aims to easy the user configuration we will pre-stablish some
+ * defaults for some of the most common hardware configurations we have in Cuba
+ *
+ * The idea is that if you find a matching hardware case is just a matter of
+ * uncomment the option and comment the others, compile the sketch an upload and
+ * you will get ball park values for your configuration.
+ *
+ * See the Setup_en|Setup_es PDF files in the doc directory, if you use this and
+ * use a own hardware variant I can code it to make your life easier, write to
+ * pavelmc@gmail.com [author]
+ *
+ * WARNING at least one must be un-commented for the compiler to work
+ ******************************************************************************/
+// Single conversion Radio using the SSB filter of an FT-80C/FT-747GX
+// the filter reads:
+#define SSBF_FT747GX
+
+// Single conversion Radio using the SSB filter of a Polosa/Angara
+// the filter reads: ZMFDP-500H-3,1
+//#define SSBF_URSS_500H
+
+// Double conversion (28.8MHz/200KHz) radio from RF board of a RFT SEG-15
+// the radio has two filters, we used the one that reads:
+//#define SSBF_RFT_SEG15
 
 // the eeprom & sketch version; if the eeprom version is lower than the one on the
 // sketck we force an update (init) to make a consistent work on upgrades
 #define EEP_VER     3
-#define FMW_VER     6
+#define FMW_VER     7
 
 // the limits of the VFO, the one the user see, for now just 40m for now
+// you can tweak it with the limits of your particular hardware
+// thi are LCD diplay frequencies.
 #define F_MIN      65000000     // 6.500.000
 #define F_MAX      75000000     // 7.500.000
 
@@ -109,14 +128,13 @@
 #define ENC_A    3              // Encoder pin A
 #define ENC_B    2              // Encoder pin B
 #define PTT     13              // PTT Line with pullup
-#if defined (COLAB)
+#ifdef COLAB
     // Any of the COLAB shields
     #define btnPush  11             // Encoder Button
 #else
     // Pavel's hardware
     #define btnPush  4              // Encoder Button
 #endif
-
 #define debounceInterval  10    // in milliseconds
 
 // the debounce instances
@@ -130,7 +148,7 @@ AnaButtons ab = AnaButtons(KEYS_PIN);
 byte anab = 0;  // this is to handle the buttons output
 
 // lcd pins assuming a 1602 (16x2) at 4 bits
-#if defined (COLAB)
+#ifdef COLAB
     // COLAB shield + Arduino Mini Board
     #define LCD_RS      5
     #define LCD_E       6
@@ -245,16 +263,42 @@ Rotary encoder = Rotary(ENC_A, ENC_B);
 // updates per second and a good visual effect
 #define SM_SAMPLING_INTERVAL  33
 
+// hardware pre configured values
+#ifdef SSBF_FT747GX
+    // Pre configured values for a Single conversion radio using the FT-747GX
+    signed long lsb =  -13500;
+    signed long usb =   13500;
+    signed long cw =        0;
+    signed long xfo =       0;
+    unsigned long ifreq =   82148000;
+#endif
+
+#ifdef SSBF_URSS_500H
+    // Pre configured values for a Single conversion radio using the Polosa
+    // Angara 500H filter
+    signed long lsb =  -13500;
+    signed long usb =   13500;
+    signed long cw =        0;
+    signed long xfo =       0;
+    unsigned long ifreq =   5013500;
+#endif
+
+#ifdef SSBF_RFT_SEG15
+    // Pre configured values for a Double conversion radio using the RFT SEG15
+    // RF board using the filter marked as:
+    signed long lsb =  -13500;
+    signed long usb =   13500;
+    signed long cw =        0;
+    signed long xfo =       280000000;
+    unsigned long ifreq =   282000000;
+#endif
+
 // put the value here if you have the default ppm corrections for you Si5351
 // if you set it here it will be stored on the EEPROM on the initial start,
 // otherwise set it to zero and you can set it up via the SETUP menu
 signed long si5351_ppm = 225080;    // it has the *10 included 30.058)
 
 // the variables
-signed long lsb =  -13500;        // BFO for the lsb (offset from the FI)
-signed long usb =  13500;         // BFO for the usb (offset from the FI)
-signed long cw =  0;              // BFO for the cw (offset from the FI)
-signed long xfo =  0;             // second conversion XFO, zero to disable it
 unsigned long vfoa = 71100000;    // default starting VFO A freq
 unsigned long vfob = 71755000;    // default starting VFO B freq
 unsigned long tvfo = 0;           // temporal VFO storage for RIT usage
@@ -264,7 +308,6 @@ unsigned long steps[] = {10,  100,  1000,  10000, 100000, 1000000, 10000000};
       // for practical and logical reasons we restrict the 1hz step to the
       // SETUP procedures, as 10hz is fine for everyday work.
 byte step = 2;                     // default steps position index: 100hz
-unsigned long ifreq = 82148000;    // intermediate freq
 boolean update = true;             // lcd update flag in normal mode
 volatile byte encoderState = DIR_NONE;   // encoder state ### this is volatile
 byte fourBytes[4];                 // swap array to long to/from eeprom conversion
