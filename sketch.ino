@@ -79,13 +79,13 @@
  * if you have the any of the COLAB shields uncomment the following line.
  * (the sketch is configures for my particular hardware)
  *******************************************************************************/
-//#define COLAB
+#define COLAB
 
 /***********************  DEBUG BY SERIAL  *************************************
  * If you like to have a debug info by the serial port just uncomment this and
  * attach a serial terminal to the arduino 57600 @ 8N1. This is a temporal helper
  * in the future it will support a CAT protocol to interact with the radio */
-#define SDEBUG
+//#define SDEBUG
 
 /*************************  FILTER PRE-CONFIGURATIONS **************************
  * As this project aims to easy the user configuration we will pre-stablish some
@@ -102,16 +102,18 @@
  * WARNING at least one must be un-commented for the compiler to work
  ******************************************************************************/
 // Single conversion Radio using the SSB filter of an FT-80C/FT-747GX
-// the filter reads:
-#define SSBF_FT747GX
+// the filter reads: "Type: XF-8.2M-242-02, CF: 8.2158 Mhz"
+//#define SSBF_FT747GX
 
 // Single conversion Radio using the SSB filter of a Polosa/Angara
-// the filter reads: ZMFDP-500H-3,1
+// the filter reads: "ZMFDP-500H-3,1"
 //#define SSBF_URSS_500H
 
 // Double conversion (28.8MHz/200KHz) radio from RF board of a RFT SEG-15
 // the radio has two filters, we used the one that reads:
-//#define SSBF_RFT_SEG15
+// "MF 200 - E - 0235 / RTF 02.83"
+// See notes below in the ifdef structure for the RFT SEG-15
+#define SSBF_RFT_SEG15
 
 // the eeprom & sketch version; if the eeprom version is lower than the one on the
 // sketck we force an update (init) to make a consistent work on upgrades
@@ -128,7 +130,7 @@
 #define ENC_A    3              // Encoder pin A
 #define ENC_B    2              // Encoder pin B
 #define PTT     13              // PTT Line with pullup
-#ifdef COLAB
+#if defined (COLAB)
     // Any of the COLAB shields
     #define btnPush  11             // Encoder Button
 #else
@@ -148,7 +150,7 @@ AnaButtons ab = AnaButtons(KEYS_PIN);
 byte anab = 0;  // this is to handle the buttons output
 
 // lcd pins assuming a 1602 (16x2) at 4 bits
-#ifdef COLAB
+#if defined (COLAB)
     // COLAB shield + Arduino Mini Board
     #define LCD_RS      5
     #define LCD_E       6
@@ -264,7 +266,7 @@ Rotary encoder = Rotary(ENC_A, ENC_B);
 #define SM_SAMPLING_INTERVAL  33
 
 // hardware pre configured values
-#ifdef SSBF_FT747GX
+#if defined (SSBF_FT747GX)
     // Pre configured values for a Single conversion radio using the FT-747GX
     signed long lsb =  -13500;
     signed long usb =   13500;
@@ -273,30 +275,53 @@ Rotary encoder = Rotary(ENC_A, ENC_B);
     unsigned long ifreq =   82148000;
 #endif
 
-#ifdef SSBF_URSS_500H
+#if defined (SSBF_URSS_500H)
     // Pre configured values for a Single conversion radio using the Polosa
     // Angara 500H filter
-    signed long lsb =  -13500;
-    signed long usb =   13500;
+    signed long lsb =  -17500;
+    signed long usb =   17500;
     signed long cw =        0;
     signed long xfo =       0;
-    unsigned long ifreq =   5013500;
+    unsigned long ifreq =   4980800;
 #endif
 
-#ifdef SSBF_RFT_SEG15
+#if defined (SSBF_RFT_SEG15)
     // Pre configured values for a Double conversion radio using the RFT SEG15
     // RF board using the filter marked as:
-    signed long lsb =  -13500;
-    signed long usb =   13500;
+    signed long lsb =  -14350;
+    signed long usb =   14350;
     signed long cw =        0;
-    signed long xfo =       280000000;
     unsigned long ifreq =   282000000;
+    /***************************************************************************
+     *                     !!!!!!!!!!!    WARNING   !!!!!!!!!!
+     *
+     *  The Si5351 has serious troubles to keep the accuracy in the XFO & BFO for
+     *  the case in where you want to substitute all the frequency generators
+     *  inside the SEG-15.
+     *
+     *  This combination can lead to troubles with the BFO not moving in the steps
+     *  you want.
+     *
+     *  This is because the XFO & BFO share the same VCO inside the Si5351 and
+     *  the firmware has to make some compromises to get the two oscillators
+     *  running at the same time, in this case some accuracy is sacrificed and
+     *  you get as a result the BFO jumping in about 150 hz steps even if you
+     *  instruct it as 1 Hz.
+     *
+     *  The obvious solution is to keep the XFO as a XTAL one inside the radio
+     *  and move the IF Frequency to tune the differences of your own XFO Xtal
+     *  in our test the XTAL was in the valued showed below.
+     *
+     *  In this case the firmaware will keep track of the XFO but will never turn
+     *  it on. It is used only for the calculations
+    */
+    signed long xfo =       279970000;
 #endif
 
 // put the value here if you have the default ppm corrections for you Si5351
 // if you set it here it will be stored on the EEPROM on the initial start,
 // otherwise set it to zero and you can set it up via the SETUP menu
-signed long si5351_ppm = 225080;    // it has the *10 included 30.058)
+signed long si5351_ppm = 224380;    // it has the *10 included 30.058)
 
 // the variables
 unsigned long vfoa = 71100000;    // default starting VFO A freq
@@ -1002,26 +1027,37 @@ void setFreqBFO() {
 
 // set the xfo freq
 void setFreqXFO() {
-    // just put it out if it's set
-    if (xfo == 0) {
-        // this is only enabled if we have a freq to send outside
+    // RFT SEG-15 CASE: the XFO is in PLACE but it is not generated in any case
+    #if defined (SSBF_RFT_SEG15)
+        // XFO DISABLED AT ALL COST
         si5351.output_enable(SI5351_CLK1, 0);
 
         #if defined (SDEBUG)
         // DEBUG: disabled
-        Serial.println(F("XFO: Disabled"));
+        Serial.println(F("XFO: Disabled (SEG-15)"));
         #endif
-    } else {
-        si5351.output_enable(SI5351_CLK1, 1);
-        si5351.set_freq(xfo, 0, SI5351_CLK1);
-        // WARNING This has a shared PLL with the BFO, maybe we need to reset the BFO?
+    #else
+        // just put it out if it's set
+        if (xfo == 0) {
+            // this is only enabled if we have a freq to send outside
+            si5351.output_enable(SI5351_CLK1, 0);
 
-        #if defined (SDEBUG)
-        // DEBUG: Spit the freq sent to the XFO
-        Serial.print(F("XFO: "));
-        Serial.println(xfo, DEC);
-        #endif
-    }
+            #if defined (SDEBUG)
+            // DEBUG: disabled
+            Serial.println(F("XFO: Disabled"));
+            #endif
+        } else {
+            si5351.output_enable(SI5351_CLK1, 1);
+            si5351.set_freq(xfo, 0, SI5351_CLK1);
+            // WARNING This has a shared PLL with the BFO, maybe we need to reset the BFO?
+
+            #if defined (SDEBUG)
+            // DEBUG: Spit the freq sent to the XFO
+            Serial.print(F("XFO: "));
+            Serial.println(xfo, DEC);
+            #endif
+        }
+    #endif
 }
 
 
@@ -1075,7 +1111,7 @@ void changeStep() {
             step = 1;
         } else {
             // if setup mode the min step depends on the item
-            if ((config == CONFIG_LSB) or (config == CONFIG_USB) or (config == CONFIG_PPM)) {
+            if ((config == CONFIG_LSB) or (config == CONFIG_USB) or (config == CONFIG_PPM) or (config == CONFIG_XFO)) {
                 // overflow, 1 hz is only allowed on SETUP mode and on the LSB/USB/PPM
                 step = 0;
             } else {
@@ -1559,12 +1595,9 @@ void setup() {
     // Enable the Si5351 outputs
     si5351.output_enable(SI5351_CLK0, 1);
     si5351.output_enable(SI5351_CLK2, 1);
-    // the XFO is optional, this will handle it enabling & setting it or desabling it
-    setFreqXFO();
 
     // start the VFOa and it's mode
     updateAllFreq();
-
 }
 
 
