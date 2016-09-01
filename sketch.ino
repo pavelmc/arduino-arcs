@@ -37,12 +37,12 @@
  *  * We are fine with that specs, as we need the VFO source to be unique
  *   (it has it's own PLL) to minimize the crosstalk between outputs
  *    > CLK0 is used to VFO (the VFO will *always* be above the RF freq)
- *    > CLK1 will be used optionally as a XFO for transceivers with a second conversion
- *    > CLK2 is used for the BFO (this is changed corresponding to the SSB we choose)
+ *    > CLK1 will be used optionally as a XFO for trx with a second conversion
+ *    > CLK2 is used for the BFO
  *
  *  * Please have in mind that this IC has a SQUARE wave output and you need to
- *    apply some kind of low-pass/band-pass filtering to smooth it and get rid of the
- *    nasty harmonics
+ *    apply some kind of low-pass/band-pass filtering to smooth it and get rid
+ *    of the nasty harmonics
  ******************************************************************************/
 
 #include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
@@ -73,18 +73,20 @@
  * Also we use a module with a 27 Mhz xtal, check this also
  *     #define SI5351_XTAL_FREQ                    27000000
  *
-* *******************************************************************************/
+* *****************************************************************************/
 
 /*********************** USER BOARD SELECTION **********************************
  * if you have the any of the COLAB shields uncomment the following line.
- * (the sketch is configures for my particular hardware)
- *******************************************************************************/
-#define COLAB
+ * (the sketch is configured by default for my particular hardware)
+ ******************************************************************************/
+//#define COLAB
 
 /***********************  DEBUG BY SERIAL  *************************************
  * If you like to have a debug info by the serial port just uncomment this and
- * attach a serial terminal to the arduino 57600 @ 8N1. This is a temporal helper
- * in the future it will support a CAT protocol to interact with the radio */
+ * attach a serial terminal to the arduino 57600 @ 8N1.
+ * This is a temporal helper feature, in the future it will support a CAT
+ * protocol to interact with the radio
+ * ****************************************************************************/
 //#define SDEBUG
 
 /*************************  FILTER PRE-CONFIGURATIONS **************************
@@ -97,32 +99,37 @@
  *
  * See the Setup_en|Setup_es PDF files in the doc directory, if you use this and
  * use a own hardware variant I can code it to make your life easier, write to
- * pavelmc@gmail.com [author]
+ * pavelmc@gmail.com for details [author]
  *
  * WARNING at least one must be un-commented for the compiler to work
  ******************************************************************************/
 // Single conversion Radio using the SSB filter of an FT-80C/FT-747GX
 // the filter reads: "Type: XF-8.2M-242-02, CF: 8.2158 Mhz"
-//#define SSBF_FT747GX
+#define SSBF_FT747GX
 
 // Single conversion Radio using the SSB filter of a Polosa/Angara
 // the filter reads: "ZMFDP-500H-3,1"
+//
+// WARNING !!!! This filters has a very high loss (measured around -20dB)
+//
 //#define SSBF_URSS_500H
 
 // Double conversion (28.8MHz/200KHz) radio from RF board of a RFT SEG-15
 // the radio has two filters, we used the one that reads:
 // "MF 200 - E - 0235 / RTF 02.83"
-// See notes below in the ifdef structure for the RFT SEG-15
-#define SSBF_RFT_SEG15
+//
+// WARNING !!!! See notes below in the ifdef structure for the RFT SEG-15
+//
+//#define SSBF_RFT_SEG15
 
-// the eeprom & sketch version; if the eeprom version is lower than the one on the
-// sketck we force an update (init) to make a consistent work on upgrades
+// The eeprom & sketch version; if the eeprom version is lower than the one on
+// the sketck we force an update (init) to make a consistent work on upgrades
 #define EEP_VER     3
 #define FMW_VER     7
 
 // the limits of the VFO, the one the user see, for now just 40m for now
 // you can tweak it with the limits of your particular hardware
-// thi are LCD diplay frequencies.
+// this are LCD diplay frequencies.
 #define F_MIN      65000000     // 6.500.000
 #define F_MAX      75000000     // 7.500.000
 
@@ -138,6 +145,9 @@
     #define btnPush  4              // Encoder Button
 #endif
 #define debounceInterval  10    // in milliseconds
+
+// rotary encoder library setup
+Rotary encoder = Rotary(ENC_A, ENC_B);
 
 // the debounce instances
 Bounce dbBtnPush = Bounce();
@@ -235,9 +245,6 @@ byte s9[8] = {
 // Si5351 library setup
 Si5351 si5351;
 
-// rotary encoder library setup
-Rotary encoder = Rotary(ENC_A, ENC_B);
-
 // run mode constants
 #define NORMAL_MODE true
 #define VFO_A_ACTIVE true
@@ -295,12 +302,12 @@ Rotary encoder = Rotary(ENC_A, ENC_B);
     /***************************************************************************
      *                     !!!!!!!!!!!    WARNING   !!!!!!!!!!
      *
-     *  The Si5351 has serious troubles to keep the accuracy in the XFO & BFO for
-     *  the case in where you want to substitute all the frequency generators
-     *  inside the SEG-15.
+     *  The Si5351 has serious troubles to keep the accuracy in the XFO & BFO
+     *  for the case in where you want to substitute all the frequency
+     *  generators inside the SEG-15.
      *
-     *  This combination can lead to troubles with the BFO not moving in the steps
-     *  you want.
+     *  This combination can lead to troubles with the BFO not moving in the
+     *  steps you want.
      *
      *  This is because the XFO & BFO share the same VCO inside the Si5351 and
      *  the firmware has to make some compromises to get the two oscillators
@@ -312,8 +319,8 @@ Rotary encoder = Rotary(ENC_A, ENC_B);
      *  and move the IF Frequency to tune the differences of your own XFO Xtal
      *  in our test the XTAL was in the valued showed below.
      *
-     *  In this case the firmaware will keep track of the XFO but will never turn
-     *  it on. It is used only for the calculations
+     *  In this case the firmware will keep track of the XFO but will never
+     *  turn it on. It is used only for the calculations
     */
     signed long xfo =       279970000;
 #endif
@@ -321,7 +328,7 @@ Rotary encoder = Rotary(ENC_A, ENC_B);
 // put the value here if you have the default ppm corrections for you Si5351
 // if you set it here it will be stored on the EEPROM on the initial start,
 // otherwise set it to zero and you can set it up via the SETUP menu
-signed long si5351_ppm = 224380;    // it has the *10 included 30.058)
+signed long si5351_ppm = 224380;    // it has the *10 included
 
 // the variables
 unsigned long vfoa = 71100000;    // default starting VFO A freq
@@ -1163,7 +1170,7 @@ boolean checkInitEEPROM() {
         }
     }
 
-    //ok, the eeprom is initialized, but it's the same version of the sketck?
+    //ok, the eeprom is initialized, but it's the same version of the sketch?
     byte eepVer = EEPROM.read(8);
     if (eepVer == EEP_VER) {
         //ok
@@ -1478,12 +1485,12 @@ void setup() {
     Serial.begin(57600);
 
     #if defined (SDEBUG)
-    // Welcome to the Serial mode
-    Serial.println("");
-    Serial.println(F("Arduino-ARCS Ready."));
+        // Welcome to the Serial mode
+        Serial.println("");
+        Serial.println(F("Arduino-ARCS Ready."));
     #endif
 
-    // LCD init, create the custom chard first
+    // LCD init, create the custom chars first
     lcd.createChar(0, bar);
     lcd.createChar(1, s1);
     lcd.createChar(2, s3);
@@ -1515,7 +1522,13 @@ void setup() {
     attachInterrupt(1, IR, CHANGE);
 
     // Xtal capacitive load
-    si5351.init(SI5351_CRYSTAL_LOAD_10PF, 0);
+    #if defined (COLAB)
+        // COLAB boards have no capacitor in place, so max it.
+        si5351.init(SI5351_CRYSTAL_LOAD_10PF, 0);
+    #else
+        // my board have 2x22pf caps in place
+        si5351.init(SI5351_CRYSTAL_LOAD_0PF, 0);
+    #endif
 
     // setup the PLL usage
     si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
@@ -1532,8 +1545,8 @@ void setup() {
     boolean eepromOk = checkInitEEPROM();
     if (!eepromOk) {
         #if defined (SDEBUG)
-        // serial advice
-        Serial.println(F("Init EEPROM"));
+            // serial advice
+            Serial.println(F("Init EEPROM"));
         #endif
 
         // LCD
@@ -1548,7 +1561,7 @@ void setup() {
         // just if it's already ok
         loadEEPROMConfig();
         #if defined (SDEBUG)
-        Serial.println(F("EEPROM data loaded."));
+            Serial.println(F("EEPROM data loaded."));
         #endif
     }
 
@@ -1585,7 +1598,7 @@ void setup() {
         showConfig();
 
         #if defined (SDEBUG)
-        Serial.println(F("You are in SETUP mode"));
+            Serial.println(F("You are in SETUP mode now"));
         #endif
     }
 
