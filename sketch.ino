@@ -1616,10 +1616,10 @@ void setup() {
 
 /******************************************************************************
  * In setup mode the buttons change it's behaviour
- * - Encoder push button: it's "OK" or "ENTER"
+ * - Encoder push button: remains as step selection
+ * - VFO A/B: it's "OK" or "Enter"
  * - Mode: it's "Cancel & back to main menu"
- * - RIT: Frequency step control.
- * - VFO A/B:
+ * - RIT:
  *   - On the USB/LSB/CW freq. setup menus, this set the selected value to zero
  *   - On the PPM adjust it reset it to zero
  ******************************************************************************/
@@ -1746,18 +1746,23 @@ void loop() {
     } else {
         // setup mode
 
-        // OK (step)
+        // Push button is step in Config mode
         if (dbBtnPush.fell()) {
+            // change the step and show it on the LCD
+            changeStep();
+            showStep();
+        }
+
+        // VFO A/B: OK or Enter in SETUP
+        if ((anab == ABUTTON1_PRESS) and (inSetup)) {
             if (!inSetup) {
                 // I'm going to setup a element
                 inSetup = true;
 
                 // change the mode to follow VFO A
-                if (config == CONFIG_USB)
-                    VFOAMode = MODE_USB;
+                if (config == CONFIG_USB) VFOAMode = MODE_USB;
 
-                if (config  == CONFIG_LSB)
-                    VFOAMode = MODE_LSB;
+                if (config  == CONFIG_LSB) VFOAMode = MODE_LSB;
 
                 // config update on the LCD
                 showModConfig();
@@ -1782,7 +1787,7 @@ void loop() {
             }
         }
 
-        // cancel (mode)
+        // MODE: Cancel the config and get into the main SETUP mode
         if ((anab == ABUTTON2_PRESS) & (inSetup)) {
             // get out of here
             inSetup = false;
@@ -1796,45 +1801,34 @@ void loop() {
             showConfig();
         }
 
-        // step but just in setup mode (RIT)
+        // RIT: Reset to some defaults
         if ((anab == ABUTTON3_PRESS) and (inSetup)) {
-            // change the step and show it on the LCD
-            changeStep();
-            showStep();
-        }
-
-        // reset the USB/LSB values to the IF values (VFO)
-        if ((anab == ABUTTON1_PRESS) and (inSetup)) {
             // where we are ?
-            if (config == CONFIG_USB) {
-                // reset, activate and lcd update
-                usb = 0;
-                updateAllFreq();
-                showModConfig();
+            switch (config) {
+                case CONFIG_USB:
+                    // reset, usb
+                    usb = 0;
+                    break;
+                case CONFIG_LSB:
+                    // reset, lsb
+                    lsb = 0;
+                    break;
+                case CONFIG_CW:
+                    // reset, cw
+                    cw = 0;
+                    break;
+                case CONFIG_PPM:
+                    // reset, ppm
+                    si5351_ppm = 0;
+                    si5351.set_correction(0);
+                    break;
             }
 
-            if (config == CONFIG_LSB){
-                // reset, activate and lcd update
-                lsb = 0;
-                updateAllFreq();
-                showModConfig();
-            }
-
-            if (config == CONFIG_CW){
-                // reset, activate and lcd update
-                cw = 0;
-                updateAllFreq();
-                showModConfig();
-            }
-
-            if (config == CONFIG_PPM){
-                // reset, activate and lcd update
-                si5351_ppm = 0;
-                si5351.set_correction(0);
-                updateAllFreq();
-                showModConfig();
-            }
+            // update the freqs for
+            updateAllFreq();
+            showModConfig();
         }
+
     }
 
     // sample and process the S-meter in RX & TX
