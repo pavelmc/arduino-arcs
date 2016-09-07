@@ -46,8 +46,8 @@
  ******************************************************************************/
 
 #include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
-#include <si5351.h>         // https://github.com/thomasfredericks/Bounce2/
-#include <Bounce2.h>        // https://github.com/etherkit/Si5351Arduino/
+#include <si5351.h>         // https://github.com/etherkit/Si5351Arduino/
+#include <Bounce2.h>        // https://github.com/thomasfredericks/Bounce2/
 #include <anabuttons.h>     // https://github.com/pavelmc/AnaButtons/
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
