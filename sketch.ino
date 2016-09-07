@@ -360,6 +360,7 @@ word pep[15];                      // s-meter readings storage
 unsigned long lastMilis = 0;       // to track the last sampled time
 byte smeterCount =     0;          // how many readings are done so far
 boolean smeterOk = false;
+boolean split   = false;            // this holds th split state
 
 // temp vars
 boolean tbool   = false;
@@ -773,9 +774,18 @@ void updateLcd() {
     lcd.setCursor(0, 0);
     // active a?
     if (activeVFO == VFO_A_ACTIVE) {
-        lcd.print("A ");
+        lcd.print(F("A"));
     } else {
-        lcd.print("B ");
+        lcd.print(F("B"));
+    }
+
+    // split?
+    if (split) {
+        // ok, show the split status as a * sign
+        lcd.print(F("*"));
+    } else {
+        // print a separator.
+        lcd.print(F(" "));
     }
 
     if (activeVFO == VFO_A_ACTIVE) {
@@ -1651,6 +1661,13 @@ void loop() {
             setActiveVFO(txSplitVfo);
         }
 
+        // make the split changes
+        if (split) {
+            // revert back the VFO
+            activeVFO = !activeVFO;
+            updateAllFreq();
+        }
+
         // rise the update flag
         update = true;
     }
@@ -1665,6 +1682,13 @@ void loop() {
             txSplitVfo = getActiveVFOFreq();
             // set the TX freq to the active VFO
             setActiveVFO(tvfo);
+        }
+
+        // make the split changes
+        if (split) {
+            // revert back the VFO
+            activeVFO = !activeVFO;
+            updateAllFreq();
         }
 
         // rise the update flag
@@ -1705,16 +1729,22 @@ void loop() {
             update = true;
         }
 
+        // RIT
+        if (anab == ABUTTON3_PRESS) {
+            toggleRit();
+            update = true;
+        }
+
+        // SPLIT
+        if (anab == ABUTTON4_PRESS) {
+            split = !split;
+            update = true;
+        }
+
         // step (push button)
         if (dbBtnPush.fell()) {
             // VFO step change
             changeStep();
-            update = true;
-        }
-
-        // RIT
-        if (anab == ABUTTON3_PRESS) {
-            toggleRit();
             update = true;
         }
 
@@ -1762,7 +1792,7 @@ void loop() {
                 // change the mode to follow VFO A
                 if (config == CONFIG_USB) VFOAMode = MODE_USB;
 
-                if (config  == CONFIG_LSB) VFOAMode = MODE_LSB;
+                if (config == CONFIG_LSB) VFOAMode = MODE_LSB;
 
                 // config update on the LCD
                 showModConfig();
