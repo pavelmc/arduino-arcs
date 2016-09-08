@@ -125,7 +125,7 @@
 // The eeprom & sketch version; if the eeprom version is lower than the one on
 // the sketck we force an update (init) to make a consistent work on upgrades
 #define EEP_VER     3
-#define FMW_VER     7
+#define FMW_VER     8
 
 // the limits of the VFO, the one the user see, for now just 40m for now
 // you can tweak it with the limits of your particular hardware
@@ -136,7 +136,8 @@
 // encoder pins
 #define ENC_A    3              // Encoder pin A
 #define ENC_B    2              // Encoder pin B
-#define PTT     13              // PTT Line with pullup
+#define inPTT   13              // PTT/CW KEY Line with pullup from the outside
+#define PTT     12              // PTT actuator, this will put thet radio on TX
 #if defined (COLAB)
     // Any of the COLAB shields
     #define btnPush  11             // Encoder Button
@@ -1525,7 +1526,8 @@ void setup() {
     dbBtnPush.interval(debounceInterval);
 
     // pin mode of the PTT
-    pinMode(PTT, INPUT_PULLUP);
+    pinMode(inPTT, INPUT_PULLUP);
+    pinMode(PTT, OUTPUT);
 
     // Interrupt init, the arduino way
     attachInterrupt(0, IR, CHANGE);
@@ -1648,10 +1650,11 @@ void loop() {
     }
 
     // check PTT and make the RX/TX changes
-    tbool = digitalRead(PTT);
+    tbool = digitalRead(inPTT);
     if (tbool == 1 and tx == true) {
         // PTT released, going to RX
         tx = false;
+        digitalWrite(PTT, tx);
 
         // make changes if tx goes active when RIT is active
         if (ritActive) {
@@ -1675,6 +1678,7 @@ void loop() {
     if (tbool == 0 and tx == false) {
         // PTT asserted, going into TX
         tx = true;
+        digitalWrite(PTT, tx);
 
         // make changes if tx goes active when RIT is active
         if (ritActive) {
