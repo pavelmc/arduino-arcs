@@ -105,14 +105,15 @@
  ******************************************************************************/
 // Single conversion Radio using the SSB filter of an FT-80C/FT-747GX
 // the filter reads: "Type: XF-8.2M-242-02, CF: 8.2158 Mhz"
-#define SSBF_FT747GX
+//#define SSBF_FT747GX
 
 // Single conversion Radio using the SSB filter of a Polosa/Angara
 // the filter reads: "ZMFDP-500H-3,1"
 //
-// WARNING !!!! This filters has a very high loss (measured around -20dB)
+// WARNING !!!! This filters has a very high loss (measured around -20dB) if
+// not tuned in the input and output
 //
-//#define SSBF_URSS_500H
+#define SSBF_URSS_500H
 
 // Double conversion (28.8MHz/200KHz) radio from RF board of a RFT SEG-15
 // the radio has two filters, we used the one that reads:
@@ -340,6 +341,7 @@ unsigned long steps[] = {10,  100,  1000,  10000, 100000, 1000000, 10000000};
       // defined steps : 1hz, 10hz, 100hz, 1Khz,  10Khz,  100Khz,  1Mhz
       // for practical and logical reasons we restrict the 1hz step to the
       // SETUP procedures, as 10hz is fine for everyday work.
+#define STEP_MAX  6                // count of the max steps to show
 byte step = 2;                     // default steps position index: 100hz
 boolean update = true;             // lcd update flag in normal mode
 volatile byte encoderState = DIR_NONE;   // encoder state ### this is volatile
@@ -350,14 +352,13 @@ boolean mustShowStep = false;      // var to show the step instead the bargraph
 #define showStepTimer   8000       // a relative amount of time to show the mode
                                    // aprox 3 secs
 word showStepCounter = showStepTimer; // the timer counter
-#define STEP_MAX  6                // count of the max steps to show
 boolean runMode =      NORMAL_MODE;
 boolean activeVFO =    VFO_A_ACTIVE;
 byte VFOAMode =        MODE_LSB;
 byte VFOBMode =        MODE_LSB;
 boolean ritActive =    false;
 boolean tx =           false;
-word pep[15];                      // s-meter readings storage
+byte pep[15];                      // s-meter readings storage
 unsigned long lastMilis = 0;       // to track the last sampled time
 byte smeterCount =     0;          // how many readings are done so far
 boolean smeterOk = false;
@@ -386,17 +387,14 @@ unsigned long moveFreq(unsigned long freq, signed long delta) {
         diff -= newFreq;
 
         // update just if allowed
-        if (abs(diff) <= MAX_RIT)
-            freq = newFreq;
+        if (abs(diff) <= MAX_RIT) freq = newFreq;
     } else {
         // do it
         freq = newFreq;
 
         // limit check
-        if(freq > F_MAX)
-            freq = F_MAX;
-        if(freq < F_MIN)
-            freq = F_MIN;
+        if(freq > F_MAX) freq = F_MAX;
+        if(freq < F_MIN) freq = F_MIN;
     }
 
     // return the new freq
@@ -406,13 +404,13 @@ unsigned long moveFreq(unsigned long freq, signed long delta) {
 
 // update freq procedure
 void updateFreq(short dir) {
-    signed long delta = dir;
+    signed long delta;
     if (ritActive) {
         // we fix the steps to 10 Hz in rit mode
         delta = steps[1] * dir;
     } else {
         // otherwise we use the default step on the environment
-        delta *= steps[step];
+        delta = steps[step] * dir;
     }
 
     // move the active vfo
@@ -574,11 +572,9 @@ void updateShowConfig(short dir) {
     short tconfig = config;
     tconfig += dir;
 
-    if (tconfig > CONFIG_MAX)
-        tconfig = 0;
+    if (tconfig > CONFIG_MAX) tconfig = 0;
 
-    if (tconfig < 0)
-        tconfig = CONFIG_MAX;
+    if (tconfig < 0) tconfig = CONFIG_MAX;
 
     config = tconfig;
 
@@ -1091,7 +1087,7 @@ byte getActiveVFOMode() {
 
 // set the active VFO mode
 void setActiveVFOMode(byte mode) {
-    if (activeVFO == 1) {
+    if (activeVFO == true) {
         VFOAMode = mode;
     } else {
         VFOBMode = mode;
@@ -1201,7 +1197,7 @@ void splitInBytes(unsigned long freq) {
 }
 
 
-// restore a unsigned long from the bour bytes in fourBytes (MSBF)
+// restore a unsigned long from the four bytes in fourBytes (MSBF)
 unsigned long restoreFromBytes() {
     unsigned long freq;
     unsigned long temp;
@@ -1415,7 +1411,7 @@ void showBarGraph() {
     }
 
     // print spaces to erase the old bar
-    for (i = 0; i < 13 - ave; i++) {
+    for (i = 0; i < (12 - ave); i++) {
         lcd.print(" ");
     }
 }
@@ -1452,7 +1448,7 @@ void smeter() {
         // we are sensing a value that must move in the 0-1.1v so internal reference
         analogReference(INTERNAL);
         // read the value and map it for 13 chars in the LCD bar
-        word val = 0;
+        word val;
         if (tx == true) {
             // we are on TX, sensing via A1
             val = analogRead(A1);
@@ -1461,8 +1457,8 @@ void smeter() {
             val = analogRead(A0);
         }
 
-        // scale it to 0-14 blocks
-        val = map(val, 0, 1023, 0, 13);
+        // scale it to 13 blocks
+        val = map(val, 0, 1023, 0, 12);
 
         // push it in the array
         for (byte i = 0; i < 14; i++) {
@@ -1489,13 +1485,20 @@ void setActiveVFO(unsigned long f) {
 }
 
 
+// split check
+void splitCheck() {
+    if (split) {
+        // revert back the VFO
+        activeVFO = !activeVFO;
+        updateAllFreq();
+    }
+}
+
 // main setup procedure: get all ready to rock
-
 void setup() {
-    // start serial port at 57600 bps:
-    Serial.begin(57600);
-
     #if defined (SDEBUG)
+        // start serial port at 57600 bps:
+        Serial.begin(57600);
         // Welcome to the Serial mode
         Serial.println("");
         Serial.println(F("Arduino-ARCS Ready."));
@@ -1512,16 +1515,10 @@ void setup() {
     lcd.begin(16, 2);
     lcd.clear();
 
-    // I2C init
-    Wire.begin();
-
-    // disable the outputs from the begining
-    si5351.output_enable(SI5351_CLK0, 0);
-    si5351.output_enable(SI5351_CLK1, 0);
-    si5351.output_enable(SI5351_CLK2, 0);
-
     // buttons debounce encoder push
     pinMode(btnPush, INPUT_PULLUP);
+    pinMode(ENC_A, INPUT_PULLUP);
+    pinMode(ENC_B, INPUT_PULLUP);
     dbBtnPush.attach(btnPush);
     dbBtnPush.interval(debounceInterval);
 
@@ -1532,6 +1529,14 @@ void setup() {
     // Interrupt init, the arduino way
     attachInterrupt(0, IR, CHANGE);
     attachInterrupt(1, IR, CHANGE);
+
+    // I2C init
+    Wire.begin();
+
+    // disable the outputs from the begining
+    si5351.output_enable(SI5351_CLK0, 0);
+    si5351.output_enable(SI5351_CLK1, 0);
+    si5351.output_enable(SI5351_CLK2, 0);
 
     // Xtal capacitive load
     #if defined (COLAB)
@@ -1664,12 +1669,8 @@ void loop() {
             setActiveVFO(txSplitVfo);
         }
 
-        // make the split changes
-        if (split) {
-            // revert back the VFO
-            activeVFO = !activeVFO;
-            updateAllFreq();
-        }
+        // make the split changes if needed
+        splitCheck();
 
         // rise the update flag
         update = true;
@@ -1688,12 +1689,8 @@ void loop() {
             setActiveVFO(tvfo);
         }
 
-        // make the split changes
-        if (split) {
-            // revert back the VFO
-            activeVFO = !activeVFO;
-            updateAllFreq();
-        }
+        // make the split changes if needed
+        splitCheck();
 
         // rise the update flag
         update = true;
@@ -1788,7 +1785,7 @@ void loop() {
         }
 
         // VFO A/B: OK or Enter in SETUP
-        if ((anab == ABUTTON1_PRESS) and (inSetup)) {
+        if (anab == ABUTTON1_PRESS) {
             if (!inSetup) {
                 // I'm going to setup a element
                 inSetup = true;
@@ -1822,7 +1819,7 @@ void loop() {
         }
 
         // MODE: Cancel the config and get into the main SETUP mode
-        if ((anab == ABUTTON2_PRESS) & (inSetup)) {
+        if ((anab == ABUTTON2_PRESS) and (inSetup)) {
             // get out of here
             inSetup = false;
 
