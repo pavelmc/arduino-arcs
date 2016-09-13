@@ -79,7 +79,7 @@
  * if you have the any of the COLAB shields uncomment the following line.
  * (the sketch is configured by default for my particular hardware)
  ******************************************************************************/
-//#define COLAB
+#define COLAB
 
 /***********************  DEBUG BY SERIAL  *************************************
  * If you like to have a debug info by the serial port just uncomment this and
