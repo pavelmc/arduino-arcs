@@ -248,8 +248,6 @@ byte s9[8] = {
 Si5351 si5351;
 
 // run mode constants
-#define NORMAL_MODE true
-#define VFO_A_ACTIVE true
 #define MODE_LSB 0
 #define MODE_USB 1
 #define MODE_CW  2
@@ -337,8 +335,7 @@ unsigned long vfoa = 71100000;    // default starting VFO A freq
 unsigned long vfob = 71755000;    // default starting VFO B freq
 unsigned long tvfo = 0;           // temporal VFO storage for RIT usage
 unsigned long txSplitVfo =  0;    // temporal VFO storage for RIT usage when TX
-#define STEP  6                   // count of the max steps to show
-byte step = 2;                    // default steps position index: 1*10E2 = 100hz
+byte step = 3;                    // default steps position index: 1*10E3 = 1000 = 100hz
                                   // step position is calculated to avoid to use
                                   // a big array, see getStep()
 boolean update = true;            // lcd update flag in normal mode
@@ -350,15 +347,14 @@ boolean mustShowStep = false;     // var to show the step instead the bargraph
 #define showStepTimer   8000      // a relative amount of time to show the mode
                                   // aprox 3 secs
 word showStepCounter = showStepTimer; // the timer counter
-boolean runMode =      NORMAL_MODE;
-boolean activeVFO =    VFO_A_ACTIVE;
+boolean runMode =      true;
+boolean activeVFO =    true;
 byte VFOAMode =        MODE_LSB;
 byte VFOBMode =        MODE_LSB;
 boolean ritActive =    false;
 boolean tx =           false;
 byte pep[15];                      // s-meter readings storage
 unsigned long lastMilis = 0;       // to track the last sampled time
-byte smeterCount =     0;          // how many readings are done so far
 boolean smeterOk = false;
 boolean split   = false;            // this holds th split state
 
@@ -393,7 +389,7 @@ void checkEncoder() {
 // the encoder has moved
 void encoderMoved(int dir) {
     // check the run mode
-    if (runMode == NORMAL_MODE) {
+    if (runMode) {
         // update freq
         updateFreq(dir);
         update = true;
@@ -417,7 +413,7 @@ void updateFreq(short dir) {
     }
 
     // move the active vfo
-    if (activeVFO == VFO_A_ACTIVE) {
+    if (activeVFO) {
         vfoa = moveFreq(vfoa, delta);
     } else {
         vfob = moveFreq(vfob, delta);
@@ -503,7 +499,7 @@ void updateSetupValues(short dir) {
         switch (config) {
             case CONFIG_IF:
                 // change the VFO to A by default
-                activeVFO = VFO_A_ACTIVE;
+                activeVFO = true;
                 // change the IF value
                 ifreq += getStep() * dir;
                 // hot swap it
@@ -511,7 +507,7 @@ void updateSetupValues(short dir) {
                 break;
             case CONFIG_VFO_A:
                 // change the VFO
-                activeVFO = VFO_A_ACTIVE;
+                activeVFO = true;
                 // change VFOa
                 vfoa += getStep() * dir;
                 // hot swap it
@@ -519,27 +515,27 @@ void updateSetupValues(short dir) {
                 break;
             case CONFIG_VFO_B:
                 // change the VFO
-                activeVFO = !VFO_A_ACTIVE;
+                activeVFO = false;
                 // change VFOb, this is not hot swapped
                 vfob += getStep() * dir;
                 break;
             case CONFIG_MODE_A:
                 // change the mode for the VFOa
-                activeVFO = VFO_A_ACTIVE;
+                activeVFO = true;
                 changeMode();
                 // set the default mode in the VFO A
                 showModeSetup(VFOAMode);
                 break;
             case CONFIG_MODE_B:
                 // change the mode for the VFOb
-                activeVFO =  !VFO_A_ACTIVE;
+                activeVFO =  false;
                 changeMode();
                 // set the default mode in the VFO B
                 showModeSetup(VFOBMode);
                 break;
             case CONFIG_USB:
                 // force the VFO A
-                activeVFO = VFO_A_ACTIVE;
+                activeVFO = true;
                 // change the mode to USB
                 setActiveVFOMode(MODE_USB);
                 // change the USB BFO
@@ -549,7 +545,7 @@ void updateSetupValues(short dir) {
                 break;
             case CONFIG_LSB:
                 // force the VFO A
-                activeVFO = VFO_A_ACTIVE;
+                activeVFO = true;
                 // change the mode to LSB
                 setActiveVFOMode(MODE_LSB);
                 // change the LSB BFO
@@ -559,7 +555,7 @@ void updateSetupValues(short dir) {
                 break;
             case CONFIG_CW:
                 // force the VFO A
-                activeVFO = VFO_A_ACTIVE;
+                activeVFO = true;
                 // change the mode to CW
                 setActiveVFOMode(MODE_CW);
                 // change the CW BFO
@@ -588,11 +584,21 @@ void updateSetupValues(short dir) {
 }
 
 
+// print a string of spaces, to save some space
+void spaces(byte m) {
+    // print m spaces in the LCD
+    while (m) {
+        lcd.print(" ");
+        m--;
+    }
+}
+
+
 // show the mode for the passed mode in setup mode
 void showModeSetup(byte mode) {
     // now I have to print it out
     lcd.setCursor(0, 1);
-    lcd.print(F("           "));
+    spaces(11);
     showModeLcd(mode);
 }
 
@@ -662,6 +668,15 @@ void showConfig() {
 }
 
 
+// print the sign of a passed parameter
+void showSign(short val) {
+    // just print it
+    if (val > 0) lcd.print("+");
+    if (val < 0) lcd.print("-");
+    if (val == 0) lcd.print(" ");
+}
+
+
 // show the ppm as a signed long
 void showConfigValueSigned(signed long val) {
     if (config == CONFIG_PPM) {
@@ -671,13 +686,9 @@ void showConfigValueSigned(signed long val) {
     }
 
     // detect the sign
-    if (val > 0)
-        lcd.print("+");
-    if (val < 0)
-        lcd.print("-");
-    if (val == 0)
-        lcd.print(" ");
+    showSign(val);
 
+    // print it
     formatFreq(abs(val));
 }
 
@@ -688,7 +699,7 @@ void showConfigValue(unsigned long val) {
     formatFreq(val);
 
     // if on config mode we must show up to hz part
-    if (runMode == NORMAL_MODE) {
+    if (runMode) {
         lcd.print(F("0hz"));
     } else {
         lcd.print(F("hz"));
@@ -706,7 +717,7 @@ void showModConfig() {
     switch (config) {
         case CONFIG_IF:
             // we force the VFO and the actual mode on it
-            activeVFO = VFO_A_ACTIVE;
+            activeVFO = true;
             showConfigValue(ifreq);
             break;
         case CONFIG_VFO_A:
@@ -750,9 +761,9 @@ void formatFreq(unsigned long freq) {
     // Mhz part
     t = freq / 1000000;
     if (t < 10)
-        lcd.print(" ");
+        spaces(1);
     if (t == 0) {
-        lcd.print("  ");
+        spaces(2);
     } else {
         lcd.print(t);
         // first dot: optional
@@ -773,7 +784,7 @@ void formatFreq(unsigned long freq) {
     if (t < 100)
         lcd.print("0");
     // check if in config and show up to 1hz resolution
-    if (runMode != NORMAL_MODE) {
+    if (!runMode) {
         if (t < 10)
             lcd.print("0");
         lcd.print(t);
@@ -801,7 +812,7 @@ void updateLcd() {
     // first line
     lcd.setCursor(0, 0);
     // active a?
-    if (activeVFO == VFO_A_ACTIVE) {
+    if (activeVFO) {
         lcd.print(F("A"));
     } else {
         lcd.print(F("B"));
@@ -813,25 +824,25 @@ void updateLcd() {
         lcd.print(F("*"));
     } else {
         // print a separator.
-        lcd.print(F(" "));
+        spaces(1);
     }
 
-    if (activeVFO == VFO_A_ACTIVE) {
+    if (activeVFO) {
         formatFreq(vfoa);
-        lcd.print(" ");
+        spaces(1);
         showModeLcd(VFOAMode);
     } else {
         formatFreq(vfob);
-        lcd.print(" ");
+        spaces(1);
         showModeLcd(VFOBMode);
     }
 
     // second line
     lcd.setCursor(0, 1);
     if (tx == true) {
-        lcd.print("TX ");
+        lcd.print(F("TX "));
     } else {
-        lcd.print("RX ");
+        lcd.print(F("RX "));
     }
 
     // here goes the rx/tx bar graph or the other infos as RIT or STEPS
@@ -869,26 +880,19 @@ void showRit() {
     signed long diff = vfo;
     diff -= tvfo;
 
+    // scale it down, we don't need hz resolution here
+    diff /= 10;
+
     // we start on line 2, char 3 of the second line
     lcd.setCursor(3, 1);
-    lcd.print("RIT ");
+    lcd.print(F("RIT "));
 
     // show the difference in Khz on the screen with sign
-    if (diff > 0) {
-        lcd.print("+");
-    }
-
-    if (diff < 0) {
-        lcd.print("-");
-    }
-
-    if (diff == 0) {
-        lcd.print(" ");
-    }
+    // diff can overflow the input of showSign, so we scale it down
+    showSign(diff);
 
     // print the freq now, we have a max of 10 Khz (9.990 Khz)
-    // get the freq in Hz as the lib needs in 1/100 hz resolution
-    diff = abs(diff) / 10;
+    diff = abs(diff);
 
     // Khz part
     word t = diff / 1000;
@@ -902,7 +906,7 @@ void showRit() {
         lcd.print("0");
     lcd.print(t);
     // second dot
-    lcd.print("kHz");
+    lcd.print(F("kHz"));
 }
 
 
@@ -926,7 +930,7 @@ void showModeLcd(byte mode) {
 // show the vfo step
 void showStep() {
     // in nomal or setup mode?
-    if (runMode == NORMAL_MODE) {
+    if (runMode) {
         // in normal mode is the second line, third char
         lcd.setCursor(3, 1);
     } else {
@@ -959,14 +963,14 @@ void showStep() {
             break;
     }
 
-    lcd.print(F("        "));
+    spaces(8);
 }
 
 
 // get the active VFO freq
 unsigned long getActiveVFOFreq() {
     // which one is the active?
-    if (activeVFO == VFO_A_ACTIVE) {
+    if (activeVFO) {
         return vfoa;
     } else {
         return vfob;
@@ -1108,7 +1112,7 @@ void setFreqXFO() {
 
 // return the active VFO mode
 byte getActiveVFOMode() {
-    if (activeVFO == true) {
+    if (activeVFO) {
         return VFOAMode;
     } else {
         return VFOBMode;
@@ -1118,7 +1122,7 @@ byte getActiveVFOMode() {
 
 // set the active VFO mode
 void setActiveVFOMode(byte mode) {
-    if (activeVFO == true) {
+    if (activeVFO) {
         VFOAMode = mode;
     } else {
         VFOBMode = mode;
@@ -1149,19 +1153,19 @@ void changeMode() {
 // change the steps
 void changeStep() {
     // calculating the next step
-    if (step == STEP - 1) {
+    if (step == 7) {
         // overflow, reset
-        if (runMode == NORMAL_MODE) {
+        if (runMode) {
             // if normal mode the minimum step is 10hz
-            step = 1;
+            step = 3;
         } else {
             // if setup mode the min step depends on the item
             if ((config == CONFIG_LSB) or (config == CONFIG_USB) or (config == CONFIG_PPM) or (config == CONFIG_XFO)) {
                 // overflow, 1 hz is only allowed on SETUP mode and on the LSB/USB/PPM
-                step = 0;
+                step = 1;
             } else {
                 // the minimum step is 10hz
-                step = 1;
+                step = 3;
             }
         }
     } else {
@@ -1170,8 +1174,7 @@ void changeStep() {
     }
 
     // if in normal mode reset the counter to show the change in the LCD
-    if (runMode == NORMAL_MODE)
-        showStepCounter = showStepTimer;     // aprox half second
+    if (runMode) showStepCounter = showStepTimer;     // aprox half second
 
     // tell the LCD that it must show the change
     mustShowStep = true;
@@ -1186,7 +1189,7 @@ void toggleRit() {
         ritActive = true;
     } else {
         // going to deactivate: reset the stored VFO
-        if (activeVFO == VFO_A_ACTIVE) {
+        if (activeVFO) {
             vfoa = tvfo;
         } else {
             vfob = tvfo;
@@ -1203,20 +1206,15 @@ boolean checkInitEEPROM() {
     char fp;
     for (byte i=0; i<8; i++) {
         fp = EEPROM.read(i);
-        if (fp != EEPROMfingerprint[i]) {
-            return false;
-        }
+        if (fp != EEPROMfingerprint[i]) return false;
     }
 
     //ok, the eeprom is initialized, but it's the same version of the sketch?
     byte eepVer = EEPROM.read(8);
-    if (eepVer == EEP_VER) {
-        //ok
-        return true;
-    } else {
-        // not the same version, return false to reset
-        return false;
-    }
+    if (eepVer != EEP_VER) return false;
+
+    // if you get here you are safe
+    return true;
 }
 
 
@@ -1233,7 +1231,8 @@ unsigned long restoreFromBytes() {
     unsigned long freq;
     unsigned long temp;
 
-    // the MSB need to be set by hand as we can't cast a unsigned long, or we?
+    // the MSB need to be set by hand as we can't cast a unsigned long
+    // or can we?
     freq = fourBytes[0];
     freq = freq << 24;
 
@@ -1407,44 +1406,57 @@ void loadEEPROMConfig() {
 
 // show the bar graph for the RX or TX modes
 void showBarGraph() {
-    // we are working on a 2x16 and we have 14 bars (0-13) calculate the average
+    // we are working on a 2x16 and we have 13 bars (0-12)
     byte ave = 0;
+    byte i;
+    static byte oldave = 0;
 
-    for (byte i = 0; i < 15; i++) {
-      ave += pep[i];
+    // find the average
+    for (i=0; i<15; i++) {
+        ave += pep[i];
     }
     ave /= 15;
 
-    // LCD position & print the bars
-    lcd.setCursor(3, 1);
-    byte i;
-    for (i = 0; i < ave; i++) {
-        switch (i) {
-            case 0:
-                 lcd.write(byte(1));
-                 break;
-            case 2:
-                 lcd.write(byte(2));
-                 break;
-            case 4:
-                 lcd.write(byte(3));
-                 break;
-            case 6:
-                 lcd.write(byte(4));
-                 break;
-            case 8:
-                 lcd.write(byte(5));
-                 break;
-            default:
-                lcd.write(byte(0));
-                break;
+    // printing only the needed part of the bar
+    if (ave > oldave) {
+        // growing bar: print the difference
+
+        // LCD position & print the bars
+        lcd.setCursor(4 + oldave, 1);
+        for (i = oldave; i <= ave; i++) {
+            switch (i) {
+                case 0:
+                    lcd.write(byte(1));
+                    break;
+                case 2:
+                    lcd.write(byte(2));
+                    break;
+                case 4:
+                    lcd.write(byte(3));
+                    break;
+                case 6:
+                    lcd.write(byte(4));
+                    break;
+                case 8:
+                    lcd.write(byte(5));
+                    break;
+                default:
+                    lcd.write(byte(0));
+                    break;
+            }
+        }
+    } else {
+        // shrinking bar: erase the old ones
+        // print spaces to erase the old bar
+        i = oldave;
+        while (i != ave) {
+            lcd.print(" ");
+            i--;
         }
     }
 
-    // print spaces to erase the old bar
-    for (i = 0; i < (12 - ave); i++) {
-        lcd.print(" ");
-    }
+    // put the var for the next iteration
+    oldave = ave;
 }
 
 
@@ -1452,18 +1464,18 @@ void showBarGraph() {
 // rise a flag when they have rotated the array of measurements 2/3 times to
 // have a moving average
 void smeter() {
+    // contador para el ciclo de lecturas en el array
+    static byte smeterCount = 0;
+
     // it has rotated already?
-    if (smeterCount == 9) {
-        // rise the flag about the need to show the bar graph and reset the count
-        smeterOk = true;
-        smeterCount = 0;
-    } else {
+    if (smeterCount < 9) {
         // take a measure and rotate the array
+
         // we are sensing a value that must move in the 0-1.1v so internal reference
         analogReference(INTERNAL);
-        // read the value and map it for 13 chars in the LCD bar
+        // read the value and map it for 13 chars (0-12) in the LCD bar
         word val;
-        if (tx == true) {
+        if (tx) {
             // we are on TX, sensing via A1
             val = analogRead(A1);
         } else {
@@ -1471,7 +1483,10 @@ void smeter() {
             val = analogRead(A0);
         }
 
-        // scale it to 13 blocks
+        // watchout !!! map can out peaks, so smooth
+        if (val > 1023) val = 1023;
+
+        // scale it to 13 blocks (0-12)
         val = map(val, 0, 1023, 0, 12);
 
         // push it in the array
@@ -1485,13 +1500,17 @@ void smeter() {
 
         // increment counter
         smeterCount += 1;
+    } else {
+        // rise the flag about the need to show the bar graph and reset the count
+        smeterOk = true;
+        smeterCount = 0;
     }
 }
 
 
 // set a freq to the active VFO
 void setActiveVFO(unsigned long f) {
-    if (activeVFO == VFO_A_ACTIVE) {
+    if (activeVFO) {
         vfoa = f;
     } else {
         vfob = f;
@@ -1507,6 +1526,7 @@ void splitCheck() {
         updateAllFreq();
     }
 }
+
 
 // main setup procedure: get all ready to rock
 void setup() {
@@ -1623,7 +1643,7 @@ void setup() {
         lcd.clear();
 
         // rise the flag of setup mode for every body to see it.
-        runMode = !NORMAL_MODE;
+        runMode = false;
 
         // show setup mode
         showConfig();
@@ -1634,7 +1654,7 @@ void setup() {
     }
 
     // setting up VFO A as principal.
-    activeVFO = VFO_A_ACTIVE;
+    activeVFO = true;
 
     // Enable the Si5351 outputs
     si5351.output_enable(SI5351_CLK0, 1);
@@ -1662,7 +1682,7 @@ void loop() {
     checkEncoder();
 
     // LCD update check in normal mode
-    if ((update == true) and (runMode == NORMAL_MODE)) {
+    if (update and runMode) {
         // update and reset the flag
         updateLcd();
         update = false;
@@ -1670,7 +1690,7 @@ void loop() {
 
     // check PTT and make the RX/TX changes
     tbool = digitalRead(inPTT);
-    if (tbool == 1 and tx == true) {
+    if (tbool and tx) {
         // PTT released, going to RX
         tx = false;
         digitalWrite(PTT, tx);
@@ -1690,7 +1710,7 @@ void loop() {
         update = true;
     }
 
-    if (tbool == 0 and tx == false) {
+    if (!tbool and !tx) {
         // PTT asserted, going into TX
         tx = true;
         digitalWrite(PTT, tx);
@@ -1715,8 +1735,9 @@ void loop() {
 
     // debouce for the push
     dbBtnPush.update();
+    tbool = dbBtnPush.fell();
 
-    if (runMode == NORMAL_MODE) {
+    if (runMode) {
         // we are in normal mode
 
         // VFO A/B
@@ -1724,9 +1745,7 @@ void loop() {
             // we force to deactivate the RIT on VFO change, as it will confuse
             // the users and have a non logical use, only if activated and
             // BEFORE we change the active VFO
-            if (ritActive) {
-                toggleRit();
-            }
+            if (ritActive) toggleRit();
 
             // now we change the VFO.
             activeVFO = !activeVFO;
@@ -1757,7 +1776,7 @@ void loop() {
         }
 
         // step (push button)
-        if (dbBtnPush.fell()) {
+        if (tbool) {
             // VFO step change
             changeStep();
             update = true;
@@ -1777,22 +1796,17 @@ void loop() {
 
             // compare to show it just once, as showing it continuosly generate
             //RQM from the arduino
-            if (showStepCounter == (showStepTimer - 1)) {
-                showStep();
-            }
+            if (showStepCounter == (showStepTimer - 1)) showStep();
 
             // detect the count end and restore to normal
-            if (showStepCounter == 0) {
-                // reset the flag
-                 mustShowStep = false;
-            }
+            if (showStepCounter == 0) mustShowStep = false;
         }
 
     } else {
         // setup mode
 
         // Push button is step in Config mode
-        if (dbBtnPush.fell()) {
+        if (tbool) {
             // change the step and show it on the LCD
             changeStep();
             showStep();
@@ -1828,12 +1842,12 @@ void loop() {
                 showConfig();
 
                 // reset the minimum step if set (1hz > 10 hz)
-                if (step == 0) step += 1;
+                if (step == 1) step += 1;
             }
         }
 
         // MODE: Cancel the config and get into the main SETUP mode
-        if ((anab == ABUTTON2_PRESS) and (inSetup)) {
+        if (inSetup and (anab == ABUTTON2_PRESS)) {
             // get out of here
             inSetup = false;
 
@@ -1847,7 +1861,7 @@ void loop() {
         }
 
         // RIT: Reset to some defaults
-        if ((anab == ABUTTON3_PRESS) and (inSetup)) {
+        if (inSetup and (anab == ABUTTON3_PRESS)) {
             // where we are ?
             switch (config) {
                 case CONFIG_USB:
@@ -1873,7 +1887,6 @@ void loop() {
             updateAllFreq();
             showModConfig();
         }
-
     }
 
     // sample and process the S-meter in RX & TX
