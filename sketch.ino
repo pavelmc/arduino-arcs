@@ -79,7 +79,7 @@
  * if you have the any of the COLAB shields uncomment the following line.
  * (the sketch is configured by default for my particular hardware)
  ******************************************************************************/
-#define COLAB
+//#define COLAB
 
 /***********************  DEBUG BY SERIAL  *************************************
  * If you like to have a debug info by the serial port just uncomment this and
@@ -105,7 +105,7 @@
  ******************************************************************************/
 // Single conversion Radio using the SSB filter of an FT-80C/FT-747GX
 // the filter reads: "Type: XF-8.2M-242-02, CF: 8.2158 Mhz"
-//#define SSBF_FT747GX
+#define SSBF_FT747GX
 
 // Single conversion Radio using the SSB filter of a Polosa/Angara
 // the filter reads: "ZMFDP-500H-3,1"
@@ -113,7 +113,7 @@
 // WARNING !!!! This filters has a very high loss (measured around -20dB) if
 // not tuned in the input and output
 //
-#define SSBF_URSS_500H
+//#define SSBF_URSS_500H
 
 // Double conversion (28.8MHz/200KHz) radio from RF board of a RFT SEG-15
 // the radio has two filters, we used the one that reads:
@@ -337,20 +337,18 @@ unsigned long vfoa = 71100000;    // default starting VFO A freq
 unsigned long vfob = 71755000;    // default starting VFO B freq
 unsigned long tvfo = 0;           // temporal VFO storage for RIT usage
 unsigned long txSplitVfo =  0;    // temporal VFO storage for RIT usage when TX
-unsigned long steps[] = {10,  100,  1000,  10000, 100000, 1000000, 10000000};
-      // defined steps : 1hz, 10hz, 100hz, 1Khz,  10Khz,  100Khz,  1Mhz
-      // for practical and logical reasons we restrict the 1hz step to the
-      // SETUP procedures, as 10hz is fine for everyday work.
-#define STEP_MAX  6                // count of the max steps to show
-byte step = 2;                     // default steps position index: 100hz
-boolean update = true;             // lcd update flag in normal mode
+#define STEP  6                   // count of the max steps to show
+byte step = 2;                    // default steps position index: 1*10E2 = 100hz
+                                  // step position is calculated to avoid to use
+                                  // a big array, see getStep()
+boolean update = true;            // lcd update flag in normal mode
 volatile byte encoderState = DIR_NONE;   // encoder state ### this is volatile
-byte fourBytes[4];                 // swap array to long to/from eeprom conversion
-byte config = 0;                   // holds the configuration item selected
-boolean inSetup = false;           // the setup mode, just looking or modifying
-boolean mustShowStep = false;      // var to show the step instead the bargraph
-#define showStepTimer   8000       // a relative amount of time to show the mode
-                                   // aprox 3 secs
+byte fourBytes[4];                // swap array to long to/from eeprom conversion
+byte config = 0;                  // holds the configuration item selected
+boolean inSetup = false;          // the setup mode, just looking or modifying
+boolean mustShowStep = false;     // var to show the step instead the bargraph
+#define showStepTimer   8000      // a relative amount of time to show the mode
+                                  // aprox 3 secs
 word showStepCounter = showStepTimer; // the timer counter
 boolean runMode =      NORMAL_MODE;
 boolean activeVFO =    VFO_A_ACTIVE;
@@ -407,10 +405,10 @@ void updateFreq(short dir) {
     signed long delta;
     if (ritActive) {
         // we fix the steps to 10 Hz in rit mode
-        delta = steps[1] * dir;
+        delta = 100 * dir;
     } else {
         // otherwise we use the default step on the environment
-        delta = steps[step] * dir;
+        delta = getStep() * dir;
     }
 
     // move the active vfo
@@ -437,6 +435,22 @@ void encoderMoved(short dir) {
         // update the values in the setup mode
         updateSetupValues(dir);
     }
+}
+
+
+// return the right step size to move
+unsigned long getStep () {
+    // we get the step from the global step var
+    unsigned long ret = 1;
+
+    // validation just in case
+    if (step == 0) step = 1;
+
+    for (byte i=0; i < step; i++) {
+        ret *= 10;
+    }
+
+    return ret;
 }
 
 
@@ -474,7 +488,7 @@ void updateSetupValues(short dir) {
                 // change the VFO to A by default
                 activeVFO = VFO_A_ACTIVE;
                 // change the IF value
-                ifreq += steps[step] * dir;
+                ifreq += getStep() * dir;
                 // hot swap it
                 updateAllFreq();
                 break;
@@ -482,7 +496,7 @@ void updateSetupValues(short dir) {
                 // change the VFO
                 activeVFO = VFO_A_ACTIVE;
                 // change VFOa
-                vfoa += steps[step] * dir;
+                vfoa += getStep() * dir;
                 // hot swap it
                 updateAllFreq();
                 break;
@@ -490,7 +504,7 @@ void updateSetupValues(short dir) {
                 // change the VFO
                 activeVFO = !VFO_A_ACTIVE;
                 // change VFOb, this is not hot swapped
-                vfob += steps[step] * dir;
+                vfob += getStep() * dir;
                 break;
             case CONFIG_MODE_A:
                 // change the mode for the VFOa
@@ -512,7 +526,7 @@ void updateSetupValues(short dir) {
                 // change the mode to USB
                 setActiveVFOMode(MODE_USB);
                 // change the USB BFO
-                usb += steps[step] * dir;
+                usb += getStep() * dir;
                 // hot swap it
                 updateAllFreq();
                 break;
@@ -522,7 +536,7 @@ void updateSetupValues(short dir) {
                 // change the mode to LSB
                 setActiveVFOMode(MODE_LSB);
                 // change the LSB BFO
-                lsb += steps[step] * dir;
+                lsb += getStep() * dir;
                 // hot swap it
                 updateAllFreq();
                 break;
@@ -532,13 +546,13 @@ void updateSetupValues(short dir) {
                 // change the mode to CW
                 setActiveVFOMode(MODE_CW);
                 // change the CW BFO
-                cw += steps[step] * dir;
+                cw += getStep() * dir;
                 // hot swap it
                 updateAllFreq();
                 break;
             case CONFIG_PPM:
                 // change the Si5351 PPM
-                si5351_ppm += steps[step] * dir;
+                si5351_ppm += getStep() * dir;
                 // instruct the lib to use the new ppm value
                 si5351.set_correction(si5351_ppm);
                 // hot swap it, this time both values
@@ -546,7 +560,7 @@ void updateSetupValues(short dir) {
                 break;
             case CONFIG_XFO:
                 // change XFO ############## posible overflow
-                xfo += steps[step] * dir;
+                xfo += getStep() * dir;
                 updateAllFreq();
                 break;
         }
@@ -1118,7 +1132,7 @@ void changeMode() {
 // change the steps
 void changeStep() {
     // calculating the next step
-    if (step == STEP_MAX) {
+    if (step == STEP - 1) {
         // overflow, reset
         if (runMode == NORMAL_MODE) {
             // if normal mode the minimum step is 10hz
