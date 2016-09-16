@@ -373,30 +373,35 @@ void IR() {
 }
 
 
-// frequency move
-unsigned long moveFreq(unsigned long freq, signed long delta) {
-    // freq is used as the output var
-    unsigned long newFreq = freq + delta;
+// encoder processing
+void checkEncoder() {
+    if (encoderState != DIR_NONE) {
+        if (encoderState == DIR_CW) {
+            // FWD
+            encoderMoved(+1);
+        } else {
+            // RWD
+            encoderMoved(-1);
+        }
 
-    // limit check
-    if (ritActive) {
-        // check we don't exceed the MAX_RIT
-        signed long diff = tvfo;
-        diff -= newFreq;
-
-        // update just if allowed
-        if (abs(diff) <= MAX_RIT) freq = newFreq;
-    } else {
-        // do it
-        freq = newFreq;
-
-        // limit check
-        if(freq > F_MAX) freq = F_MAX;
-        if(freq < F_MIN) freq = F_MIN;
+        // encoder reset satate
+        encoderState = DIR_NONE;
     }
+}
 
-    // return the new freq
-    return freq;
+
+// the encoder has moved
+void encoderMoved(int dir) {
+    // check the run mode
+    if (runMode == NORMAL_MODE) {
+        // update freq
+        updateFreq(dir);
+        update = true;
+
+    } else {
+        // update the values in the setup mode
+        updateSetupValues(dir);
+    }
 }
 
 
@@ -423,18 +428,30 @@ void updateFreq(short dir) {
 }
 
 
-// the encoder has moved
-void encoderMoved(short dir) {
-    // check the run mode
-    if (runMode == NORMAL_MODE) {
-        // update freq
-        updateFreq(dir);
-        update = true;
+// frequency move
+unsigned long moveFreq(unsigned long freq, signed long delta) {
+    // freq is used as the output var
+    unsigned long newFreq = freq + delta;
 
+    // limit check
+    if (ritActive) {
+        // check we don't exceed the MAX_RIT
+        signed long diff = tvfo;
+        diff -= newFreq;
+
+        // update just if allowed
+        if (abs(diff) <= MAX_RIT) freq = newFreq;
     } else {
-        // update the values in the setup mode
-        updateSetupValues(dir);
+        // do it
+        freq = newFreq;
+
+        // limit check
+        if(freq > F_MAX) freq = F_MAX;
+        if(freq < F_MIN) freq = F_MIN;
     }
+
+    // return the new freq
+    return freq;
 }
 
 
@@ -1427,23 +1444,6 @@ void showBarGraph() {
     // print spaces to erase the old bar
     for (i = 0; i < (12 - ave); i++) {
         lcd.print(" ");
-    }
-}
-
-
-// encoder processing
-void checkEncoder() {
-    if (encoderState != DIR_NONE) {
-        if (encoderState == DIR_CW) {
-            // FWD
-            encoderMoved(+1);
-        } else {
-            // RWD
-            encoderMoved(-1);
-        }
-
-        // encoder reset satate
-        encoderState = DIR_NONE;
     }
 }
 
