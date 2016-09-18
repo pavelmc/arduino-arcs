@@ -146,12 +146,12 @@
     // Pavel's hardware
     #define btnPush  4              // Encoder Button
 #endif
-#define debounceInterval  10    // in milliseconds
 
 // rotary encoder library setup
 Rotary encoder = Rotary(ENC_A, ENC_B);
 
 // the debounce instances
+#define debounceInterval  10    // in milliseconds
 Bounce dbBtnPush = Bounce();
 
 // define the analog pin to handle the buttons
@@ -275,30 +275,30 @@ Si5351 si5351;
 // hardware pre configured values
 #if defined (SSBF_FT747GX)
     // Pre configured values for a Single conversion radio using the FT-747GX
-    signed long lsb =  -13500;
-    signed long usb =   13500;
-    signed long cw =        0;
-    signed long xfo =       0;
-    unsigned long ifreq =   82148000;
+    long lsb =  -13500;
+    long usb =   13500;
+    long cw =        0;
+    long xfo =       0;
+    long ifreq =   82148000;
 #endif
 
 #if defined (SSBF_URSS_500H)
     // Pre configured values for a Single conversion radio using the Polosa
     // Angara 500H filter
-    signed long lsb =  -17500;
-    signed long usb =   17500;
-    signed long cw =        0;
-    signed long xfo =       0;
-    unsigned long ifreq =   4980800;
+    long lsb =  -17500;
+    long usb =   17500;
+    long cw =        0;
+    long xfo =       0;
+    long ifreq =   4980800;
 #endif
 
 #if defined (SSBF_RFT_SEG15)
     // Pre configured values for a Double conversion radio using the RFT SEG15
     // RF board using the filter marked as:
-    signed long lsb =  -14350;
-    signed long usb =   14350;
-    signed long cw =        0;
-    unsigned long ifreq =   282000000;
+    long lsb =  -14350;
+    long usb =   14350;
+    long cw =        0;
+    long ifreq =   282000000;
     /***************************************************************************
      *                     !!!!!!!!!!!    WARNING   !!!!!!!!!!
      *
@@ -328,18 +328,18 @@ Si5351 si5351;
 // put the value here if you have the default ppm corrections for you Si5351
 // if you set it here it will be stored on the EEPROM on the initial start,
 // otherwise set it to zero and you can set it up via the SETUP menu
-signed long si5351_ppm = 224380;    // it has the *10 included
+long si5351_ppm = 224380;    // it has the *10 included
 
 // the variables
-unsigned long vfoa = 71100000;    // default starting VFO A freq
-unsigned long vfob = 71755000;    // default starting VFO B freq
-unsigned long tvfo = 0;           // temporal VFO storage for RIT usage
-unsigned long txSplitVfo =  0;    // temporal VFO storage for RIT usage when TX
+long vfoa = 71100000;    // default starting VFO A freq
+long vfob = 71755000;    // default starting VFO B freq
+long tvfo = 0;           // temporal VFO storage for RIT usage
+long txSplitVfo =  0;    // temporal VFO storage for RIT usage when TX
 byte step = 3;                    // default steps position index: 1*10E3 = 1000 = 100hz
                                   // step position is calculated to avoid to use
                                   // a big array, see getStep()
 boolean update = true;            // lcd update flag in normal mode
-volatile byte encoderState = DIR_NONE;   // encoder state ### this is volatile
+byte encoderState = DIR_NONE;     // encoder state
 byte fourBytes[4];                // swap array to long to/from eeprom conversion
 byte config = 0;                  // holds the configuration item selected
 boolean inSetup = false;          // the setup mode, just looking or modifying
@@ -354,13 +354,12 @@ byte VFOBMode =        MODE_LSB;
 boolean ritActive =    false;
 boolean tx =           false;
 byte pep[15];                      // s-meter readings storage
-unsigned long lastMilis = 0;       // to track the last sampled time
+long lastMilis = 0;       // to track the last sampled time
 boolean smeterOk = false;
 boolean split   = false;            // this holds th split state
 
 // temp vars
 boolean tbool   = false;
-
 
 // the encoder has moved
 void encoderMoved(int dir) {
@@ -378,8 +377,8 @@ void encoderMoved(int dir) {
 
 
 // update freq procedure
-void updateFreq(short dir) {
-    signed long delta;
+void updateFreq(int dir) {
+    long delta;
     if (ritActive) {
         // we fix the steps to 10 Hz in rit mode
         delta = 100 * dir;
@@ -401,14 +400,14 @@ void updateFreq(short dir) {
 
 
 // frequency move
-unsigned long moveFreq(unsigned long freq, signed long delta) {
+long moveFreq(long freq, long delta) {
     // freq is used as the output var
-    unsigned long newFreq = freq + delta;
+    long newFreq = freq + delta;
 
     // limit check
     if (ritActive) {
         // check we don't exceed the MAX_RIT
-        signed long diff = tvfo;
+        long diff = tvfo;
         diff -= newFreq;
 
         // update just if allowed
@@ -428,9 +427,9 @@ unsigned long moveFreq(unsigned long freq, signed long delta) {
 
 
 // return the right step size to move
-unsigned long getStep () {
+long getStep () {
     // we get the step from the global step var
-    unsigned long ret = 1;
+    long ret = 1;
 
     // validation just in case
     if (step == 0) step = 1;
@@ -465,7 +464,7 @@ void updateAllFreq() {
 
 
 // update the setup values
-void updateSetupValues(short dir) {
+void updateSetupValues(int dir) {
     // we are in setup mode, showing or modifying?
     if (!inSetup) {
         // just showing, show the config on the LCD
@@ -580,15 +579,13 @@ void showModeSetup(byte mode) {
 
 
 // update the configuration item before selecting it
-void updateShowConfig(short dir) {
+void updateShowConfig(int dir) {
     // move the config item
-    short tconfig = config;
+    int tconfig = config;
     tconfig += dir;
 
     if (tconfig > CONFIG_MAX) tconfig = 0;
-
     if (tconfig < 0) tconfig = CONFIG_MAX;
-
     config = tconfig;
 
     // update the LCD
@@ -645,7 +642,7 @@ void showConfig() {
 
 
 // print the sign of a passed parameter
-void showSign(short val) {
+void showSign(long val) {
     // just print it
     if (val > 0) lcd.print("+");
     if (val < 0) lcd.print("-");
@@ -654,7 +651,7 @@ void showSign(short val) {
 
 
 // show the ppm as a signed long
-void showConfigValueSigned(signed long val) {
+void showConfigValueSigned(long val) {
     if (config == CONFIG_PPM) {
         lcd.print(F("PPM: "));
     } else {
@@ -670,7 +667,7 @@ void showConfigValueSigned(signed long val) {
 
 
 // Show the value for the setup item
-void showConfigValue(unsigned long val) {
+void showConfigValue(long val) {
     lcd.print(F("Val:"));
     formatFreq(val);
 
@@ -727,17 +724,16 @@ void showModConfig() {
 
 
 // format the freq to easy viewing
-void formatFreq(unsigned long freq) {
+void formatFreq(long freq) {
     // for easy viewing we format a freq like 7.110 to 7.110.00
-    unsigned long t;
+    long t;
 
     // get the freq in Hz as the lib needs in 1/100 hz resolution
     freq /= 10;
 
     // Mhz part
     t = freq / 1000000;
-    if (t < 10)
-        spaces(1);
+    if (t < 10) spaces(1);
     if (t == 0) {
         spaces(2);
     } else {
@@ -748,21 +744,17 @@ void formatFreq(unsigned long freq) {
     // Khz part
     t = (freq % 1000000);
     t /= 1000;
-    if (t < 100)
-        lcd.print("0");
-    if (t < 10)
-        lcd.print("0");
+    if (t < 100) lcd.print("0");
+    if (t < 10) lcd.print("0");
     lcd.print(t);
     // second dot: forced
     lcd.print(".");
     // hz part
     t = (freq % 1000);
-    if (t < 100)
-        lcd.print("0");
+    if (t < 100) lcd.print("0");
     // check if in config and show up to 1hz resolution
     if (!runMode) {
-        if (t < 10)
-            lcd.print("0");
+        if (t < 10) lcd.print("0");
         lcd.print(t);
     } else {
         lcd.print(t/10);
@@ -824,14 +816,10 @@ void updateLcd() {
     // here goes the rx/tx bar graph or the other infos as RIT or STEPS
 
     // if we have a RIT or steps we manage it here and the bar will hold
-    if (ritActive) {
-        showRit();
-    }
+    if (ritActive) showRit();
 
     // show the step if it must
-    if (mustShowStep) {
-        showStep();
-    }
+    if (mustShowStep) showStep();
 }
 
 
@@ -851,9 +839,9 @@ void showRit() {
      **************************************************************************/
 
     // get the active VFO to calculate the deviation
-    unsigned long vfo = getActiveVFOFreq();
+    long vfo = getActiveVFOFreq();
 
-    signed long diff = vfo;
+    long diff = vfo;
     diff -= tvfo;
 
     // scale it down, we don't need hz resolution here
@@ -876,10 +864,8 @@ void showRit() {
     lcd.print(".");
     // hz part
     t = diff % 1000;
-    if (t < 100)
-        lcd.print("0");
-    if (t < 10)
-        lcd.print("0");
+    if (t < 100) lcd.print("0");
+    if (t < 10) lcd.print("0");
     lcd.print(t);
     // second dot
     lcd.print(F("kHz"));
@@ -944,7 +930,7 @@ void showStep() {
 
 
 // get the active VFO freq
-unsigned long getActiveVFOFreq() {
+long getActiveVFOFreq() {
     // which one is the active?
     if (activeVFO) {
         return vfoa;
@@ -955,7 +941,7 @@ unsigned long getActiveVFOFreq() {
 
 
 // get the active mode BFO freq
-unsigned long getActiveBFOFreq() {
+long getActiveBFOFreq() {
     // obtener el modo activo
     byte mode = getActiveVFOMode();
 
@@ -988,7 +974,7 @@ unsigned long getActiveBFOFreq() {
 // set the calculated freq to the VFO
 void setFreqVFO() {
     // get the active VFO freq, calculate the final freq+IF and get it out
-    unsigned long freq = getActiveVFOFreq();
+    long freq = getActiveVFOFreq();
     byte mode = getActiveVFOMode();
 
     /* ***********************
@@ -1026,7 +1012,7 @@ void setFreqVFO() {
 // set the bfo freq
 void setFreqBFO() {
     // get the active vfo mode freq and get it out
-    unsigned long frec = getActiveBFOFreq();
+    long frec = getActiveBFOFreq();
     // deactivate it if zero
     if (frec == 0) {
         // deactivate it
@@ -1194,20 +1180,20 @@ boolean checkInitEEPROM() {
 }
 
 
-// split in bytes, take a unsigned long and load it on the fourBytes (MSBF)
-void splitInBytes(unsigned long freq) {
+// split in bytes, take a long and load it on the fourBytes (MSBF)
+void splitInBytes(long freq) {
     for (byte i=0; i<4; i++) {
         fourBytes[i] = char((freq >> (3-i)*8) & 255);
     }
 }
 
 
-// restore a unsigned long from the four bytes in fourBytes (MSBF)
-unsigned long restoreFromBytes() {
-    unsigned long freq;
-    unsigned long temp;
+// restore a long from the four bytes in fourBytes (MSBF)
+long restoreFromBytes() {
+    long freq;
+    long temp;
 
-    // the MSB need to be set by hand as we can't cast a unsigned long
+    // the MSB need to be set by hand as we can't cast a long
     // or can we?
     freq = fourBytes[0];
     freq = freq << 24;
@@ -1223,8 +1209,8 @@ unsigned long restoreFromBytes() {
 }
 
 
-// read an unsigned long from the EEPROM, fourBytes as swap var
-unsigned long EEPROMReadLong(word pos) {
+// read an long from the EEPROM, fourBytes as swap var
+long EEPROMReadLong(word pos) {
     for (byte i=0; i<4; i++) {
         fourBytes[i] = EEPROM.read(pos+i);
     }
@@ -1232,8 +1218,8 @@ unsigned long EEPROMReadLong(word pos) {
 }
 
 
-// write an unsigned long to the EEPROM, fourBytes as swap var
-void EEPROMWriteLong(unsigned long val, word pos) {
+// write an long to the EEPROM, fourBytes as swap var
+void EEPROMWriteLong(long val, word pos) {
     splitInBytes(val);
     for (byte i=0; i<4; i++) {
         EEPROM.write(pos+i, fourBytes[i]);
@@ -1268,7 +1254,7 @@ void initEeprom() {
     /**************************************************************************/
 
     // temp var
-    unsigned long temp = 0;
+    long temp = 0;
 
     // write the fingerprint
     for (byte i=0; i<8; i++) {
@@ -1340,7 +1326,7 @@ void loadEEPROMConfig() {
      *
     /**************************************************************************/
     //temp var
-    unsigned long temp = 0;
+    long temp = 0;
 
     // get the IF value
     ifreq = EEPROMReadLong(9);
@@ -1485,7 +1471,7 @@ void smeter() {
 
 
 // set a freq to the active VFO
-void setActiveVFO(unsigned long f) {
+void setActiveVFO(long f) {
     if (activeVFO) {
         vfoa = f;
     } else {
