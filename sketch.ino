@@ -901,30 +901,13 @@ void showStep() {
     }
 
     // show it
-    switch (step) {
-        case 0:
-            lcd.print(F("  1Hz"));
-            break;
-        case 1:
-            lcd.print(F(" 10Hz"));
-            break;
-        case 2:
-            lcd.print(F("100Hz"));
-            break;
-        case 3:
-            lcd.print(F(" 1kHz"));
-            break;
-        case 4:
-            lcd.print(F("10kHz"));
-            break;
-        case 5:
-            lcd.print(F(" 100k"));
-            break;
-        case 6:
-            lcd.print(F(" 1MHz"));
-            break;
-    }
-
+    if (step == 1) lcd.print(F("  1Hz"));
+    if (step == 2) lcd.print(F(" 10Hz"));
+    if (step == 3) lcd.print(F("100Hz"));
+    if (step == 4) lcd.print(F(" 1kHz"));
+    if (step == 5) lcd.print(F("10kHz"));
+    if (step == 6) lcd.print(F(" 100k"));
+    if (step == 7) lcd.print(F(" 1MHz"));
     spaces(8);
 }
 
