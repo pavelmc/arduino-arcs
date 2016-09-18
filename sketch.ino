@@ -356,6 +356,7 @@ boolean tx =           false;
 byte pep[15];                      // s-meter readings storage
 long lastMilis = 0;       // to track the last sampled time
 boolean smeterOk = false;
+byte barMax = 0;
 boolean split   = false;            // this holds th split state
 
 // temp vars
@@ -1347,9 +1348,7 @@ void loadEEPROMConfig() {
 // show the bar graph for the RX or TX modes
 void showBarGraph() {
     // we are working on a 2x16 and we have 13 bars (0-12)
-    byte ave = 0;
-    byte i;
-    static byte oldave = 0;
+    byte ave = 0, i;
 
     // find the average
     for (i=0; i<15; i++) {
@@ -1358,12 +1357,12 @@ void showBarGraph() {
     ave /= 15;
 
     // printing only the needed part of the bar
-    if (ave > oldave) {
+    if (ave > barMax) {
         // growing bar: print the difference
 
         // LCD position & print the bars
-        lcd.setCursor(4 + oldave, 1);
-        for (i = oldave; i <= ave; i++) {
+        lcd.setCursor(3 + barMax, 1);
+        for (i = barMax; i <= ave; i++) {
             switch (i) {
                 case 0:
                     lcd.write(byte(1));
@@ -1388,15 +1387,16 @@ void showBarGraph() {
     } else {
         // shrinking bar: erase the old ones
         // print spaces to erase the old bar
-        i = oldave;
-        while (i != ave) {
+        i = barMax;
+        while (i > ave) {
+            lcd.setCursor(3 + i, 1);
             lcd.print(" ");
             i--;
         }
     }
 
     // put the var for the next iteration
-    oldave = ave;
+    barMax = ave;
 }
 
 
