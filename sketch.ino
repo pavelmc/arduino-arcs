@@ -362,30 +362,6 @@ boolean split   = false;            // this holds th split state
 boolean tbool   = false;
 
 
-// interrupt routine
-void IR() {
-    // put the encoder state output in the environment
-    encoderState = encoder.process();
-}
-
-
-// encoder processing
-void checkEncoder() {
-    if (encoderState != DIR_NONE) {
-        if (encoderState == DIR_CW) {
-            // FWD
-            encoderMoved(+1);
-        } else {
-            // RWD
-            encoderMoved(-1);
-        }
-
-        // encoder reset satate
-        encoderState = DIR_NONE;
-    }
-}
-
-
 // the encoder has moved
 void encoderMoved(int dir) {
     // check the run mode
@@ -1560,10 +1536,6 @@ void setup() {
     pinMode(inPTT, INPUT_PULLUP);
     pinMode(PTT, OUTPUT);
 
-    // Interrupt init, the arduino way
-    attachInterrupt(0, IR, CHANGE);
-    attachInterrupt(1, IR, CHANGE);
-
     // I2C init
     Wire.begin();
 
@@ -1679,7 +1651,9 @@ void setup() {
 // let's get the party started
 void loop() {
     // encoder check
-    checkEncoder();
+    encoderState = encoder.process();
+    if (encoderState == DIR_CW) encoderMoved(+1);
+    if (encoderState == DIR_CCW) encoderMoved(-1);
 
     // LCD update check in normal mode
     if (update and runMode) {
