@@ -356,7 +356,6 @@ boolean tx =           false;
 byte pep[15];                      // s-meter readings storage
 long lastMilis = 0;       // to track the last sampled time
 boolean smeterOk = false;
-byte barMax = 0;
 boolean split   = false;            // this holds th split state
 
 // temp vars
@@ -1349,6 +1348,7 @@ void loadEEPROMConfig() {
 void showBarGraph() {
     // we are working on a 2x16 and we have 13 bars (0-12)
     byte ave = 0, i;
+    static byte barMax = 0;
 
     // find the average
     for (i=0; i<15; i++) {
