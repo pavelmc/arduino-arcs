@@ -1098,24 +1098,19 @@ void changeMode() {
 // change the steps
 void changeStep() {
     // calculating the next step
-    if (step == 7) {
-        // overflow, reset
-        if (runMode) {
-            // if normal mode the minimum step is 10hz
-            step = 3;
-        } else {
-            // if setup mode the min step depends on the item
-            if ((config == CONFIG_LSB) or (config == CONFIG_USB) or (config == CONFIG_PPM) or (config == CONFIG_XFO)) {
-                // overflow, 1 hz is only allowed on SETUP mode and on the LSB/USB/PPM
-                step = 1;
-            } else {
-                // the minimum step is 10hz
-                step = 3;
-            }
-        }
-    } else {
+    if (step < 7) {
         // simple increment
         step += 1;
+    } else {
+        // default start mode is 2 (10Hz)
+        step = 2;
+        // in setup mode and just specific modes it's allowed to go to 1 hz
+        boolean allowedModes = false;
+        allowedModes = allowedModes or (config == CONFIG_LSB);
+        allowedModes = allowedModes or (config == CONFIG_USB);
+        allowedModes = allowedModes or (config == CONFIG_PPM);
+        allowedModes = allowedModes or (config == CONFIG_XFO);
+        if (!runMode and allowedModes) step = 1;
     }
 
     // if in normal mode reset the counter to show the change in the LCD
