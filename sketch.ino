@@ -1349,6 +1349,7 @@ void showBarGraph() {
     // we are working on a 2x16 and we have 13 bars (0-12)
     byte ave = 0, i;
     static byte barMax = 0;
+    static boolean lastShowStep;
 
     // find the average
     for (i=0; i<15; i++) {
@@ -1356,12 +1357,20 @@ void showBarGraph() {
     }
     ave /= 15;
 
-    // printing only the needed part of the bar
-    if (ave > barMax) {
-        // growing bar: print the difference
+    // printing only the needed part of the bar, if growing or shrinking
+    // if the same no action is required, remember we have to minimize the
+    // writes to the LCD to minimize QRM
 
+    // but there is a special case: just after the show step expires
+    // that it must start from zero
+    if (!mustShowStep and lastShowStep) barMax = 0;
+
+    // growing bar: print the difference
+    if (ave > barMax) {
         // LCD position & print the bars
         lcd.setCursor(3 + barMax, 1);
+
+        // write it
         for (i = barMax; i <= ave; i++) {
             switch (i) {
                 case 0:
@@ -1384,10 +1393,21 @@ void showBarGraph() {
                     break;
             }
         }
-    } else {
-        // shrinking bar: erase the old ones
-        // print spaces to erase the old bar
-        i = barMax;
+    }
+
+    // shrinking bar: erase the old ones print spaces to erase just the diff
+    if (barMax > ave) {
+        // the bar shares the space of the step label, so if the ave drops
+        // below 4 and the barMax is over 4 we have to erase from 4 to the
+        // actual value of ave to erase any trace of the step label
+        if (ave < 4 and barMax > 4) {
+            // we have to erase
+            i = 4;
+        } else {
+            i = barMax;
+        }
+
+        // erase it
         while (i > ave) {
             lcd.setCursor(3 + i, 1);
             lcd.print(" ");
@@ -1397,6 +1417,9 @@ void showBarGraph() {
 
     // put the var for the next iteration
     barMax = ave;
+
+    // load the last step for the next iteration
+    lastShowStep = mustShowStep;
 }
 
 
