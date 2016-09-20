@@ -81,14 +81,6 @@
  ******************************************************************************/
 //#define COLAB
 
-/***********************  DEBUG BY SERIAL  *************************************
- * If you like to have a debug info by the serial port just uncomment this and
- * attach a serial terminal to the arduino 57600 @ 8N1.
- * This is a temporal helper feature, in the future it will support a CAT
- * protocol to interact with the radio
- * ****************************************************************************/
-//#define SDEBUG
-
 /*************************  FILTER PRE-CONFIGURATIONS **************************
  * As this project aims to easy the user configuration we will pre-stablish some
  * defaults for some of the most common hardware configurations we have in Cuba
@@ -449,18 +441,6 @@ void updateAllFreq() {
     setFreqVFO();
     setFreqBFO();
     setFreqXFO();
-
-    #if defined (SDEBUG)
-    Serial.print(F("LSB: "));
-    Serial.println(lsb, DEC);
-    Serial.print(F("USB: "));
-    Serial.println(usb, DEC);
-    Serial.print(F(" CW: "));
-    Serial.println(cw, DEC);
-    Serial.print(F("RVFO: "));
-    Serial.println(getActiveVFOFreq(), DEC);
-    Serial.println(F("-----------------------"));
-    #endif
 }
 
 
@@ -984,12 +964,6 @@ void setFreqVFO() {
 
     freq += ifreq;
     si5351.set_freq(freq, 0, SI5351_CLK0);
-
-    #if defined (SDEBUG)
-    // DEBUG: Spit the freq sent to the VFO
-    Serial.print(F("VFO: "));
-    Serial.println(freq, DEC);
-    #endif
 }
 
 
@@ -1001,21 +975,10 @@ void setFreqBFO() {
     if (frec == 0) {
         // deactivate it
         si5351.output_enable(SI5351_CLK2, 0);
-
-        #if defined (SDEBUG)
-        // DEBUG: disabled
-        Serial.println(F("XFO: Disabled"));
-        #endif
     } else {
         // output it
         si5351.output_enable(SI5351_CLK2, 1);
         si5351.set_freq(frec, 0, SI5351_CLK2);
-
-        #if defined (SDEBUG)
-        // DEBUG: Spit the freq sent to the BFO
-        Serial.print(F("BFO: "));
-        Serial.println(frec, DEC);
-        #endif
     }
 }
 
@@ -1026,31 +989,15 @@ void setFreqXFO() {
     #if defined (SSBF_RFT_SEG15)
         // XFO DISABLED AT ALL COST
         si5351.output_enable(SI5351_CLK1, 0);
-
-        #if defined (SDEBUG)
-        // DEBUG: disabled
-        Serial.println(F("XFO: Disabled (SEG-15)"));
-        #endif
     #else
         // just put it out if it's set
         if (xfo == 0) {
             // this is only enabled if we have a freq to send outside
             si5351.output_enable(SI5351_CLK1, 0);
-
-            #if defined (SDEBUG)
-            // DEBUG: disabled
-            Serial.println(F("XFO: Disabled"));
-            #endif
         } else {
             si5351.output_enable(SI5351_CLK1, 1);
             si5351.set_freq(xfo, 0, SI5351_CLK1);
             // WARNING This has a shared PLL with the BFO, maybe we need to reset the BFO?
-
-            #if defined (SDEBUG)
-            // DEBUG: Spit the freq sent to the XFO
-            Serial.print(F("XFO: "));
-            Serial.println(xfo, DEC);
-            #endif
         }
     #endif
 }
@@ -1500,14 +1447,6 @@ void splitCheck() {
 
 // main setup procedure: get all ready to rock
 void setup() {
-    #if defined (SDEBUG)
-        // start serial port at 57600 bps:
-        Serial.begin(57600);
-        // Welcome to the Serial mode
-        Serial.println("");
-        Serial.println(F("Arduino-ARCS Ready."));
-    #endif
-
     // LCD init, create the custom chars first
     lcd.createChar(0, bar);
     lcd.createChar(1, s1);
@@ -1561,11 +1500,6 @@ void setup() {
     // check the EEPROM to know if I need to initialize it
     boolean eepromOk = checkInitEEPROM();
     if (!eepromOk) {
-        #if defined (SDEBUG)
-            // serial advice
-            Serial.println(F("Init EEPROM"));
-        #endif
-
         // LCD
         lcd.setCursor(0, 0);
         lcd.print(F("Init EEPROM...  "));
@@ -1577,9 +1511,6 @@ void setup() {
     } else {
         // just if it's already ok
         loadEEPROMConfig();
-        #if defined (SDEBUG)
-            Serial.println(F("EEPROM data loaded."));
-        #endif
     }
 
     // Welcome screen
@@ -1613,10 +1544,6 @@ void setup() {
 
         // show setup mode
         showConfig();
-
-        #if defined (SDEBUG)
-            Serial.println(F("You are in SETUP mode now"));
-        #endif
     }
 
     // setting up VFO A as principal.
