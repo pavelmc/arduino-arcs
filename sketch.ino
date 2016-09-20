@@ -49,6 +49,7 @@
 #include <si5351.h>         // https://github.com/etherkit/Si5351Arduino/
 #include <Bounce2.h>        // https://github.com/thomasfredericks/Bounce2/
 #include <anabuttons.h>     // https://github.com/pavelmc/AnaButtons/
+#include <ft857d.h>         // https://github.com/pavelmc/ft857d/
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
 #include <LiquidCrystal.h>  // default
@@ -146,12 +147,14 @@ Rotary encoder = Rotary(ENC_A, ENC_B);
 #define debounceInterval  10    // in milliseconds
 Bounce dbBtnPush = Bounce();
 
+// analog buttons library declaration (constructor)
 // define the analog pin to handle the buttons
 #define KEYS_PIN  2
-
-// analog buttons library declaration (constructor)
 AnaButtons ab = AnaButtons(KEYS_PIN);
 byte anab = 0;  // this is to handle the buttons output
+
+// the CAT radio lib
+ft857d cat = ft857d();
 
 // lcd pins assuming a 1602 (16x2) at 4 bits
 #if defined (COLAB)
@@ -339,7 +342,7 @@ boolean mustShowStep = false;     // var to show the step instead the bargraph
 #define showStepTimer   8000      // a relative amount of time to show the mode
                                   // aprox 3 secs
 word showStepCounter = showStepTimer; // the timer counter
-boolean showStepEnd = false;      // this one rises when the mustShowStep falls
+boolean showStepEnd =  false;     // this one rises when the mustShowStep falls
 boolean runMode =      true;
 boolean activeVFO =    true;
 byte VFOAMode =        MODE_LSB;
@@ -347,9 +350,12 @@ byte VFOBMode =        MODE_LSB;
 boolean ritActive =    false;
 boolean tx =           false;
 byte pep[15];                      // s-meter readings storage
-long lastMilis = 0;       // to track the last sampled time
-boolean smeterOk = false;
-boolean split   = false;            // this holds th split state
+long lastMilis =       0;          // to track the last sampled time
+boolean smeterOk =     false;      // it's ok to show the bar graph
+boolean split =        false;      // this holds th split state
+boolean catTX =        false;      // CAT command to go to PTT
+byte sMeter =          0;          // hold the value of the Smeter readings
+                                   // in both RX and TX modes
 
 // temp vars
 boolean tbool   = false;
@@ -1305,6 +1311,12 @@ void showBarGraph() {
     }
     ave /= 15;
 
+    // set the smeter reading on the global scope for CAT readings
+    sMeter = ave;
+
+    // scale it down to 0-12 from 0-15 now
+    ave = map(ave, 0, 15, 0, 12);
+
     // printing only the needed part of the bar, if growing or shrinking
     // if the same no action is required, remember we have to minimize the
     // writes to the LCD to minimize QRM
@@ -1403,8 +1415,8 @@ void smeter() {
         // watchout !!! map can out peaks, so smooth
         if (val > 1023) val = 1023;
 
-        // scale it to 13 blocks (0-12)
-        val = map(val, 0, 1023, 0, 12);
+        // scale it to 4 bits (0-15) for CAT purposes
+        val = map(val, 0, 1023, 0, 15);
 
         // push it in the array
         for (byte i = 0; i < 14; i++) {
@@ -1442,6 +1454,91 @@ void splitCheck() {
         activeVFO = !activeVFO;
         updateAllFreq();
     }
+}
+
+
+// CAT functions
+
+// instruct the sketch that must go in/out of TX
+void catGoPtt(boolean tx) {
+    catTX = tx;
+    update = true;
+}
+
+
+// set VFO toggles from CAT
+void catGoToggleVFOs() {
+    activeVFO = !activeVFO;
+    update = true;
+}
+
+
+// set freq from CAT
+void catSetFreq(long f) {
+    // we use 1/10 hz so scale it
+    f *= 10;
+
+    // set the freq for the active VFO
+    if (activeVFO) {
+        vfoa = f;
+    } else {
+        vfob = f;
+    }
+
+    // apply changes
+    updateAllFreq();
+    update = true;
+}
+
+
+// set mode from CAT
+void catSetMode(byte m) {
+    // the mode can be any of the CAT ones, we have to restrict it to our modes
+    if (m > 2) return;  // no change
+
+    // by luck we use the same mode than the CAT lib so far
+    setActiveVFOMode(m);
+
+    // Apply the changes
+    updateAllFreq();
+    update = true;
+}
+
+
+// get freq from CAT
+long catGetFreq() {
+    // get the active VFO freq and pass it
+    return getActiveVFOFreq() / 10;
+}
+
+
+// get the s meter status to CAT
+byte catGetSMeter() {
+    // returns a byte in wich the s-meter is scaled to 4 bytes (15)
+    // it's scaled already this our code
+    return sMeter;
+}
+
+
+// get the TXstatus to CAT
+byte catGetTXStatus() {
+    // prepare a byte like the one the CAT wants:
+
+    /*
+     * this must return a byte in wich the different bits means this:
+     * 0b abcdefgh
+     *  a = 0 = PTT off
+     *  a = 1 = PTT on
+     *  b = 0 = HI SWR off
+     *  b = 1 = HI SWR on
+     *  c = 0 = split on
+     *  c = 1 = split off
+     *  d = dummy data
+     *  efgh = PO meter data
+     */
+
+    // build the byte to return
+    return tx<<7 + split<<5 + sMeter;
 }
 
 
@@ -1555,6 +1652,19 @@ void setup() {
 
     // start the VFOa and it's mode
     updateAllFreq();
+
+    // CAT Library setup
+    cat.addCATPtt(catGoPtt);
+    cat.addCATAB(catGoToggleVFOs);
+    cat.addCATFSet(catSetFreq);
+    cat.addCATMSet(catSetMode);
+    cat.addCATGetFreq(catGetFreq);
+    cat.addCATGetMode(getActiveVFOMode);
+    cat.addCATSMeter(catGetSMeter);
+    cat.addCATTXStatus(catGetTXStatus);
+
+    // now we activate the library
+    cat.begin(57600, SERIAL_8N1);
 }
 
 
@@ -1585,7 +1695,7 @@ void loop() {
 
     // check PTT and make the RX/TX changes
     tbool = digitalRead(inPTT);
-    if (tbool and tx) {
+    if (tx and (tbool or !catTX)) {
         // PTT released, going to RX
         tx = false;
         digitalWrite(PTT, tx);
@@ -1605,7 +1715,7 @@ void loop() {
         update = true;
     }
 
-    if (!tbool and !tx) {
+    if (!tx and (!tbool or catTX)) {
         // PTT asserted, going into TX
         tx = true;
         digitalWrite(PTT, tx);
