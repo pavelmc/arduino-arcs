@@ -49,7 +49,7 @@ About the schematics I can offer this files made with [Fritzing](http://www.frit
 
 _**Note:** It's a known fact that the Si5351 can output 3 frequencies at a time, but in this case two of the freqs shares a common VCO inside the chip; the Si5351 library make some sacrifices to get the outputs actives mining the accuracy of one of the outputs with a shared VCO._
 
-_Take that into account if you plan to use the 3 outputs, if one of the two shared VCO outputs is below 1 Mhz you will like to get the accuracy sacrificed._
+_Take that into account if you plan to use the 3 outputs, if one of the two shared VCO outputs is below 1 Mhz you will like to get the accuracy sacrificed. See more on the file Si5351_issues.md_
 
 ## Features in the TODO list ##
 
@@ -76,4 +76,3 @@ It's annoying for you, I know, but please do it for me.
 The Si5351 chip is not the panacea of the frequency generator (but it's close), as almost all good things in life it has it's dark side, know more about in the Si5351_issues.md file in this proyect.
 
 73 Pavel CO7WT.
-
