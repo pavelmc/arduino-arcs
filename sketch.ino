@@ -331,10 +331,10 @@ Si5351 si5351;
 long si5351_ppm = 224380;    // it has the *10 included
 
 // the variables
-long vfoa = 71100000;    // default starting VFO A freq
-long vfob = 71755000;    // default starting VFO B freq
-long tvfo = 0;           // temporal VFO storage for RIT usage
-long txSplitVfo =  0;    // temporal VFO storage for RIT usage when TX
+long vfoa = 71100000;             // default starting VFO A freq
+long vfob = 71755000;             // default starting VFO B freq
+long tvfo = 0;                    // temporal VFO storage for RIT usage
+long txSplitVfo =  0;             // temporal VFO storage for RIT usage when TX
 byte step = 3;                    // default steps position index: 1*10E3 = 1000 = 100hz
                                   // step position is calculated to avoid to use
                                   // a big array, see getStep()
@@ -347,6 +347,7 @@ boolean mustShowStep = false;     // var to show the step instead the bargraph
 #define showStepTimer   8000      // a relative amount of time to show the mode
                                   // aprox 3 secs
 word showStepCounter = showStepTimer; // the timer counter
+boolean showStepEnd = false;      // this one rises when the mustShowStep falls
 boolean runMode =      true;
 boolean activeVFO =    true;
 byte VFOAMode =        MODE_LSB;
@@ -1361,12 +1362,21 @@ void showBarGraph() {
     // if the same no action is required, remember we have to minimize the
     // writes to the LCD to minimize QRM
 
-    // but there is a special case: just after the show step expires
-    // that it must start from zero
-    if (!mustShowStep and lastShowStep) barMax = 0;
+    // but there is a special case: just after the show step expires we have
+    // to push the limits to be sure the step label get fully erased
+    if (showStepEnd and ave == barMax) ave = ave + 1;
 
     // growing bar: print the difference
     if (ave > barMax) {
+        // special case
+        if (showStepEnd) {
+            barMax = 0;
+            showStepEnd = false;
+
+            // grow to erase the full step label
+            if (ave < 5 ) ave = 5;
+        }
+
         // LCD position & print the bars
         lcd.setCursor(3 + barMax, 1);
 
@@ -1397,17 +1407,14 @@ void showBarGraph() {
 
     // shrinking bar: erase the old ones print spaces to erase just the diff
     if (barMax > ave) {
-        // the bar shares the space of the step label, so if the ave drops
-        // below 4 and the barMax is over 4 we have to erase from 4 to the
-        // actual value of ave to erase any trace of the step label
-        if (ave < 4 and barMax > 4) {
-            // we have to erase
-            i = 4;
-        } else {
-            i = barMax;
+        // special case
+        if (showStepEnd) {
+            barMax = 5;
+            showStepEnd = false;
         }
 
         // erase it
+        i = barMax;
         while (i > ave) {
             lcd.setCursor(3 + i, 1);
             lcd.print(" ");
@@ -1760,7 +1767,10 @@ void loop() {
             if (showStepCounter == (showStepTimer - 1)) showStep();
 
             // detect the count end and restore to normal
-            if (showStepCounter == 0) mustShowStep = false;
+            if (showStepCounter == 0) {
+                mustShowStep = false;
+                showStepEnd = true;
+            }
         }
 
     } else {
