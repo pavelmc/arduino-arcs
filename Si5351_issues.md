@@ -1,36 +1,44 @@
-## Si5351 Clock generator issues ##
+# Si5351 Clock generator issues #
 
-There are some founded worries about the use of the Si5351 Clock generator in RF transceiver business, but none of the possible bad point are fully characterized yet (with good technical data in a build transceiver), the most important of the claimed problems are this:
+There are some founded worries about the use of the Si5351 Clock generator in transceiver business, and now with more and more builders using it, that problems are beginning to fade away.
 
-Note: this article will grow with experience notes from our labor to solve the lack of info, we have now 5 different setups testing this hardware, so far:
+This article will grow with experience notes about the problems and our experience about them. For the record, we have so far 5 different setups testing this sketch + hardware.
 
-* BitX 20 (converted to 40m, IF 8.2158 Mhz from a FT-747GX SSB filter) (CO7WT)
-* Anritsu transceiver (unknown model) (IF1 1.6 Mhz, IF2 455 Khz) (CO7LX)
-* RTF SEG-15 WWII transceiver (IF1 28.2 Mhz, IF2 200 Khz) (CO7KD)
-* Furuno FS1000 (IF 9 Mhz) (CO7YB)
-* Homebrew 500Khz singe conversion SSB radio using a SSB filter from a USSR KARAT transceiver. (CM7MTL)
+* BitX 20 _(converted to 40m, IF 8.2158 Mhz from a FT-747GX SSB filter, **CO7WT**)_
+* Anritsu transceiver _(Unknown model, IF1 1.6 Mhz, IF2 455 Khz, **CO7LX**)_
+* RFT SEG-15 _(WWII transceiver, IF1 28.2 Mhz, IF2 200 Khz, **CO7KD**)_
+* Furuno FS1000 _(IF 9 Mhz, **CO7YB**)_
+* Homebrew 500Khz singe conversion SSB radio _(Using a SSB filter from a USSR/CCCP "KARAT" transceiver, **CM7MTL**)_
 
-### Crosstalk ###
+Please note that almost all of this radios are actually kind of sons of Frankenstein, as they preserve the main RF/IF chain from the mentioned radios, but can have another final stage (homebrewed or borrowed for a commercial unit) as well as chassis/front panels, etc.
 
-Some users are pointing that the outputs of the chip is not clean enough for the use in heterodyne transceivers, [here you can see of what we are talking about](http://nt7s.com/2014/12/si5351a-investigations-part-8/), as you can see some of the signal of one output can sneak into the other output, this is a proved bad thing.
+## Crosstalk ##
+
+Some users are pointing that the outputs of the chip is not clean enough for the use in heterodyne transceivers, [here you can see of what we are talking about](http://nt7s.com/2014/12/si5351a-investigations-part-8/), as you can see, some of the signal of one output can sneak into the other output, this is a proved bad thing.
 
 Then the question now is: **how bad is it?**
 
-The graphs in the last link shows the worst scenario, you can see that the worst case is only about -35 dB down the main frequency, that will result in about 25mW on the output of a signal with 100W of the fundamental frequency.
+The graphs in the last link shows the worst scenario, you can see that the worst case is only about -35 dB down the main frequency, that will result in about 25mW of the spurious frequency at the output of a main signal with 100W for the fundamental frequency.
 
-With proper measures in design and other tricks (Band Stop filters) you can get that crosstalk down below 50dB and the problem can be minimized at the point to be almost eliminated.
+With proper measures in design and other tricks (Bandstop/bandpass filters) you can get that crosstalk down below 50dB and the problem can be minimized at the point to be almost eliminated.
 
-**My measurements on this:** from a technician point of view with laboratory grade equipment you are gonna find the crosstalk, from a homebrewer with normal equipment it's not a big deal and it has a no-noticeable impact on your transmission even with 150W in one of our local setups.
+### Experience from our side ###
 
-### Square wave output ###
+From a technician point of view with laboratory grade equipment, you are gonna find the crosstalk, it's there. From a normal homebrewer with COTS equipment it's not a big deal and it has a no-noticeable impact on your transmission even with 150W in one of our local setups.
 
-Thanks to Mr. Fourier we know that square waves are the fundamental frequency plus all the harmonics of it... but a signal full of it's harmonics is a bad thing in a VFO or any other place where we need a pure sine signal.
+## Square wave output ##
 
-That's why we designed the sketch to always use a real VFO frequency **above** the fundamental RF frequency and all the outputs of the chips will be followed with a matched low pass filter or a band pass filter to get rid of the most of the harmonics to minimize this problem.
+Thanks to Mr. Fourier we know that square waves are a pure sine wave of the fundamental frequency plus all the harmonics of it until infinity... but a signal full of it's harmonics is a bad thing in a VFO or any other place where we need a pure sine signal, right?
 
-**Tip:** Just putting a low pass filter for the used frequency range, or even better, a band pass filter you will be safe. In one of our setups one radio has a BFO at 455 KHz, and the reception was very noisy in deed, the user omitted a low pass filter on this signal for the BFO, a improvised BPF with two TOKO IF Cans and a 1nF condenser was enough to clean the 455 Khz signal en get a clean reception.
+That's why we designed the sketch to always use a final VFO frequency **above** the fundamental RF frequency and all the outputs of the chips will be followed with a matched low pass or a band pass filter to get rid of the most of the harmonics to minimize this problem.
 
-### Jitter ###
+### Experience from our side ###
+
+The simple fix is to put a low pass filter for the used frequency range, or even better, a band pass filter you will be safe and this will do the job, believe us, this is a "must" not an "if".
+
+In one of our setups one radio has a BFO at ~455 KHz, and the reception was very noisy in deed, the user omitted a low pass filter on the signal for the BFO, a improvised BPF with two TOKO IF cans (back-to-back) was enough to clean the 455 Khz signal an get a decent reception.
+
+## Jitter ##
 
 There are some sources talking about the jitter in the output frequencies, but this author can't find any technical info on the web about how bad is it.
 
@@ -38,24 +46,40 @@ For SSB communications we (humans) can tolerate a jitter of about 2-5 hz without
 
 ## Birdies and Background Noise ##
 
-In almost all setups out there you will find a few users talking about the birdies in the receiver and even about an artificial background noise, well, after experimentation with this setup with a few receiver configurations here in Cuba I can tell you this:
+In almost all setups out there in the internet you will find a few users talking about the birdies in the receiver and even about an artificial (high) background noise, well, after experimentation with this setup with a few receiver configurations here in Cuba I can tell you this:
 
 1 - Not all birdies comes from the Si5351, some are Arduino and/or LCD related.
 
-In one of my setups I can power off the Arduino and the LCD but leaving the Si5351 powered on and generating the frequency for the rest of the receiver chain, I can spot at least two birdies that will go completely off once you rest the Arduino + LCD from the equation, so the Si5351 is not the sole culprit.
+In one of my setups I tested to power off the Arduino and the LCD but leaving the Si5351 powered and generating the frequency for the rest of the receiver chain, I can spot at least two birdies that will go completely off once you erase the Arduino + LCD from the equation, so the Si5351 is not the sole culprit. Also the background noise levels drops.
 
-Also the background noise levels drops (Tip: **don't** use a long cable to connect the arduino to the LCD)
+2 - Yes, you can experiment an artificially (high) background noise, mainly from the Arduino talking with the LCD.
 
-2 - Yes, you can experiment an artificially high background noise, mainly from the Arduino talking with the LCD.
+In one of the developing stages, early in the barGraph introduction I suddenly experienced a high background noise, after firing my Yaesu FT-747GX on and check I can confirm that the noise comes from inside the hombrewed radio...
 
-In one of the developing stages, early in the barGraph introduction I suddenly experienced a high background noise, after firing my Yaesu FT-747GX on and check I can confirm that the noise comes from inside the radio...
+Later investigations revealed that the MCU (Arduino) to LCD communications and the ADC reading generate a lot of noise, high enough to mask some times the weak signals and even get at annoying levels at certain frequencies.
 
-Later investigations revealed that the MCU (Arduino) to LCD communications and the ADC reading generate a lot of noise, high enough to mask some times the weak signals and get at annoying levels at certain frequencies.
+To deal with that this sketch minimizes the writes to the LCD to the least possible and the results are very good compared to the initials with the all time refreshing LCD.
 
-To deal with that this sketch minimizes the writes to the LCD to the least possible and the results are good compared to the initial all time refreshing LCD.
+A user on a mailing list commented recently that keeping the Arduino + LCD + Si5351 module in a shielded compartment away from the sensitive RF components can eliminate this "artificially (high) background noise".
+
+We are finishing a setup like that now, comments to follow.
+
+## Datasheet tells three outputs, but in practive it's a gamble of 2+?##
+
+The internals of the Si5351 are described in depth in the datasheet and further publications, long story short: the Chip has an external crystal as a reference for two (2) independent PLL VCOs in the VHF to UHF range, then you select a chain of divisors to process that VCOs outputs to get your desired frequency.
+
+The trick is that with three outputs you will have to share two of the outputs with a common PLL VCO frequency and you will have one of them that can be expressed in the correct math to get right on the frequency under certain circumstances.
+
+### Experience from our side ###
+
+In the RFT SEG-15 we test the use of the three frequencies from the sketch, one for the VFO with and independent VCO (29 to 60 Mhz) and then a XFO of 28.0 Mhz and a BFO of 200 Khz sharing the same VCO.
+
+Strange things happened when we start to tune the frequencies out in the radio: the BFO will not move in steps of less than 150 Hz even if you set a step of 1 Hz, further investigations revealed that the library was trading stability (aka: struggle to keep the output active) vs. accuracy of the output.
+
+In this configuration we found that with a 28.0 Mhz and a another less than 1 Mhz output, sharing the same VCO inside the Si5351 we face accuracy problems on the < 1 Mhz output.
+
+So we sacrificed the XFO and go back to use the original crystal XFO inside the radio, taking that into account in the sketch: for the RFT SEG-15 the XFO is taken into account and used on the calculations but not activated in any way.
 
 ## Resume ##
 
-There are some hams that are building transceivers with this chip (Si5351) and posting the results on the web, none of them have reported any of this problems as an impairment for that particular radio.
-
-So far in out experiments we are confirming this, the Si5351 is suited to the job.
+There are many hams that are building transceivers with this chip (Si5351) and posting the results on the web, none of them have reported any of this mentioned problems as an impairment for that particular radio. So far in our experiments, we are confirming this, the Si5351 is suited to the job.

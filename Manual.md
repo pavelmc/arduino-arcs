@@ -1,7 +1,9 @@
 Arduino ARCS Manual
 =========================
 
-This is a short manual to know how to operate the sketch and the button's functions. The sketch has two modes, the user.'s mode and the setup mode, let's review them
+# OUTDATED, will be upgraded soon #
+
+This is a short manual to know how to operate the sketch and the button's functions. The sketch has two modes, the user's mode and the setup mode, let's review them
 
 User mode
 =========
@@ -9,7 +11,7 @@ User mode
 General description
 -------------------
 
-The user mode is the natural way the hardware boots if you don't touch anything, yo will see the Arduino ARCS banner and a note of the firmware version and the memory firmware version and the author, then you will get the main screen.
+The user mode is the natural way the hardware boots if you don't touch anything, yo will see the Arduino ARCS banner and a note of the firmware version, the memory firmware version and the author, then you will get the main screen.
 
 The main screen is composed of two lines the top line and the bottom line, both lines has the same information for each of the two VFOs the sketch has, upper is VFO A and lower is VFO B. You know which VFO is selected by the ">" sign in front of it.
 
