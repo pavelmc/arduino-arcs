@@ -40,15 +40,20 @@ About the schematics I can offer this files made with [Fritzing](http://www.frit
     - RIT with +/- 9.99 Khz
     - Variable VFO speed (steps: 10hz, 100hz, 1khz, 10khz, 100khz, 1Mhz) with the push of the encoder
     - Split work for contest/pileups
+    - VFOs A/B and it's matching mode are preserved in the EEPROM across resets: the status is saved to eeprom in each VFO A/B button press. _(See Note 1 below)_
 - S-Meter in the LCD (**WARNING**, by now the reference is the internal 1.1V one)
 - Relative TX power in the LCD (using the same S-Meter tech)
 - Initially mono-band in 40m.
 - Full user customization of the IF & BFOs and more via configuration menus.
-- Full user customization of the XFO for radios with a second conversion on the IF. _(See note below)_
+- Full user customization of the XFO for radios with a second conversion on the IF. _(See Note 2 below)_
 - Hot tunning of the parameters when in configuration mode for ease the adjust.
 - Basic CAT control (like a Yaesu FT-857D) using my GPL 3.0 [ft857d library](https://github.com/pavelmc/ft857d).
 
-_**Note:** It's a known fact that the Si5351 can output 3 frequencies at a time, but in this case two of the freqs shares a common VCO inside the chip; the Si5351 library make some sacrifices to get the outputs actives mining the accuracy of one of the outputs with a shared VCO._
+_**Note 1:** We are working on a automatic save, but for now it's manual._
+
+_I'm concerned with the EERPOM wear out, auto-save every 30 minutes + VFO switch (both if changed) with a heavy use of the transceiver can lead to about 7 years of life for the EEPROM under datasheet conditions, but x2 of that (at least) as experience shows._
+
+_**Note 2:** It's a known fact that the Si5351 can output 3 frequencies at a time, but in this case two of the freqs shares a common VCO inside the chip; the Si5351 library make some sacrifices to get the outputs actives mining the accuracy of one of the outputs with a shared VCO._
 
 _Take that into account if you plan to use the 3 outputs, if one of the two shared VCO outputs is below 1 Mhz you will likely get the accuracy sacrificed. See more on the file Si5351_issues.md_
 
@@ -56,10 +61,9 @@ _Take that into account if you plan to use the 3 outputs, if one of the two shar
 
 This are the wish list so far, with no particular order.
 
-- The VFO status need to be remembered with the power off/on cycles (require the use of an external EEPROM)
-- Memories, with an external EEPROM (24Cxx) on the already existent I2C bus, the amount of the memories will be proportional to the size of the EEPROM and the kind of it will be auto-detected (I2C bus scan) and can be fine tuned via configuration.
+- Memories, with the internal EEPROM the amount of the memories will be proportional to the size of the EEPROM.
 - Multi-band support with a function to jump quickly from band to band.
-- Band selector for BPF switching via a external I2C linked PIC as a output expander.
+- Band selector for BPF switching via a external I2C bus linked PIC as a output expander.
 - Power and SWR measurements.
 
 ## sketch.ino vs arduino-arcs.ino? ##
