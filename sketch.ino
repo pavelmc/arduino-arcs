@@ -45,15 +45,19 @@
  *    of the nasty harmonics
  ******************************************************************************/
 
+// define the mac count for analog buttons in the analogbuttons library
+#define ANALOGBUTTONS_MAX_SIZE 4
+
+// now the main include block
 #include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
 #include <si5351.h>         // https://github.com/etherkit/Si5351Arduino/
 #include <Bounce2.h>        // https://github.com/thomasfredericks/Bounce2/
-#include <anabuttons.h>     // https://github.com/pavelmc/AnaButtons/
+#include <AnalogButtons.h>  // https://travis-ci.org/rlogiacco/AnalogButtons/
 #include <ft857d.h>         // https://github.com/pavelmc/ft857d/
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
 #include <LiquidCrystal.h>  // default
-#include "structeeprom.h"
+#include "structeeprom.h"   // included in the project folder
 
 // the fingerprint to know the EEPROM is initialized, we need to stamp something
 // on it, as the 5th birthday anniversary of my daughter was in the date I begin
@@ -151,8 +155,31 @@ Bounce dbBtnPush = Bounce();
 // analog buttons library declaration (constructor)
 // define the analog pin to handle the buttons
 #define KEYS_PIN  2
-AnaButtons ab = AnaButtons(KEYS_PIN);
-byte anab = 0;  // this is to handle the buttons output
+AnalogButtons analogButtons(KEYS_PIN, 30, 20);
+/* HOW to calculate the values for each individual button?
+ *
+ * We use a external Pullup of 10K and all the buttons has a individual "R"
+ * value pulled to GND when pressed, the value for the button definition is
+ * calculated from the formula:
+ *
+ * Value =  R / 10 * 1023 / 2       (R is in kilo ohms)
+ *
+ * If you run into trouble and it does not work, you can always compute it
+ * backwards, starting with the voltage drop developed.
+ *
+ * Take a voltmeter and measure the +5V (V) and the voltage at the KEY_PIN
+ * with your problematic button pressed (UV) and simply use this formula:
+ *
+ * Value = UV/V * 1023
+ *
+ * Try to use resistors with values over 1K ohms to minimize the power drain
+ * and quality ones (at least 10% tolerance).
+ *
+ */
+Button bvfoab = Button(512, &btnVFOABClick);    // 10k
+Button bmode = Button(240, &btnModeClick);      // 4.7k
+Button brit = Button(112, &btnRITClick);        // 2.2k
+Button bsplit = Button(0, &btnSPLITClick);      // 0k
 
 // the CAT radio lib
 ft857d cat = ft857d();
@@ -376,6 +403,9 @@ struct mConf {
 } conf;
 
 
+/******************************** ENCODER *************************************/
+
+
 // the encoder has moved
 void encoderMoved(int dir) {
     // check the run mode
@@ -441,29 +471,7 @@ long moveFreq(long freq, long delta) {
 }
 
 
-// return the right step size to move
-long getStep () {
-    // we get the step from the global step var
-    long ret = 1;
-
-    // validation just in case
-    if (step == 0) step = 1;
-
-    for (byte i=0; i < step; i++) {
-        ret *= 10;
-    }
-
-    return ret;
-}
-
-
-// Force freq update for all the environment vars
-// (Active CFO and it's actual mode)
-void updateAllFreq() {
-    setFreqVFO();
-    setFreqBFO();
-    setFreqXFO();
-}
+/************************** LCD INTERFACE RELATED *****************************/
 
 
 // update the setup values
@@ -550,7 +558,7 @@ void updateSetupValues(int dir) {
                 updateAllFreq();
                 break;
             case CONFIG_XFO:
-                // change XFO ############## posible overflow
+                // change XFO
                 xfo += getStep() * dir;
                 updateAllFreq();
                 break;
@@ -559,25 +567,6 @@ void updateSetupValues(int dir) {
         // update el LCD
         showModConfig();
     }
-}
-
-
-// print a string of spaces, to save some space
-void spaces(byte m) {
-    // print m spaces in the LCD
-    while (m) {
-        lcd.print(" ");
-        m--;
-    }
-}
-
-
-// show the mode for the passed mode in setup mode
-void showModeSetup(byte mode) {
-    // now I have to print it out
-    lcd.setCursor(0, 1);
-    spaces(11);
-    showModeLcd(mode);
 }
 
 
@@ -593,6 +582,25 @@ void updateShowConfig(int dir) {
 
     // update the LCD
     showConfig();
+}
+
+
+// show the mode for the passed mode in setup mode
+void showModeSetup(byte mode) {
+    // now I have to print it out
+    lcd.setCursor(0, 1);
+    spaces(11);
+    showModeLcd(mode);
+}
+
+
+// print a string of spaces, to save some space
+void spaces(byte m) {
+    // print m spaces in the LCD
+    while (m) {
+        lcd.print(" ");
+        m--;
+    }
 }
 
 
@@ -915,6 +923,9 @@ void showStep() {
 }
 
 
+/********************************* SET & GET **********************************/
+
+
 // get the active VFO freq
 long getActiveVFOFreq() {
     // which one is the active?
@@ -1025,6 +1036,25 @@ void setFreqXFO() {
 }
 
 
+// Force freq update for all the environment vars
+// (Active CFO and it's actual mode)
+void updateAllFreq() {
+    setFreqVFO();
+    setFreqBFO();
+    setFreqXFO();
+}
+
+
+// set a freq to the active VFO
+void setActiveVFO(long f) {
+    if (activeVFO) {
+        vfoa = f;
+    } else {
+        vfob = f;
+    }
+}
+
+
 // return the active VFO mode
 byte getActiveVFOMode() {
     if (activeVFO) {
@@ -1045,69 +1075,7 @@ void setActiveVFOMode(byte mode) {
 }
 
 
-// change the modes in a cycle
-void changeMode() {
-    byte mode = getActiveVFOMode();
-
-    // calculating the next mode in the queue
-    if (mode == MODE_MAX) {
-        // overflow: reset
-        mode = 0;
-    } else {
-        // normal increment
-        mode += 1;
-    }
-
-    setActiveVFOMode(mode);
-
-    // Apply the changes
-    updateAllFreq();
-}
-
-
-// change the steps
-void changeStep() {
-    // calculating the next step
-    if (step < 7) {
-        // simple increment
-        step += 1;
-    } else {
-        // default start mode is 2 (10Hz)
-        step = 2;
-        // in setup mode and just specific modes it's allowed to go to 1 hz
-        boolean allowedModes = false;
-        allowedModes = allowedModes or (config == CONFIG_LSB);
-        allowedModes = allowedModes or (config == CONFIG_USB);
-        allowedModes = allowedModes or (config == CONFIG_PPM);
-        allowedModes = allowedModes or (config == CONFIG_XFO);
-        if (!runMode and allowedModes) step = 1;
-    }
-
-    // if in normal mode reset the counter to show the change in the LCD
-    if (runMode) showStepCounter = showStepTimer;     // aprox half second
-
-    // tell the LCD that it must show the change
-    mustShowStep = true;
-}
-
-
-// RIT toggle
-void toggleRit() {
-    if (!ritActive) {
-        // going to activate it: store the active VFO
-        tvfo = getActiveVFOFreq();
-        ritActive = true;
-    } else {
-        // going to deactivate: reset the stored VFO
-        if (activeVFO) {
-            vfoa = tvfo;
-        } else {
-            vfob = tvfo;
-        }
-        // deactivate it
-        ritActive = false;
-    }
-}
+/********************************** EEPROM ************************************/
 
 
 // check if the EEPROM is initialized
@@ -1161,6 +1129,9 @@ void loadEEPROMConfig() {
     xfo = conf.xfo;
     si5351_ppm = conf.ppm;
 }
+
+
+/**************************** SMETER / TX POWER *******************************/
 
 
 // show the bar graph for the RX or TX modes
@@ -1302,27 +1273,8 @@ void smeter() {
 }
 
 
-// set a freq to the active VFO
-void setActiveVFO(long f) {
-    if (activeVFO) {
-        vfoa = f;
-    } else {
-        vfob = f;
-    }
-}
+/******************************* CAT ******************************************/
 
-
-// split check
-void splitCheck() {
-    if (split) {
-        // revert back the VFO
-        activeVFO = !activeVFO;
-        updateAllFreq();
-    }
-}
-
-
-// CAT functions
 
 // instruct the sketch that must go in/out of TX
 void catGoPtt(boolean tx) {
@@ -1426,7 +1378,270 @@ void delayCat(int del = 2000) {
 }
 
 
-// main setup procedure: get all ready to rock
+/******************************* BUTTONS *************************************/
+
+
+// VFO A/B button click >>>> (OK/SAVE click)
+void btnVFOABClick() {
+    // normal mode
+    if (runMode) {
+        // we force to deactivate the RIT on VFO change, as it will confuse
+        // the users and have a non logical use, only if activated and
+        // BEFORE we change the active VFO
+        if (ritActive) toggleRit();
+
+        // now we change the VFO.
+        activeVFO = !activeVFO;
+
+        // update VFO/BFO and instruct to update the LCD
+        updateAllFreq();
+
+        // set the LCD update flag
+        update = true;
+
+        // Save the VFOs and modes in the eeprom
+        saveEEPROM();
+    } else {
+        // SETUP mode
+        if (!inSetup) {
+            // I'm going to setup a element
+            inSetup = true;
+
+            // change the mode to follow VFO A
+            if (config == CONFIG_USB) VFOAMode = MODE_USB;
+            if (config == CONFIG_LSB) VFOAMode = MODE_LSB;
+
+            // config update on the LCD
+            showModConfig();
+        } else {
+            // get out of the setup change
+            inSetup = false;
+
+            // save to the eeprom
+            saveEEPROM();
+
+            // lcd delay to show it properly (user feedback)
+            lcd.setCursor(0, 0);
+            lcd.print(F("##   SAVED    ##"));
+            delay(1000);
+
+            // show setup
+            showConfig();
+
+            // reset the minimum step if set (1hz > 10 hz)
+            if (step == 1) step += 1;
+        }
+    }
+}
+
+
+// MODE button click >>>> (CANCEL click)
+void btnModeClick() {
+    // normal mode
+    if (runMode) {
+        changeMode();
+        update = true;
+    } else if (inSetup) {
+        // setup mode, just inside a value edit
+
+        // get out of here
+        inSetup = false;
+
+        // user feedback
+        lcd.setCursor(0, 0);
+        lcd.print(F(" #  Canceled  # "));
+        delay(1000);
+
+        // show it
+        showConfig();
+    }
+}
+
+
+// RIT button click >>>> (RESET values click)
+void btnRITClick() {
+    // normal mode
+    if (runMode) {
+        toggleRit();
+        update = true;
+    } else if (inSetup) {
+        // SETUP mode just inside a value edit.
+
+        // where we are to know what to reset?
+        if (config == CONFIG_LSB) lsb = 0;
+        if (config == CONFIG_USB) usb = 0;
+        if (config == CONFIG_CW) cw = 0;
+        if (config == CONFIG_PPM) {
+            // reset, ppm
+            si5351_ppm = 0;
+            si5351.set_correction(0);
+        }
+
+        // update the freqs for
+        updateAllFreq();
+        showModConfig();
+    }
+}
+
+
+// SPLIT button click  >>>> (Nothing yet)
+void btnSPLITClick() {
+    // normal mode
+    if (runMode) {
+        split = !split;
+        update = true;
+    }
+
+    // no function in SETUP yet.
+}
+
+
+/******************************* MISCELLANEOUS ********************************/
+
+
+// split check
+void splitCheck() {
+    if (split) {
+        // revert back the VFO
+        activeVFO = !activeVFO;
+        updateAllFreq();
+    }
+}
+
+
+// change the modes in a cycle
+void changeMode() {
+    byte mode = getActiveVFOMode();
+
+    // calculating the next mode in the queue
+    if (mode == MODE_MAX) {
+        // overflow: reset
+        mode = 0;
+    } else {
+        // normal increment
+        mode += 1;
+    }
+
+    setActiveVFOMode(mode);
+
+    // Apply the changes
+    updateAllFreq();
+}
+
+
+// change the steps
+void changeStep() {
+    // calculating the next step
+    if (step < 7) {
+        // simple increment
+        step += 1;
+    } else {
+        // default start mode is 2 (10Hz)
+        step = 2;
+        // in setup mode and just specific modes it's allowed to go to 1 hz
+        boolean allowedModes = false;
+        allowedModes = allowedModes or (config == CONFIG_LSB);
+        allowedModes = allowedModes or (config == CONFIG_USB);
+        allowedModes = allowedModes or (config == CONFIG_PPM);
+        allowedModes = allowedModes or (config == CONFIG_XFO);
+        if (!runMode and allowedModes) step = 1;
+    }
+
+    // if in normal mode reset the counter to show the change in the LCD
+    if (runMode) showStepCounter = showStepTimer;     // aprox half second
+
+    // tell the LCD that it must show the change
+    mustShowStep = true;
+}
+
+
+// RIT toggle
+void toggleRit() {
+    if (!ritActive) {
+        // going to activate it: store the active VFO
+        tvfo = getActiveVFOFreq();
+        ritActive = true;
+    } else {
+        // going to deactivate: reset the stored VFO
+        if (activeVFO) {
+            vfoa = tvfo;
+        } else {
+            vfob = tvfo;
+        }
+        // deactivate it
+        ritActive = false;
+    }
+}
+
+
+// return the right step size to move
+long getStep () {
+    // we get the step from the global step var
+    long ret = 1;
+
+    // validation just in case
+    if (step == 0) step = 1;
+
+    for (byte i=0; i < step; i++) {
+        ret *= 10;
+    }
+
+    return ret;
+}
+
+
+// in TX, check if we must go to RX
+void going2RX(boolean lptt) {
+    // if hardware PTT or CAT changed, I must go to RX
+    if (lptt or !catTX) {
+        // PTT released, going to RX
+        tx = false;
+        digitalWrite(PTT, tx);
+
+        // make changes if tx goes active when RIT is active
+        if (ritActive) {
+            // get the TX vfo and store it as the reference for the RIT
+            tvfo = getActiveVFOFreq();
+            // restore the rit VFO to the actual VFO
+            setActiveVFO(txSplitVfo);
+        }
+
+        // make the split changes if needed
+        splitCheck();
+
+        // rise the update flag
+        update = true;
+    }
+}
+
+
+// in RX, check if we must go to TX
+void going2TX(boolean lptt) {
+    if (lptt or catTX) {
+        // PTT asserted, going into TX
+        tx = true;
+        digitalWrite(PTT, tx);
+
+        // make changes if tx goes active when RIT is active
+        if (ritActive) {
+            // save the actual rit VFO
+            txSplitVfo = getActiveVFOFreq();
+            // set the TX freq to the active VFO
+            setActiveVFO(tvfo);
+        }
+
+        // make the split changes if needed
+        splitCheck();
+
+        // rise the update flag
+        update = true;
+    }
+}
+
+
+/************************* SETUP and LOOP *************************************/
+
+
 void setup() {
     // CAT Library setup
     cat.addCATPtt(catGoPtt);
@@ -1459,9 +1674,16 @@ void setup() {
     dbBtnPush.attach(btnPush);
     dbBtnPush.interval(debounceInterval);
 
+    // analog buttons setup
+    analogButtons.add(bvfoab);
+    analogButtons.add(bmode);
+    analogButtons.add(brit);
+    analogButtons.add(bsplit);
+
     // pin mode of the PTT
     pinMode(inPTT, INPUT_PULLUP);
     pinMode(PTT, OUTPUT);
+    // default awake mode is RX
     digitalWrite(PTT, 0);
 
     // I2C init
@@ -1558,18 +1780,6 @@ void setup() {
 }
 
 
-/******************************************************************************
- * In setup mode the buttons change it's behaviour
- * - Encoder push button: remains as step selection
- * - VFO A/B: it's "OK" or "Enter"
- * - Mode: it's "Cancel & back to main menu"
- * - RIT:
- *   - On the USB/LSB/CW freq. setup menus, this set the selected value to zero
- *   - On the PPM adjust it reset it to zero
- ******************************************************************************/
-
-
-// let's get the party started
 void loop() {
     // encoder check
     encoderState = encoder.process();
@@ -1585,48 +1795,13 @@ void loop() {
 
     // check PTT and make the RX/TX changes
     tbool = digitalRead(inPTT);
-    if (tx and (tbool or !catTX)) {
-        // PTT released, going to RX
-        tx = false;
-        digitalWrite(PTT, tx);
-
-        // make changes if tx goes active when RIT is active
-        if (ritActive) {
-            // get the TX vfo and store it as the reference for the RIT
-            tvfo = getActiveVFOFreq();
-            // restore the rit VFO to the actual VFO
-            setActiveVFO(txSplitVfo);
-        }
-
-        // make the split changes if needed
-        splitCheck();
-
-        // rise the update flag
-        update = true;
+    if (tx) {
+        // check if we must go RX
+        going2RX(tbool);
+    } else {
+        // check if we must go TX
+        going2TX(tbool);
     }
-
-    if (!tx and (!tbool or catTX)) {
-        // PTT asserted, going into TX
-        tx = true;
-        digitalWrite(PTT, tx);
-
-        // make changes if tx goes active when RIT is active
-        if (ritActive) {
-            // save the actual rit VFO
-            txSplitVfo = getActiveVFOFreq();
-            // set the TX freq to the active VFO
-            setActiveVFO(tvfo);
-        }
-
-        // make the split changes if needed
-        splitCheck();
-
-        // rise the update flag
-        update = true;
-    }
-
-    // analog buttons
-    anab = ab.getStatus();
 
     // debouce for the push
     dbBtnPush.update();
@@ -1634,44 +1809,6 @@ void loop() {
 
     if (runMode) {
         // we are in normal mode
-
-        // VFO A/B
-        if (anab == ABUTTON1_PRESS) {
-            // we force to deactivate the RIT on VFO change, as it will confuse
-            // the users and have a non logical use, only if activated and
-            // BEFORE we change the active VFO
-            if (ritActive) toggleRit();
-
-            // now we change the VFO.
-            activeVFO = !activeVFO;
-
-            // update VFO/BFO and instruct to update the LCD
-            updateAllFreq();
-
-            // set the LCD update flag
-            update = true;
-
-            // Save the VFOs and modes in the eeprom
-            saveEEPROM();
-        }
-
-        // mode change
-        if (anab == ABUTTON2_PRESS) {
-            changeMode();
-            update = true;
-        }
-
-        // RIT
-        if (anab == ABUTTON3_PRESS) {
-            toggleRit();
-            update = true;
-        }
-
-        // SPLIT
-        if (anab == ABUTTON4_PRESS) {
-            split = !split;
-            update = true;
-        }
 
         // step (push button)
         if (tbool) {
@@ -1713,81 +1850,6 @@ void loop() {
             showStep();
         }
 
-        // VFO A/B: OK or Enter in SETUP
-        if (anab == ABUTTON1_PRESS) {
-            if (!inSetup) {
-                // I'm going to setup a element
-                inSetup = true;
-
-                // change the mode to follow VFO A
-                if (config == CONFIG_USB) VFOAMode = MODE_USB;
-
-                if (config == CONFIG_LSB) VFOAMode = MODE_LSB;
-
-                // config update on the LCD
-                showModConfig();
-
-            } else {
-                // get out of the setup change
-                inSetup = false;
-
-                // save to the eeprom
-                saveEEPROM();
-
-                // lcd delay to show it properly (user feedback)
-                lcd.setCursor(0, 0);
-                lcd.print(F("##   SAVED    ##"));
-                delay(1000);
-
-                // show setup
-                showConfig();
-
-                // reset the minimum step if set (1hz > 10 hz)
-                if (step == 1) step += 1;
-            }
-        }
-
-        // MODE: Cancel the config and get into the main SETUP mode
-        if (inSetup and (anab == ABUTTON2_PRESS)) {
-            // get out of here
-            inSetup = false;
-
-            // user feedback
-            lcd.setCursor(0, 0);
-            lcd.print(F(" #  Canceled  # "));
-            delay(1000);
-
-            // show it
-            showConfig();
-        }
-
-        // RIT: Reset to some defaults
-        if (inSetup and (anab == ABUTTON3_PRESS)) {
-            // where we are ?
-            switch (config) {
-                case CONFIG_USB:
-                    // reset, usb
-                    usb = 0;
-                    break;
-                case CONFIG_LSB:
-                    // reset, lsb
-                    lsb = 0;
-                    break;
-                case CONFIG_CW:
-                    // reset, cw
-                    cw = 0;
-                    break;
-                case CONFIG_PPM:
-                    // reset, ppm
-                    si5351_ppm = 0;
-                    si5351.set_correction(0);
-                    break;
-            }
-
-            // update the freqs for
-            updateAllFreq();
-            showModConfig();
-        }
     }
 
     // sample and process the S-meter in RX & TX
@@ -1800,4 +1862,7 @@ void loop() {
 
     // CAT check
     cat.check();
+
+    // analog buttons check
+    analogButtons.check();
 }
