@@ -1659,13 +1659,16 @@ void setup() {
 
     // Check for setup mode
     if (digitalRead(btnPush) == LOW) {
+        // CAT is disabled in SETUP mode
+        cat.enabled = false;
+
         // we are in the setup mode
         lcd.setCursor(0, 0);
         lcd.print(F(" You are in the "));
         lcd.setCursor(0, 1);
         lcd.print(F("   SETUP MODE   "));
         initEeprom();
-        delayCat();
+        delay(2000);
         lcd.clear();
 
         // rise the flag of setup mode for every body to see it.
