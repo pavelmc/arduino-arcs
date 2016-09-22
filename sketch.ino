@@ -1542,6 +1542,21 @@ byte catGetTXStatus() {
 }
 
 
+// delay with CAT check, this is for the welcome screen
+// see the note in the setup
+void delayCat() {
+    // delay in msecs to wait
+    long delay = millis() + 2000;
+    long m = 0;
+
+    // loop to waste time
+    while (m < delay) {
+        cat.check();
+        m = millis();
+    }
+}
+
+
 // main setup procedure: get all ready to rock
 void setup() {
     // CAT Library setup
@@ -1625,18 +1640,21 @@ void setup() {
     }
 
     // Welcome screen
+
+    // A software controlling the CAT via USB will reset the sketch upon
+    // connection, so we need turn the cat.check() when running the welcome
+    // banners (use case: Fldigi)
     lcd.clear();
-    //lcd.setCursor(0, 0);
     lcd.print(F("  Aduino Arcs  "));
     lcd.setCursor(0, 1);
     lcd.print(F("Fv: "));
     lcd.print(FMW_VER);
     lcd.print(F("  Mfv: "));
     lcd.print(EEP_VER);
-    delay(2000);        // wait for 1 second
+    delayCat();
     lcd.setCursor(0, 0);
     lcd.print(F(" by Pavel CO7WT "));
-    delay(2000);        // wait for 1 second
+    delayCat();
     lcd.clear();
 
     // Check for setup mode
@@ -1647,7 +1665,7 @@ void setup() {
         lcd.setCursor(0, 1);
         lcd.print(F("   SETUP MODE   "));
         initEeprom();
-        delay(2000);        // wait for 1 second
+        delayCat();
         lcd.clear();
 
         // rise the flag of setup mode for every body to see it.
