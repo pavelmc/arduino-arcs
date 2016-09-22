@@ -1343,6 +1343,10 @@ void catSetFreq(long f) {
     // we use 1/10 hz so scale it
     f *= 10;
 
+    // check for the freq boundaries
+    if (f > F_MAX) return;
+    if (f < F_MIN) return;
+
     // set the freq for the active VFO
     if (activeVFO) {
         vfoa = f;
