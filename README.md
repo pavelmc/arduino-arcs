@@ -27,11 +27,7 @@ We are using the ubiquitous Arduino boards for the main brain, a list of the nee
 - [Digital push buttons](https://github.com/thomasfredericks/Bounce2/), [analog push buttons](https://github.com/pavelmc/AnaButtons/) and a [rotary encoder](https://github.com/mathertel/RotaryEncoder) with a push button as HID
 - Since September of 2016 the sketch has CAT support, if you are using an Arduino R3 or others with a USB port you are done; if not you need any of the [cheap ebay USB to RS-232/TTL converters](http://www.google.com/q=cp-2021+USB+serial+ttl+converter) just watch out for the correct drivers if you use any Windows OS.
 
-About the schematics I can offer this files made with [Fritzing](http://www.fritzing.org):
-
-- Whole Fritzin file: sketch.fzz (the PCB view is a proposal and it's not recomended for production as it's)
-- Arduino wiring diagram: sketch_bb.png
-- Schematic diagram: sketch_esquema.png
+You can see the schematic diagram (designed for an Arduino Uno R3 in mind) in the file sketch_schema.png (I can provide Fritzing files on request, but just the schematic part is ok.)
 
 ## Features implemented by now ##
 
