@@ -53,6 +53,7 @@
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
 #include <LiquidCrystal.h>  // default
+#include "structeeprom.h"
 
 // the fingerprint to know the EEPROM is initialized, we need to stamp something
 // on it, as the 5th birthday anniversary of my daughter was in the date I begin
@@ -80,7 +81,7 @@
  * if you have the any of the COLAB shields uncomment the following line.
  * (the sketch is configured by default for my particular hardware)
  ******************************************************************************/
-#define COLAB
+//#define COLAB
 
 /*************************  FILTER PRE-CONFIGURATIONS **************************
  * As this project aims to easy the user configuration we will pre-stablish some
@@ -117,9 +118,9 @@
 //#define SSBF_RFT_SEG15
 
 // The eeprom & sketch version; if the eeprom version is lower than the one on
-// the sketck we force an update (init) to make a consistent work on upgrades
-#define EEP_VER     3
-#define FMW_VER     8
+// the sketch we force an update (init) to make a consistent work on upgrades
+#define EEP_VER     4
+#define FMW_VER     9
 
 // the limits of the VFO, the one the user see, for now just 40m for now
 // you can tweak it with the limits of your particular hardware
@@ -270,9 +271,9 @@ Si5351 si5351;
 // hardware pre configured values
 #if defined (SSBF_FT747GX)
     // Pre configured values for a Single conversion radio using the FT-747GX
-    long lsb =  -13500;
-    long usb =   13500;
-    long cw =        0;
+    int lsb =  -13500;
+    int usb =   13500;
+    int cw =        0;
     long xfo =       0;
     long ifreq =   82148000;
 #endif
@@ -280,9 +281,9 @@ Si5351 si5351;
 #if defined (SSBF_URSS_500H)
     // Pre configured values for a Single conversion radio using the Polosa
     // Angara 500H filter
-    long lsb =  -17500;
-    long usb =   17500;
-    long cw =        0;
+    int lsb =  -17500;
+    int usb =   17500;
+    int cw =        0;
     long xfo =       0;
     long ifreq =   4980800;
 #endif
@@ -290,9 +291,9 @@ Si5351 si5351;
 #if defined (SSBF_RFT_SEG15)
     // Pre configured values for a Double conversion radio using the RFT SEG15
     // RF board using the filter marked as:
-    long lsb =  -14350;
-    long usb =   14350;
-    long cw =        0;
+    int lsb =  -14350;
+    int usb =   14350;
+    int cw =        0;
     long ifreq =   282000000;
     /***************************************************************************
      *                     !!!!!!!!!!!    WARNING   !!!!!!!!!!
@@ -335,7 +336,6 @@ byte step = 3;                    // default steps position index: 1*10E3 = 1000
                                   // a big array, see getStep()
 boolean update = true;            // lcd update flag in normal mode
 byte encoderState = DIR_NONE;     // encoder state
-byte fourBytes[4];                // swap array to long to/from eeprom conversion
 byte config = 0;                  // holds the configuration item selected
 boolean inSetup = false;          // the setup mode, just looking or modifying
 boolean mustShowStep = false;     // var to show the step instead the bargraph
@@ -356,9 +356,25 @@ boolean split =        false;      // this holds th split state
 boolean catTX =        false;      // CAT command to go to PTT
 byte sMeter =          0;          // hold the value of the Smeter readings
                                    // in both RX and TX modes
-
 // temp vars
 boolean tbool   = false;
+
+// structured data: Main Configuration Parameters
+struct mConf {
+    char finger[9] =  EEPROMfingerprint;
+    byte version = EEP_VER;
+    long ifreq;
+    long vfoa;
+    byte vfoaMode;
+    long vfob;
+    byte vfobMode;
+    long xfo;
+    int lsb;
+    int usb;
+    int cw;
+    int ppm;
+} conf;
+
 
 // the encoder has moved
 void encoderMoved(int dir) {
@@ -1096,205 +1112,54 @@ void toggleRit() {
 
 // check if the EEPROM is initialized
 boolean checkInitEEPROM() {
-    // read the eprom start to determine is the fingerprint is in there
-    char fp;
-    for (byte i=0; i<8; i++) {
-        fp = EEPROM.read(i);
-        if (fp != EEPROMfingerprint[i]) return false;
+    // read the eeprom config data
+    eeReadStruct(0, conf);
+
+    // check for the initializer and version
+    if (strcmp(conf.finger, EEPROMfingerprint) and EEP_VER == conf.version) {
+        return true;
     }
 
-    //ok, the eeprom is initialized, but it's the same version of the sketch?
-    byte eepVer = EEPROM.read(8);
-    if (eepVer != EEP_VER) return false;
-
-    // if you get here you are safe
-    return true;
-}
-
-
-// split in bytes, take a long and load it on the fourBytes (MSBF)
-void splitInBytes(long freq) {
-    for (byte i=0; i<4; i++) {
-        fourBytes[i] = char((freq >> (3-i)*8) & 255);
-    }
-}
-
-
-// restore a long from the four bytes in fourBytes (MSBF)
-long restoreFromBytes() {
-    long freq;
-    long temp;
-
-    // the MSB need to be set by hand as we can't cast a long
-    // or can we?
-    freq = fourBytes[0];
-    freq = freq << 24;
-
-    // restore the lasting bytes
-    for (byte i=1; i<4; i++) {
-        temp = long(fourBytes[i]);
-        freq += temp << ((3-i)*8);
-    }
-
-    // get it out
-    return freq;
-}
-
-
-// read an long from the EEPROM, fourBytes as swap var
-long EEPROMReadLong(word pos) {
-    for (byte i=0; i<4; i++) {
-        fourBytes[i] = EEPROM.read(pos+i);
-    }
-    return restoreFromBytes();
-}
-
-
-// write an long to the EEPROM, fourBytes as swap var
-void EEPROMWriteLong(long val, word pos) {
-    splitInBytes(val);
-    for (byte i=0; i<4; i++) {
-        EEPROM.write(pos+i, fourBytes[i]);
-    }
+    // return false: default
+    return false;
 }
 
 
 // initialize the EEPROM mem, also used to store the values in the setup mode
-void initEeprom() {
-    /***************************************************************************
-     * EEPROM structure
-     * Example: @00 (8): comment
-     *  @##: start of the content of the eeprom var (always decimal)
-     *  (#): how many bytes are stored there
-     *
-     * =========================================================================
-     * @00 (8): EEPROMfingerprint, see the corresponding #define at the code start
-     * @08 (1): EEP_VER
-     * @09 (4): IF freq in 4 bytes
-     * @13 (4): VFO A in 4 bytes
-     * @17 (4): VFO B in 4 bytes
-     * @21 (4): XFO freq in 4 bytes
-     * @25 (4): BFO feq for the LSB mode
-     * @29 (4): BFO feq for the USB mode
-     * @33 (4): CW the offset for the CW mode in TX
-     * @37 (1): Encoded Byte in 4 + 4 bytes representing the USB and LSB mode
-     *          of the A/B VFO
-     * @38 (4): PPM correction for the Si5351
-     *
-     * =========================================================================
-     *
-    /**************************************************************************/
+void saveEEPROM() {
+    // load the parameters in the environment
+    conf.version  = EEP_VER;
+    conf.vfoa = vfoa;
+    conf.vfoaMode = VFOAMode;
+    conf.vfob = vfob;
+    conf.vfobMode = VFOBMode;
+    conf.ifreq = ifreq;
+    conf.lsb = lsb;
+    conf.usb = usb;
+    conf.cw = cw;
+    conf.xfo = xfo;
+    conf.ppm = si5351_ppm;
 
-    // temp var
-    long temp = 0;
-
-    // write the fingerprint
-    for (byte i=0; i<8; i++) {
-        EEPROM.write(i, EEPROMfingerprint[i]);
-    }
-
-    // EEPROM version
-    EEPROM.write(8, EEP_VER);
-
-    // IF
-    EEPROMWriteLong(ifreq, 9);
-
-    // VFO a freq
-    EEPROMWriteLong(vfoa, 13);
-
-    // VFO B freq
-    EEPROMWriteLong(vfob, 17);
-
-    // XFO freq
-    EEPROMWriteLong(xfo, 21);
-
-    // BFO for the LSB mode
-    temp = lsb + 2147483647;
-    EEPROMWriteLong(temp, 25);
-
-    // BFO for the USB mode
-    temp = usb + 2147483647;
-    EEPROMWriteLong(temp, 29);
-
-    // BFO for the CW  mode
-    temp = cw + 2147483647;
-    EEPROMWriteLong(temp, 33);
-
-    // Encoded byte with the default modes for VFO A/B
-    byte toStore = byte(VFOAMode << 4) + VFOBMode;
-    EEPROM.write(37, toStore);
-
-    // Si5351 PPM correction value
-    // this is a signed value, so we need to scale it to a unsigned
-    temp = si5351_ppm + 2147483647;
-    EEPROMWriteLong(temp, 38);
-
+    // write it
+    eeWriteStruct(0, conf);
 }
 
 
 // load the eprom contents
 void loadEEPROMConfig() {
-    /***************************************************************************
-     * EEPROM structure
-     * Example: @00 (8): comment
-     *  @##: start of the content of the eeprom var (always decimal)
-     *  (#): how many bytes are stored there
-     *
-     * =========================================================================
-     * @00 (8): EEPROMfingerprint, see the corresponding #define at the code start
-     * @08 (1): EEP_VER
-     * @09 (4): IF freq in 4 bytes
-     * @13 (4): VFO A in 4 bytes
-     * @17 (4): VFO B in 4 bytes
-     * @21 (4): XFO freq in 4 bytes
-     * @25 (4): BFO feq for the LSB mode
-     * @29 (4): BFO feq for the USB mode
-     * @33 (4): CW the offset for the CW mode in TX
-     * @37 (1): Encoded Byte in 4 + 4 bytes representing the USB and LSB mode
-     *          of the A/B VFO
-     * @38 (4): PPM correction for the Si5351
-     *
-     * =========================================================================
-     *
-    /**************************************************************************/
-    //temp var
-    long temp = 0;
+    // write it
+    eeReadStruct(0, conf);
 
-    // get the IF value
-    ifreq = EEPROMReadLong(9);
-
-    // get VFOa freq.
-    vfoa = EEPROMReadLong(13);
-
-    // get VFOb freq.
-    vfob = EEPROMReadLong(17);
-
-    // get XFO freq.
-    xfo = EEPROMReadLong(21);
-
-    // get BFO lsb freq.
-    temp = EEPROMReadLong(25);
-    lsb = temp -2147483647;
-
-    // BFO lsb freq.
-    temp = EEPROMReadLong(29);
-    usb = temp -2147483647;
-
-    // BFO CW freq.
-    temp = EEPROMReadLong(33);
-    cw = temp - 2147483647;
-
-    // get the deafult modes for each VFO
-    char salvar = EEPROM.read(37);
-    VFOAMode = salvar >> 4;
-    VFOBMode = salvar & 15;
-
-    // Si5351 PPM correction value
-    // this is a signed value, so we need to scale it to a unsigned
-    temp = EEPROMReadLong(38);
-    si5351_ppm = temp - 2147483647;
-    // now set it up
-    si5351.set_correction(si5351_ppm);
+    // load the parameters to the environment
+    vfoa = conf.vfoa;
+    VFOAMode = conf.vfoaMode;
+    vfob = conf.vfob;
+    VFOBMode = conf.vfobMode;
+    lsb = conf.lsb;
+    usb = conf.usb;
+    cw = conf.cw;
+    xfo = conf.xfo;
+    si5351_ppm = conf.ppm;
 }
 
 
@@ -1543,10 +1408,10 @@ byte catGetTXStatus() {
 
 
 // delay with CAT check, this is for the welcome screen
-// see the note in the setup
-void delayCat() {
+// see the note in the setup; default ~2 secs
+void delayCat(int del = 2000) {
     // delay in msecs to wait
-    long delay = millis() + 2000;
+    long delay = millis() + del;
     long m = 0;
 
     // loop to waste time
@@ -1631,8 +1496,8 @@ void setup() {
         lcd.print(F("Init EEPROM...  "));
         lcd.setCursor(0, 1);
         lcd.print(F("Please wait...  "));
-        initEeprom();
-        delay(1000);        // wait for 1 second
+        saveEEPROM();
+        delayCat();
         lcd.clear();
     } else {
         // just if it's already ok
@@ -1667,8 +1532,7 @@ void setup() {
         lcd.print(F(" You are in the "));
         lcd.setCursor(0, 1);
         lcd.print(F("   SETUP MODE   "));
-        initEeprom();
-        delay(2000);
+        delay(2000); // 2 secs
         lcd.clear();
 
         // rise the flag of setup mode for every body to see it.
@@ -1782,6 +1646,9 @@ void loop() {
 
             // set the LCD update flag
             update = true;
+
+            // Save the VFOs and modes in the eeprom
+            saveEEPROM();
         }
 
         // mode change
@@ -1861,12 +1728,12 @@ void loop() {
                 inSetup = false;
 
                 // save to the eeprom
-                initEeprom();
+                saveEEPROM();
 
                 // lcd delay to show it properly (user feedback)
                 lcd.setCursor(0, 0);
                 lcd.print(F("##   SAVED    ##"));
-                delay(250);
+                delay(1000);
 
                 // show setup
                 showConfig();
@@ -1884,7 +1751,7 @@ void loop() {
             // user feedback
             lcd.setCursor(0, 0);
             lcd.print(F(" #  Canceled  # "));
-            delay(250);
+            delay(1000);
 
             // show it
             showConfig();
