@@ -80,7 +80,7 @@
  * if you have the any of the COLAB shields uncomment the following line.
  * (the sketch is configured by default for my particular hardware)
  ******************************************************************************/
-//#define COLAB
+#define COLAB
 
 /*************************  FILTER PRE-CONFIGURATIONS **************************
  * As this project aims to easy the user configuration we will pre-stablish some
@@ -1565,6 +1565,7 @@ void setup() {
     // pin mode of the PTT
     pinMode(inPTT, INPUT_PULLUP);
     pinMode(PTT, OUTPUT);
+    digitalWrite(PTT, 0);
 
     // I2C init
     Wire.begin();
@@ -1905,6 +1906,3 @@ void loop() {
         lastMilis = millis();
     }
 }
-
-
-
