@@ -1544,6 +1544,19 @@ byte catGetTXStatus() {
 
 // main setup procedure: get all ready to rock
 void setup() {
+    // CAT Library setup
+    cat.addCATPtt(catGoPtt);
+    cat.addCATAB(catGoToggleVFOs);
+    cat.addCATFSet(catSetFreq);
+    cat.addCATMSet(catSetMode);
+    cat.addCATGetFreq(catGetFreq);
+    cat.addCATGetMode(getActiveVFOMode);
+    cat.addCATSMeter(catGetSMeter);
+    cat.addCATTXStatus(catGetTXStatus);
+
+    // now we activate the library
+    cat.begin(57600, SERIAL_8N1);
+
     // LCD init, create the custom chars first
     lcd.createChar(0, bar);
     lcd.createChar(1, s1);
@@ -1653,19 +1666,6 @@ void setup() {
 
     // start the VFOa and it's mode
     updateAllFreq();
-
-    // CAT Library setup
-    cat.addCATPtt(catGoPtt);
-    cat.addCATAB(catGoToggleVFOs);
-    cat.addCATFSet(catSetFreq);
-    cat.addCATMSet(catSetMode);
-    cat.addCATGetFreq(catGetFreq);
-    cat.addCATGetMode(getActiveVFOMode);
-    cat.addCATSMeter(catGetSMeter);
-    cat.addCATTXStatus(catGetTXStatus);
-
-    // now we activate the library
-    cat.begin(57600, SERIAL_8N1);
 }
 
 
@@ -1905,4 +1905,7 @@ void loop() {
         // and reset the lastreading to keep track
         lastMilis = millis();
     }
+
+    // CAT check
+    cat.check();
 }
