@@ -60,9 +60,9 @@
 // to work on this project, so be it: 2016 June 1st
 #define EEPROMfingerprint "20160601"
 
-/*******************************************************************************
+/***************************** !!! WARNING !!! *********************************
  *
- *                               !!! WARNING !!!
+ *
  *
  * Be aware that the library use the freq on 1/10 hz resolution, so 10 Khz
  * is expressed as 10_000_0 (note the extra zero)
@@ -77,13 +77,13 @@
  *
 * *****************************************************************************/
 
-/*********************** USER BOARD SELECTION **********************************
+/************************** USER BOARD SELECTION *******************************
  * if you have the any of the COLAB shields uncomment the following line.
  * (the sketch is configured by default for my particular hardware)
  ******************************************************************************/
-//#define COLAB
+#define COLAB
 
-/*************************  FILTER PRE-CONFIGURATIONS **************************
+/*********************** FILTER PRE-CONFIGURATIONS *****************************
  * As this project aims to easy the user configuration we will pre-stablish some
  * defaults for some of the most common hardware configurations we have in Cuba
  *
