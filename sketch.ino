@@ -57,7 +57,6 @@
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
 #include <LiquidCrystal.h>  // default
-#include "structeeprom.h"   // included in the project folder
 
 // the fingerprint to know the EEPROM is initialized, we need to stamp something
 // on it, as the 5th birthday anniversary of my daughter was in the date I begin
@@ -85,7 +84,7 @@
  * if you have the any of the COLAB shields uncomment the following line.
  * (the sketch is configured by default for my particular hardware)
  ******************************************************************************/
-#define COLAB
+//#define COLAB
 
 /*********************** FILTER PRE-CONFIGURATIONS *****************************
  * As this project aims to easy the user configuration we will pre-stablish some
@@ -155,7 +154,7 @@ Bounce dbBtnPush = Bounce();
 // analog buttons library declaration (constructor)
 // define the analog pin to handle the buttons
 #define KEYS_PIN  2
-AnalogButtons analogButtons(KEYS_PIN, 30, 20);
+AnalogButtons analogButtons(KEYS_PIN, INPUT, 5, 20);
 /* HOW to calculate the values for each individual button?
  *
  * We use a external Pullup of 10K and all the buttons has a individual "R"
@@ -298,11 +297,11 @@ Si5351 si5351;
 // hardware pre configured values
 #if defined (SSBF_FT747GX)
     // Pre configured values for a Single conversion radio using the FT-747GX
-    int lsb =  -13500;
-    int usb =   13500;
+    int lsb =  -16000;
+    int usb =   16000;
     int cw =        0;
     long xfo =       0;
-    long ifreq =   82148000;
+    long ifreq =   82076600;
 #endif
 
 #if defined (SSBF_URSS_500H)
@@ -354,7 +353,7 @@ Si5351 si5351;
 long si5351_ppm = 224380;    // it has the *10 included
 
 // the variables
-long vfoa = 71100000;             // default starting VFO A freq
+long vfoa = 71038000;             // default starting VFO A freq
 long vfob = 71755000;             // default starting VFO B freq
 long tvfo = 0;                    // temporal VFO storage for RIT usage
 long txSplitVfo =  0;             // temporal VFO storage for RIT usage when TX
@@ -1081,7 +1080,7 @@ void setActiveVFOMode(byte mode) {
 // check if the EEPROM is initialized
 boolean checkInitEEPROM() {
     // read the eeprom config data
-    eeReadStruct(0, conf);
+    EEPROM.get(0, conf);
 
     // check for the initializer and version
     if (strcmp(conf.finger, EEPROMfingerprint) and EEP_VER == conf.version) {
@@ -1109,14 +1108,14 @@ void saveEEPROM() {
     conf.ppm = si5351_ppm;
 
     // write it
-    eeWriteStruct(0, conf);
+    EEPROM.put(0, conf);
 }
 
 
 // load the eprom contents
 void loadEEPROMConfig() {
     // write it
-    eeReadStruct(0, conf);
+    EEPROM.get(0, conf);
 
     // load the parameters to the environment
     vfoa = conf.vfoa;
@@ -1617,7 +1616,7 @@ void going2RX(boolean lptt) {
 
 // in RX, check if we must go to TX
 void going2TX(boolean lptt) {
-    if (lptt or catTX) {
+    if (!lptt or catTX) {
         // PTT asserted, going into TX
         tx = true;
         digitalWrite(PTT, tx);
