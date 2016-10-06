@@ -264,15 +264,13 @@ Si5351 si5351;
 #define CONFIG_IF       0
 #define CONFIG_VFO_A    1
 #define CONFIG_MODE_A   2
-#define CONFIG_VFO_B    3
-#define CONFIG_MODE_B   4
-#define CONFIG_LSB      5
-#define CONFIG_USB      6
-#define CONFIG_CW       7
-#define CONFIG_XFO      8
-#define CONFIG_PPM      9
+#define CONFIG_LSB      3
+#define CONFIG_USB      4
+#define CONFIG_CW       5
+#define CONFIG_XFO      6
+#define CONFIG_PPM      7
 // --
-#define CONFIG_MAX 9               // the amount of configure options
+#define CONFIG_MAX 7               // the amount of configure options
 
 // sampling interval for the AGC, 1/4 second, averaged every 4 samples and with
 // a scope of the last 6 samples (aka: 2/3 moving average)
@@ -371,6 +369,8 @@ boolean split =        false;      // this holds th split state
 boolean catTX =        false;      // CAT command to go to PTT
 byte sMeter =          0;          // hold the value of the Smeter readings
                                    // in both RX and TX modes
+byte qcounter =        0;          // Timer to be incremented each 1/4 second
+                                   // approximately, to trigger a VFO update
 
 // temp vars (used in the loop function)
 boolean tbool   = false;
@@ -394,6 +394,159 @@ struct mConf {
 // declaring the main configuration variable for mem storage
 struct mConf conf;
 
+// pointers to the actual values
+long *ptrVFO;
+byte *ptrMode;
+
+
+/******************************* MISCELLANEOUS ********************************/
+
+
+// split check
+void splitCheck() {
+    if (split) {
+        // revert back the VFO
+        activeVFO = !activeVFO;
+        updateAllFreq();
+    }
+}
+
+
+// change the modes in a cycle
+void changeMode() {
+    // normal increment
+    *ptrMode += 1;
+
+    // checking for overflow
+    if (*ptrMode > MODE_MAX) *ptrMode = 0;
+
+    // Apply the changes
+    updateAllFreq();
+}
+
+
+// change the steps
+void changeStep() {
+    // calculating the next step
+    if (step < 7) {
+        // simple increment
+        step += 1;
+    } else {
+        // default start mode is 2 (10Hz)
+        step = 2;
+        // in setup mode and just specific modes it's allowed to go to 1 hz
+        boolean allowedModes = false;
+        allowedModes = allowedModes or (config == CONFIG_LSB);
+        allowedModes = allowedModes or (config == CONFIG_USB);
+        allowedModes = allowedModes or (config == CONFIG_PPM);
+        allowedModes = allowedModes or (config == CONFIG_XFO);
+        if (!runMode and allowedModes) step = 1;
+    }
+
+    // if in normal mode reset the counter to show the change in the LCD
+    if (runMode) showStepCounter = showStepTimer;     // aprox half second
+
+    // tell the LCD that it must show the change
+    mustShowStep = true;
+}
+
+
+// RIT toggle
+void toggleRit() {
+    if (!ritActive) {
+        // going to activate it: store the active VFO
+        tvfo = *ptrVFO;
+        ritActive = true;
+    } else {
+        // going to deactivate: reset the stored VFO
+        *ptrVFO = tvfo;
+        ritActive = false;
+    }
+}
+
+
+// return the right step size to move
+long getStep () {
+    // we get the step from the global step var
+    long ret = 1;
+
+    // validation just in case
+    if (step == 0) step = 1;
+    for (byte i=0; i < step; i++) ret *= 10;
+    return ret;
+}
+
+
+// in TX, check if we must go to RX
+void going2RX(boolean lptt) {
+    // if hardware PTT or CAT changed, I must go to RX
+    if (lptt or !catTX) {
+        // PTT released, going to RX
+        tx = false;
+        digitalWrite(PTT, tx);
+
+        // make changes if tx goes active when RIT is active
+        if (ritActive) {
+            // get the TX vfo and store it as the reference for the RIT
+            tvfo = *ptrVFO;
+            // restore the rit VFO to the actual VFO
+            *ptrVFO = txSplitVfo;
+        }
+
+        // make the split changes if needed
+        splitCheck();
+
+        // rise the update flag
+        update = true;
+    }
+}
+
+
+// in RX, check if we must go to TX
+void going2TX(boolean lptt) {
+    if (!lptt or catTX) {
+        // PTT asserted, going into TX
+        tx = true;
+        digitalWrite(PTT, tx);
+
+        // make changes if tx goes active when RIT is active
+        if (ritActive) {
+            // save the actual rit VFO
+            txSplitVfo = *ptrVFO;
+            // set the TX freq to the active VFO
+            *ptrVFO = tvfo;
+        }
+
+        // make the split changes if needed
+        splitCheck();
+
+        // rise the update flag
+        update = true;
+    }
+}
+
+
+// swaps the VFOs
+void swapVFO(byte force = 2) {
+    // swap the VFOs if needed
+    if (force == 2) {
+        // just toggle it
+        activeVFO = !activeVFO;
+    } else {
+        // set it as commanded
+        activeVFO = bool(force);
+    }
+
+    // setting the VFO/mode pointers
+    if (activeVFO) {
+        ptrVFO = &vfoa;
+        ptrMode = &VFOAMode;
+    } else {
+        ptrVFO = &vfob;
+        ptrMode = &VFOBMode;
+    }
+}
+
 
 /******************************** ENCODER *************************************/
 
@@ -414,50 +567,31 @@ void encoderMoved(int dir) {
 
 // update freq procedure
 void updateFreq(int dir) {
-    long delta;
+    long newFreq = *ptrVFO;
+
     if (ritActive) {
         // we fix the steps to 10 Hz in rit mode
-        delta = 100 * dir;
+        newFreq += 100 * dir;
     } else {
         // otherwise we use the default step on the environment
-        delta = getStep() * dir;
+        newFreq += getStep() * dir;
     }
-
-    // move the active vfo
-    if (activeVFO) {
-        vfoa = moveFreq(vfoa, delta);
-    } else {
-        vfob = moveFreq(vfob, delta);
-    }
-
-    // update the output freq
-    setFreqVFO();
-}
-
-
-// frequency move
-long moveFreq(long freq, long delta) {
-    // freq is used as the output var
-    long newFreq = freq + delta;
 
     // limit check
     if (ritActive) {
         // check we don't exceed the MAX_RIT
-        long diff = tvfo - newFreq;
-
-        // update just if allowed
-        if (abs(diff) <= MAX_RIT) freq = newFreq;
+        if (abs(tvfo - newFreq) > MAX_RIT) return;
     } else {
-        // do it
-        freq = newFreq;
-
-        // limit check
-        if(freq > F_MAX) freq = F_MAX;
-        if(freq < F_MIN) freq = F_MIN;
+        // limit check for normal VFO
+        if(newFreq > F_MAX) newFreq = F_MIN;
+        if(newFreq < F_MIN) newFreq = F_MAX;
     }
 
-    // return the new freq
-    return freq;
+    // apply the change
+    *ptrVFO = newFreq;
+
+    // update the output freq
+    setFreqVFO();
 }
 
 
@@ -471,90 +605,56 @@ void updateSetupValues(int dir) {
         // just showing, show the config on the LCD
         updateShowConfig(dir);
     } else {
+        // change the VFO to A by default
+        swapVFO(1);
         // I'm modifying, switch on the config item
         switch (config) {
             case CONFIG_IF:
-                // change the VFO to A by default
-                activeVFO = true;
                 // change the IF value
                 ifreq += getStep() * dir;
-                // hot swap it
-                updateAllFreq();
                 break;
             case CONFIG_VFO_A:
-                // change the VFO
-                activeVFO = true;
                 // change VFOa
-                vfoa += getStep() * dir;
-                // hot swap it
-                updateAllFreq();
-                break;
-            case CONFIG_VFO_B:
-                // change the VFO
-                activeVFO = false;
-                // change VFOb, this is not hot swapped
-                vfob += getStep() * dir;
+                *ptrVFO += getStep() * dir;
                 break;
             case CONFIG_MODE_A:
-                // change the mode for the VFOa
-                activeVFO = true;
                 // hot swap it
                 changeMode();
                 // set the default mode in the VFO A
                 showModeSetup(VFOAMode);
                 break;
-            case CONFIG_MODE_B:
-                // change the mode for the VFOb
-                activeVFO =  false;
-                // hot swap it
-                changeMode();
-                // set the default mode in the VFO B
-                showModeSetup(VFOBMode);
-                break;
             case CONFIG_USB:
-                // force the VFO A
-                activeVFO = true;
                 // change the mode to USB
-                setActiveVFOMode(MODE_USB);
+                *ptrMode = MODE_USB;
                 // change the USB BFO
                 usb += getStep() * dir;
-                // hot swap it
-                updateAllFreq();
                 break;
             case CONFIG_LSB:
-                // force the VFO A
-                activeVFO = true;
                 // change the mode to LSB
-                setActiveVFOMode(MODE_LSB);
+                *ptrMode = MODE_LSB;
                 // change the LSB BFO
                 lsb += getStep() * dir;
-                // hot swap it
-                updateAllFreq();
                 break;
             case CONFIG_CW:
-                // force the VFO A
-                activeVFO = true;
                 // change the mode to CW
-                setActiveVFOMode(MODE_CW);
+                *ptrMode = MODE_CW;
                 // change the CW BFO
                 cw += getStep() * dir;
-                // hot swap it
-                updateAllFreq();
                 break;
             case CONFIG_PPM:
                 // change the Si5351 PPM
                 si5351_ppm += getStep() * dir;
                 // instruct the lib to use the new ppm value
                 si5351.set_correction(si5351_ppm);
-                // hot swap it, this time both values
-                updateAllFreq();
                 break;
             case CONFIG_XFO:
                 // change XFO
                 xfo += getStep() * dir;
-                updateAllFreq();
                 break;
         }
+
+        // for all cases update the freqs
+        updateAllFreq();
 
         // update el LCD
         showModConfig();
@@ -603,16 +703,10 @@ void showConfigLabels() {
             lcd.print(F("  IF frequency  "));
             break;
         case CONFIG_VFO_A:
-            lcd.print(F("VFO A start freq"));
-            break;
-        case CONFIG_VFO_B:
-            lcd.print(F("VFO B start freq"));
+            lcd.print(F("VFO A freq"));
             break;
         case CONFIG_MODE_A:
-            lcd.print(F("VFO A start mode"));
-            break;
-        case CONFIG_MODE_B:
-            lcd.print(F("VFO B start mode"));
+            lcd.print(F("VFO A mode"));
             break;
         case CONFIG_USB:
             lcd.print(F(" BFO freq. USB  "));
@@ -674,12 +768,12 @@ void showConfigValue(long val) {
     lcd.print(F("Val:"));
     formatFreq(val);
 
-    // if on config mode we must show up to hz part
+    // if on normal mode we show in 10 Hz
     if (runMode) {
-        lcd.print(F("0hz"));
-    } else {
-        lcd.print(F("hz"));
+        lcd.print("0");
     }
+
+    lcd.print(F("hz"));
 }
 
 
@@ -697,14 +791,8 @@ void showModConfig() {
         case CONFIG_VFO_A:
             showConfigValue(vfoa);
             break;
-        case CONFIG_VFO_B:
-            showConfigValue(vfob);
-            break;
         case CONFIG_MODE_A:
             showModeSetup(VFOAMode);
-        case CONFIG_MODE_B:
-            showModeSetup(VFOBMode);
-            break;
         case CONFIG_USB:
             showConfigValueSigned(usb);
             break;
@@ -838,7 +926,7 @@ void showRit() {
      **************************************************************************/
 
     // get the active VFO to calculate the deviation
-    long vfo = getActiveVFOFreq();
+    long vfo = *ptrVFO;
 
     long diff = vfo - tvfo;
 
@@ -913,101 +1001,45 @@ void showStep() {
 /********************************* SET & GET **********************************/
 
 
-// get the active VFO freq
-long getActiveVFOFreq() {
-    // which one is the active?
-    if (activeVFO) {
-        return vfoa;
-    } else {
-        return vfob;
-    }
-}
-
-
-// get the active mode BFO freq
-long getActiveBFOFreq() {
-    // obtener el modo activo
-    byte mode = getActiveVFOMode();
-
-    /* ***********************
-     * Remember we use allways up conversion so...
-     *
-     * LSB: the VFO is at the right spot as the ifreq
-     * USB: we displace the VFO & BFO up in a BW amout (usb)
-     * CW: we displace the VFO & BFO up in a BW amout (cw)
-     *
-     * */
-
-    // return it
-    switch (mode) {
-        case MODE_LSB:
-            return ifreq - xfo + lsb;
-            break;
-        case MODE_USB:
-            return ifreq - xfo + usb;
-            break;
-        case MODE_CW:
-            return ifreq - xfo + cw;
-            break;
-    }
-
-    return ifreq;
-}
-
-
 // set the calculated freq to the VFO
 void setFreqVFO() {
-    // get the active VFO freq, calculate the final freq+IF and get it out
-    long freq = getActiveVFOFreq();
-    byte mode = getActiveVFOMode();
+    long freq = *ptrVFO + ifreq;
 
-    /* ***********************
-     * Remember we allways use up conversion so...
-     *
-     * LSB & USB: we displace the VFO & BFO up in a BW/2 amout
-     * CW: TBD
-     *
-     * */
+    if (*ptrMode == MODE_USB) freq += usb;
+    if (*ptrMode == MODE_LSB) freq += lsb;
+    if (*ptrMode == MODE_CW)  freq += cw;
 
-    // return it
-    switch (mode) {
-        case MODE_LSB:
-            freq += lsb;
-            break;
-        case MODE_USB:
-            freq += usb;
-            break;
-        case MODE_CW:
-            freq += cw;
-            break;
-    }
-
-    freq += ifreq;
     si5351.set_freq(freq, 0, SI5351_CLK0);
 }
 
 
-// set the bfo freq
-void setFreqBFO() {
-    // get the active vfo mode freq and get it out
-    long frec = getActiveBFOFreq();
+// Force freq update for all the environment vars
+void updateAllFreq() {
+    // VFO update
+    setFreqVFO();
+
+    // BFO update
+    long freq = ifreq - xfo;
+
+    // mod it by mode
+    if (*ptrMode == MODE_USB) freq += usb;
+    if (*ptrMode == MODE_LSB) freq += lsb;
+    if (*ptrMode == MODE_CW)  freq += cw;
+
     // deactivate it if zero
-    if (frec == 0) {
+    if (freq == 0) {
         // deactivate it
         si5351.output_enable(SI5351_CLK2, 0);
     } else {
         // output it
         si5351.output_enable(SI5351_CLK2, 1);
-        si5351.set_freq(frec, 0, SI5351_CLK2);
+        si5351.set_freq(freq, 0, SI5351_CLK2);
     }
-}
 
-
-// set the xfo freq
-void setFreqXFO() {
-    // RFT SEG-15 CASE: the XFO is in PLACE but it is not generated in any case
+    // XFO update
     #if defined (SSBF_RFT_SEG15)
-        // XFO DISABLED AT ALL COST
+        // RFT SEG-15 CASE:
+        // the XFO is in PLACE but it is not generated in any case
         si5351.output_enable(SI5351_CLK1, 0);
     #else
         // just put it out if it's set
@@ -1021,44 +1053,6 @@ void setFreqXFO() {
             // affected
         }
     #endif
-}
-
-
-// Force freq update for all the environment vars
-void updateAllFreq() {
-    setFreqVFO();
-    setFreqBFO();
-    setFreqXFO();
-}
-
-
-// set a freq to the active VFO
-void setActiveVFO(long f) {
-    if (activeVFO) {
-        vfoa = f;
-    } else {
-        vfob = f;
-    }
-}
-
-
-// return the active VFO mode
-byte getActiveVFOMode() {
-    if (activeVFO) {
-        return VFOAMode;
-    } else {
-        return VFOBMode;
-    }
-}
-
-
-// set the active VFO mode
-void setActiveVFOMode(byte mode) {
-    if (activeVFO) {
-        VFOAMode = mode;
-    } else {
-        VFOBMode = mode;
-    }
 }
 
 
@@ -1297,7 +1291,7 @@ void catSetMode(byte m) {
     if (m > 2) return;  // no change
 
     // by luck we use the same mode than the CAT lib so far
-    setActiveVFOMode(m);
+    *ptrMode = m;
 
     // Apply the changes
     updateAllFreq();
@@ -1308,7 +1302,14 @@ void catSetMode(byte m) {
 // get freq from CAT
 long catGetFreq() {
     // get the active VFO freq and pass it
-    return getActiveVFOFreq() / 10;
+    return *ptrVFO / 10;
+}
+
+
+// get mode from CAT
+byte catGetMode() {
+    // get the active VFO mode and pass it
+    return *ptrMode;
 }
 
 
@@ -1369,8 +1370,8 @@ void btnVFOABClick() {
         // BEFORE we change the active VFO
         if (ritActive) toggleRit();
 
-        // now we change the VFO.
-        activeVFO = !activeVFO;
+        // now we swap the VFO.
+        swapVFO();
 
         // update VFO/BFO and instruct to update the LCD
         updateAllFreq();
@@ -1475,145 +1476,6 @@ void btnSPLITClick() {
 }
 
 
-/******************************* MISCELLANEOUS ********************************/
-
-
-// split check
-void splitCheck() {
-    if (split) {
-        // revert back the VFO
-        activeVFO = !activeVFO;
-        updateAllFreq();
-    }
-}
-
-
-// change the modes in a cycle
-void changeMode() {
-    byte mode = getActiveVFOMode();
-
-    // calculating the next mode in the queue
-    if (mode == MODE_MAX) {
-        // overflow: reset
-        mode = 0;
-    } else {
-        // normal increment
-        mode += 1;
-    }
-
-    setActiveVFOMode(mode);
-
-    // Apply the changes
-    updateAllFreq();
-}
-
-
-// change the steps
-void changeStep() {
-    // calculating the next step
-    if (step < 7) {
-        // simple increment
-        step += 1;
-    } else {
-        // default start mode is 2 (10Hz)
-        step = 2;
-        // in setup mode and just specific modes it's allowed to go to 1 hz
-        boolean allowedModes = false;
-        allowedModes = allowedModes or (config == CONFIG_LSB);
-        allowedModes = allowedModes or (config == CONFIG_USB);
-        allowedModes = allowedModes or (config == CONFIG_PPM);
-        allowedModes = allowedModes or (config == CONFIG_XFO);
-        if (!runMode and allowedModes) step = 1;
-    }
-
-    // if in normal mode reset the counter to show the change in the LCD
-    if (runMode) showStepCounter = showStepTimer;     // aprox half second
-
-    // tell the LCD that it must show the change
-    mustShowStep = true;
-}
-
-
-// RIT toggle
-void toggleRit() {
-    if (!ritActive) {
-        // going to activate it: store the active VFO
-        tvfo = getActiveVFOFreq();
-        ritActive = true;
-    } else {
-        // going to deactivate: reset the stored VFO
-        if (activeVFO) {
-            vfoa = tvfo;
-        } else {
-            vfob = tvfo;
-        }
-        // deactivate it
-        ritActive = false;
-    }
-}
-
-
-// return the right step size to move
-long getStep () {
-    // we get the step from the global step var
-    long ret = 1;
-
-    // validation just in case
-    if (step == 0) step = 1;
-    for (byte i=0; i < step; i++) ret *= 10;
-    return ret;
-}
-
-
-// in TX, check if we must go to RX
-void going2RX(boolean lptt) {
-    // if hardware PTT or CAT changed, I must go to RX
-    if (lptt or !catTX) {
-        // PTT released, going to RX
-        tx = false;
-        digitalWrite(PTT, tx);
-
-        // make changes if tx goes active when RIT is active
-        if (ritActive) {
-            // get the TX vfo and store it as the reference for the RIT
-            tvfo = getActiveVFOFreq();
-            // restore the rit VFO to the actual VFO
-            setActiveVFO(txSplitVfo);
-        }
-
-        // make the split changes if needed
-        splitCheck();
-
-        // rise the update flag
-        update = true;
-    }
-}
-
-
-// in RX, check if we must go to TX
-void going2TX(boolean lptt) {
-    if (!lptt or catTX) {
-        // PTT asserted, going into TX
-        tx = true;
-        digitalWrite(PTT, tx);
-
-        // make changes if tx goes active when RIT is active
-        if (ritActive) {
-            // save the actual rit VFO
-            txSplitVfo = getActiveVFOFreq();
-            // set the TX freq to the active VFO
-            setActiveVFO(tvfo);
-        }
-
-        // make the split changes if needed
-        splitCheck();
-
-        // rise the update flag
-        update = true;
-    }
-}
-
-
 /************************* SETUP and LOOP *************************************/
 
 
@@ -1624,7 +1486,7 @@ void setup() {
     cat.addCATFSet(catSetFreq);
     cat.addCATMSet(catSetMode);
     cat.addCATGetFreq(catGetFreq);
-    cat.addCATGetMode(getActiveVFOMode);
+    cat.addCATGetMode(catGetMode);
     cat.addCATSMeter(catGetSMeter);
     cat.addCATTXStatus(catGetTXStatus);
     // now we activate the library
@@ -1735,6 +1597,8 @@ void setup() {
 
     // setting up VFO A as principal.
     activeVFO = true;
+    ptrVFO = &vfoa;
+    ptrMode = &VFOAMode;
 
     // Enable the Si5351 outputs
     si5351.output_enable(SI5351_CLK0, 1);
