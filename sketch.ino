@@ -45,27 +45,25 @@
  *    of the nasty harmonics
  ******************************************************************************/
 
-// define the mac count for analog buttons in the analogbuttons library
-#define ANALOGBUTTONS_MAX_SIZE 4
+// define the max count for analog buttons in the BMux library
+#define BUTTONS_COUNT 4
 
 // now the main include block
 #include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
 #include <si5351.h>         // https://github.com/etherkit/Si5351Arduino/
 #include <Bounce2.h>        // https://github.com/thomasfredericks/Bounce2/
-#include <AnalogButtons.h>  // https://travis-ci.org/rlogiacco/AnalogButtons/
+#include <BMux.h>           // https://github.com/pavelmc/BMux/
 #include <ft857d.h>         // https://github.com/pavelmc/ft857d/
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
 #include <LiquidCrystal.h>  // default
 
 // the fingerprint to know the EEPROM is initialized, we need to stamp something
-// on it, as the 5th birthday anniversary of my daughter was in the date I begin
-// to work on this project, so be it: 2016 June 1st
+// on it, as the 5th birthday anniversary of my daughter was the date I begin to
+// work on this project, so be it: 2016 June 1st
 #define EEPROMfingerprint "20160601"
 
 /***************************** !!! WARNING !!! *********************************
- *
- *
  *
  * Be aware that the library use the freq on 1/10 hz resolution, so 10 Khz
  * is expressed as 10_000_0 (note the extra zero)
@@ -95,10 +93,10 @@
  * you will get ball park values for your configuration.
  *
  * See the Setup_en|Setup_es PDF files in the doc directory, if you use this and
- * use a own hardware variant I can code it to make your life easier, write to
- * pavelmc@gmail.com for details [author]
+ * use a custom hardware variant I can code it to make your life easier, write
+ * to pavelmc@gmail.com for details [author]
  *
- * WARNING at least one must be un-commented for the compiler to work
+ * WARNING: at least one must be un-commented for the compiler to work
  ******************************************************************************/
 // Single conversion Radio using the SSB filter of an FT-80C/FT-747GX
 // the filter reads: "Type: XF-8.2M-242-02, CF: 8.2158 Mhz"
@@ -107,27 +105,30 @@
 // Single conversion Radio using the SSB filter of a Polosa/Angara
 // the filter reads: "ZMFDP-500H-3,1"
 //
-// WARNING !!!! This filters has a very high loss (measured around -20dB) if
-// not tuned in the input and output
+// WARNING !!!! This filters has a very high loss (measured around -20dB)
+//
+// You must connect to it by the low impedance taps and tune both start & end
+// of the filter with a 5-20 pF trimmer and a 33 to 56 pF in parallel depending
+// on the particular trimmer range
 //
 //#define SSBF_URSS_500H
 
 // Double conversion (28.8MHz/200KHz) radio from RF board of a RFT SEG-15
-// the radio has two filters, we used the one that reads:
+// the radio has two 200 Khz filters, we used the one that reads:
 // "MF 200 - E - 0235 / RTF 02.83"
 //
 // WARNING !!!! See notes below in the ifdef structure for the RFT SEG-15
 //
 //#define SSBF_RFT_SEG15
 
+
 // The eeprom & sketch version; if the eeprom version is lower than the one on
 // the sketch we force an update (init) to make a consistent work on upgrades
 #define EEP_VER     4
 #define FMW_VER     9
 
-// the limits of the VFO, the one the user see, for now just 40m for now
-// you can tweak it with the limits of your particular hardware
-// this are LCD diplay frequencies.
+// the limits of the VFO, for now just 40m for now; you can tweak it with the
+// limits of your particular hardware, again this are LCD diplay frequencies.
 #define F_MIN      65000000     // 6.500.000
 #define F_MAX      75000000     // 7.500.000
 
@@ -136,6 +137,7 @@
 #define ENC_B    2              // Encoder pin B
 #define inPTT   13              // PTT/CW KEY Line with pullup from the outside
 #define PTT     12              // PTT actuator, this will put thet radio on TX
+
 #if defined (COLAB)
     // Any of the COLAB shields
     #define btnPush  11             // Encoder Button
@@ -151,41 +153,23 @@ Rotary encoder = Rotary(ENC_A, ENC_B);
 #define debounceInterval  10    // in milliseconds
 Bounce dbBtnPush = Bounce();
 
-// analog buttons library declaration (constructor)
+// analog buttons library declaration (BMux)
 // define the analog pin to handle the buttons
 #define KEYS_PIN  2
-AnalogButtons analogButtons(KEYS_PIN, INPUT, 5, 20);
-/* HOW to calculate the values for each individual button?
- *
- * We use a external Pullup of 10K and all the buttons has a individual "R"
- * value pulled to GND when pressed, the value for the button definition is
- * calculated from the formula:
- *
- * Value =  R / 10 * 1023 / 2       (R is in kilo ohms)
- *
- * If you run into trouble and it does not work, you can always compute it
- * backwards, starting with the voltage drop developed.
- *
- * Take a voltmeter and measure the +5V (V) and the voltage at the KEY_PIN
- * with your problematic button pressed (UV) and simply use this formula:
- *
- * Value = UV/V * 1023
- *
- * Try to use resistors with values over 1K ohms to minimize the power drain
- * and quality ones (at least 10% tolerance).
- *
- */
-Button bvfoab = Button(512, &btnVFOABClick);    // 10k
-Button bmode = Button(240, &btnModeClick);      // 4.7k
-Button brit = Button(112, &btnRITClick);        // 2.2k
-Button bsplit = Button(0, &btnSPLITClick);      // 0k
+BMux abm;
+
+// creating the analog buttons for the BMux lib
+Button bvfoab   = Button(597, &btnVFOABClick);      // 10k
+Button bmode    = Button(372, &btnModeClick);       // 4.7k
+Button brit     = Button(208, &btnRITClick);        // 2.2k
+Button bsplit   = Button(817, &btnSPLITClick);      // 22k
 
 // the CAT radio lib
 ft857d cat = ft857d();
 
 // lcd pins assuming a 1602 (16x2) at 4 bits
 #if defined (COLAB)
-    // COLAB shield + Arduino Mini Board
+    // COLAB shield + Arduino Mini/UNO Board
     #define LCD_RS      5
     #define LCD_E       6
     #define LCD_D4      7
@@ -266,7 +250,7 @@ byte s9[8] = {
   B11111
 };
 
-// Si5351 library setup
+// Si5351 library declaration
 Si5351 si5351;
 
 // run mode constants
@@ -274,7 +258,7 @@ Si5351 si5351;
 #define MODE_USB 1
 #define MODE_CW  2
 #define MODE_MAX 2                // the mode count to cycle (-1)
-#define MAX_RIT 99900             // RIT 9.99 Khz
+#define MAX_RIT 99900             // RIT 9.99 Khz * 10
 
 // config constants
 #define CONFIG_IF       0
@@ -290,37 +274,37 @@ Si5351 si5351;
 // --
 #define CONFIG_MAX 9               // the amount of configure options
 
-// sampling interval for the AGC, 33 milli averaged every 10 reads: gives 3
-// updates per second and a good visual effect
-#define SM_SAMPLING_INTERVAL  33
+// sampling interval for the AGC, 1/4 second, averaged every 4 samples and with
+// a scope of the last 6 samples (aka: 2/3 moving average)
+#define SM_SAMPLING_INTERVAL  250
 
 // hardware pre configured values
 #if defined (SSBF_FT747GX)
     // Pre configured values for a Single conversion radio using the FT-747GX
-    int lsb =  -16000;
-    int usb =   16000;
-    int cw =        0;
-    long xfo =       0;
+    int lsb =        -16000;
+    int usb =         16000;
+    int cw =              0;
+    long xfo =            0;
     long ifreq =   82076600;
 #endif
 
 #if defined (SSBF_URSS_500H)
     // Pre configured values for a Single conversion radio using the Polosa
     // Angara 500H filter
-    int lsb =  -17500;
-    int usb =   17500;
-    int cw =        0;
-    long xfo =       0;
-    long ifreq =   4980800;
+    int lsb =        -17500;
+    int usb =         17500;
+    int cw =              0;
+    long xfo =            0;
+    long ifreq =    4980800;
 #endif
 
 #if defined (SSBF_RFT_SEG15)
     // Pre configured values for a Double conversion radio using the RFT SEG15
     // RF board using the filter marked as:
-    int lsb =  -14350;
-    int usb =   14350;
-    int cw =        0;
-    long ifreq =   282000000;
+    int lsb =        -14350;
+    int usb =         14350;
+    int cw =              0;
+    long ifreq =  282000000;
     /***************************************************************************
      *                     !!!!!!!!!!!    WARNING   !!!!!!!!!!
      *
@@ -344,12 +328,15 @@ Si5351 si5351;
      *  In this case the firmware will keep track of the XFO but will never
      *  turn it on. It is used only for the calculations
     */
-    signed long xfo =       279970000;
+    long xfo =  279970000;
 #endif
 
-// put the value here if you have the default ppm corrections for you Si5351
-// if you set it here it will be stored on the EEPROM on the initial start,
-// otherwise set it to zero and you can set it up via the SETUP menu
+// Put the value here if you have the default ppm corrections for you Si5351
+// if you set it here it will be stored on the EEPROM on the initial start.
+//
+// Otherwise set it to zero and you can set it up via the SETUP menu, but it
+// will get reset to zero each time you program the arduino...
+// so... PUT YOUR VALUE HERE
 long si5351_ppm = 224380;    // it has the *10 included
 
 // the variables
@@ -357,9 +344,10 @@ long vfoa = 71038000;             // default starting VFO A freq
 long vfob = 71755000;             // default starting VFO B freq
 long tvfo = 0;                    // temporal VFO storage for RIT usage
 long txSplitVfo =  0;             // temporal VFO storage for RIT usage when TX
-byte step = 3;                    // default steps position index: 1*10E3 = 1000 = 100hz
-                                  // step position is calculated to avoid to use
-                                  // a big array, see getStep()
+byte step = 3;                    // default steps position index:
+                                  // as 1*10E3 = 1000 = 100hz; step position is
+                                  // calculated to avoid to use a big array
+                                  // see getStep() function
 boolean update = true;            // lcd update flag in normal mode
 byte encoderState = DIR_NONE;     // encoder state
 byte config = 0;                  // holds the configuration item selected
@@ -369,20 +357,22 @@ boolean mustShowStep = false;     // var to show the step instead the bargraph
                                   // aprox 3 secs
 word showStepCounter = showStepTimer; // the timer counter
 boolean showStepEnd =  false;     // this one rises when the mustShowStep falls
-boolean runMode =      true;
-boolean activeVFO =    true;
+boolean runMode =      true;      // true: normal, false: setup
+boolean activeVFO =    true;      // true: A, False: B
 byte VFOAMode =        MODE_LSB;
 byte VFOBMode =        MODE_LSB;
-boolean ritActive =    false;
-boolean tx =           false;
-byte pep[15];                      // s-meter readings storage
+boolean ritActive =    false;     // true: rit active, false: rit disabled
+boolean tx =           false;     // whether we are on TX mode or not
+#define BARGRAPH_SAMPLES    6
+byte pep[BARGRAPH_SAMPLES];        // s-meter readings storage
 long lastMilis =       0;          // to track the last sampled time
 boolean smeterOk =     false;      // it's ok to show the bar graph
 boolean split =        false;      // this holds th split state
 boolean catTX =        false;      // CAT command to go to PTT
 byte sMeter =          0;          // hold the value of the Smeter readings
                                    // in both RX and TX modes
-// temp vars
+
+// temp vars (used in the loop function)
 boolean tbool   = false;
 
 // structured data: Main Configuration Parameters
@@ -399,7 +389,10 @@ struct mConf {
     int usb;
     int cw;
     int ppm;
-} conf;
+};
+
+// declaring the main configuration variable for mem storage
+struct mConf conf;
 
 
 /******************************** ENCODER *************************************/
@@ -412,7 +405,6 @@ void encoderMoved(int dir) {
         // update freq
         updateFreq(dir);
         update = true;
-
     } else {
         // update the values in the setup mode
         updateSetupValues(dir);
@@ -451,8 +443,7 @@ long moveFreq(long freq, long delta) {
     // limit check
     if (ritActive) {
         // check we don't exceed the MAX_RIT
-        long diff = tvfo;
-        diff -= newFreq;
+        long diff = tvfo - newFreq;
 
         // update just if allowed
         if (abs(diff) <= MAX_RIT) freq = newFreq;
@@ -507,6 +498,7 @@ void updateSetupValues(int dir) {
             case CONFIG_MODE_A:
                 // change the mode for the VFOa
                 activeVFO = true;
+                // hot swap it
                 changeMode();
                 // set the default mode in the VFO A
                 showModeSetup(VFOAMode);
@@ -514,6 +506,7 @@ void updateSetupValues(int dir) {
             case CONFIG_MODE_B:
                 // change the mode for the VFOb
                 activeVFO =  false;
+                // hot swap it
                 changeMode();
                 // set the default mode in the VFO B
                 showModeSetup(VFOBMode);
@@ -699,8 +692,6 @@ void showModConfig() {
     lcd.setCursor(0, 1);
     switch (config) {
         case CONFIG_IF:
-            // we force the VFO and the actual mode on it
-            activeVFO = true;
             showConfigValue(ifreq);
             break;
         case CONFIG_VFO_A:
@@ -738,12 +729,12 @@ void formatFreq(long freq) {
     // for easy viewing we format a freq like 7.110 to 7.110.00
     long t;
 
-    // get the freq in Hz as the lib needs in 1/100 hz resolution
+    // get the freq in Hz as the lib needs in 1/10 hz resolution
     freq /= 10;
 
     // Mhz part
     t = freq / 1000000;
-    if (t < 10) spaces(1);
+    if (t < 10) lcd.print(" ");
     if (t == 0) {
         spaces(2);
     } else {
@@ -817,13 +808,11 @@ void updateLcd() {
 
     // second line
     lcd.setCursor(0, 1);
-    if (tx == true) {
+    if (tx) {
         lcd.print(F("TX "));
     } else {
         lcd.print(F("RX "));
     }
-
-    // here goes the rx/tx bar graph or the other infos as RIT or STEPS
 
     // if we have a RIT or steps we manage it here and the bar will hold
     if (ritActive) showRit();
@@ -851,10 +840,9 @@ void showRit() {
     // get the active VFO to calculate the deviation
     long vfo = getActiveVFOFreq();
 
-    long diff = vfo;
-    diff -= tvfo;
+    long diff = vfo - tvfo;
 
-    // scale it down, we don't need hz resolution here
+    // scale it down, we don't need Hz resolution here
     diff /= 10;
 
     // we start on line 2, char 3 of the second line
@@ -877,7 +865,7 @@ void showRit() {
     if (t < 100) lcd.print("0");
     if (t < 10) lcd.print("0");
     lcd.print(t);
-    // second dot
+    // unit
     lcd.print(F("kHz"));
 }
 
@@ -918,7 +906,7 @@ void showStep() {
     if (step == 5) lcd.print(F("10kHz"));
     if (step == 6) lcd.print(F(" 100k"));
     if (step == 7) lcd.print(F(" 1MHz"));
-    spaces(8);
+    spaces(11);
 }
 
 
@@ -1029,14 +1017,14 @@ void setFreqXFO() {
         } else {
             si5351.output_enable(SI5351_CLK1, 1);
             si5351.set_freq(xfo, 0, SI5351_CLK1);
-            // WARNING This has a shared PLL with the BFO, maybe we need to reset the BFO?
+            // WARNING This has a shared PLL with the BFO and accuracy may be
+            // affected
         }
     #endif
 }
 
 
 // Force freq update for all the environment vars
-// (Active CFO and it's actual mode)
 void updateAllFreq() {
     setFreqVFO();
     setFreqBFO();
@@ -1083,9 +1071,8 @@ boolean checkInitEEPROM() {
     EEPROM.get(0, conf);
 
     // check for the initializer and version
-    if (strcmp(conf.finger, EEPROMfingerprint) and EEP_VER == conf.version) {
+    if (strcmp(conf.finger, EEPROMfingerprint) and EEP_VER == conf.version)
         return true;
-    }
 
     // return false: default
     return false;
@@ -1095,17 +1082,16 @@ boolean checkInitEEPROM() {
 // initialize the EEPROM mem, also used to store the values in the setup mode
 void saveEEPROM() {
     // load the parameters in the environment
-    conf.version  = EEP_VER;
-    conf.vfoa = vfoa;
-    conf.vfoaMode = VFOAMode;
-    conf.vfob = vfob;
-    conf.vfobMode = VFOBMode;
-    conf.ifreq = ifreq;
-    conf.lsb = lsb;
-    conf.usb = usb;
-    conf.cw = cw;
-    conf.xfo = xfo;
-    conf.ppm = si5351_ppm;
+    conf.vfoa       = vfoa;
+    conf.vfoaMode   = VFOAMode;
+    conf.vfob       = vfob;
+    conf.vfobMode   = VFOBMode;
+    conf.ifreq      = ifreq;
+    conf.lsb        = lsb;
+    conf.usb        = usb;
+    conf.cw         = cw;
+    conf.xfo        = xfo;
+    conf.ppm        = si5351_ppm;
 
     // write it
     EEPROM.put(0, conf);
@@ -1118,15 +1104,15 @@ void loadEEPROMConfig() {
     EEPROM.get(0, conf);
 
     // load the parameters to the environment
-    vfoa = conf.vfoa;
-    VFOAMode = conf.vfoaMode;
-    vfob = conf.vfob;
-    VFOBMode = conf.vfobMode;
-    lsb = conf.lsb;
-    usb = conf.usb;
-    cw = conf.cw;
-    xfo = conf.xfo;
-    si5351_ppm = conf.ppm;
+    vfoa        = conf.vfoa;
+    VFOAMode    = conf.vfoaMode;
+    vfob        = conf.vfob;
+    VFOBMode    = conf.vfobMode;
+    lsb         = conf.lsb;
+    usb         = conf.usb;
+    cw          = conf.cw;
+    xfo         = conf.xfo;
+    si5351_ppm  = conf.ppm;
 }
 
 
@@ -1135,15 +1121,13 @@ void loadEEPROMConfig() {
 
 // show the bar graph for the RX or TX modes
 void showBarGraph() {
-    // we are working on a 2x16 and we have 13 bars (0-12)
+    // we are working on a 2x16 and we have 13 bars to show (0-12)
     byte ave = 0, i;
     static byte barMax = 0;
     static boolean lastShowStep;
 
     // find the average
-    for (i=0; i<15; i++) {
-        ave += pep[i];
-    }
+    for (i=0; i<15; i++) ave += pep[i];
     ave /= 15;
 
     // set the smeter reading on the global scope for CAT readings
@@ -1224,50 +1208,46 @@ void showBarGraph() {
 }
 
 
+// take a sample an inject it on the array
+void takeSample() {
+    // we are sensing a value that must move in the 0-1.1v so internal reference
+    analogReference(INTERNAL);
+    word val;
+    byte anPin;
+
+    if (tx) { anPin = 1; } else { anPin = 0; }
+    val = analogRead(anPin);
+
+    // scale it to 4 bits (0-15) for CAT purposes
+    val = map(val, 0, 1023, 0, 15);
+
+    // push it in the array
+    for (byte i = 0; i < BARGRAPH_SAMPLES - 1; i++) pep[i] = pep[i + 1];
+    pep[BARGRAPH_SAMPLES - 1] = val;
+
+    // reset the reference for the buttons handling
+    analogReference(DEFAULT);
+}
+
+
 // smeter reading, this take a sample of the smeter/txpower each time; an will
 // rise a flag when they have rotated the array of measurements 2/3 times to
 // have a moving average
 void smeter() {
-    // contador para el ciclo de lecturas en el array
+    // static smeter array counter
     static byte smeterCount = 0;
 
+    // no matter what, I must keep taking samples
+    takeSample();
+
     // it has rotated already?
-    if (smeterCount < 9) {
-        // take a measure and rotate the array
-
-        // we are sensing a value that must move in the 0-1.1v so internal reference
-        analogReference(INTERNAL);
-        // read the value and map it for 13 chars (0-12) in the LCD bar
-        word val;
-        if (tx) {
-            // we are on TX, sensing via A1
-            val = analogRead(A1);
-        } else {
-            // we are in RX, sensing via A0
-            val = analogRead(A0);
-        }
-
-        // watchout !!! map can out peaks, so smooth
-        if (val > 1023) val = 1023;
-
-        // scale it to 4 bits (0-15) for CAT purposes
-        val = map(val, 0, 1023, 0, 15);
-
-        // push it in the array
-        for (byte i = 0; i < 14; i++) {
-            pep[i] = pep[i+1];
-        }
-        pep[14] = val;
-
-        // reset the reference for the buttons handling
-        analogReference(DEFAULT);
-
-        // increment counter
-        smeterCount += 1;
-    } else {
+    if (smeterCount > (BARGRAPH_SAMPLES * 2 / 3)) {
         // rise the flag about the need to show the bar graph and reset the count
         smeterOk = true;
         smeterCount = 0;
+    } else {
+        // just increment it
+        smeterCount += 1;
     }
 }
 
@@ -1428,7 +1408,7 @@ void btnVFOABClick() {
             showConfig();
 
             // reset the minimum step if set (1hz > 10 hz)
-            if (step == 1) step += 1;
+            if (step == 1) step = 2;
         }
     }
 }
@@ -1580,11 +1560,7 @@ long getStep () {
 
     // validation just in case
     if (step == 0) step = 1;
-
-    for (byte i=0; i < step; i++) {
-        ret *= 10;
-    }
-
+    for (byte i=0; i < step; i++) ret *= 10;
     return ret;
 }
 
@@ -1651,7 +1627,6 @@ void setup() {
     cat.addCATGetMode(getActiveVFOMode);
     cat.addCATSMeter(catGetSMeter);
     cat.addCATTXStatus(catGetTXStatus);
-
     // now we activate the library
     cat.begin(57600, SERIAL_8N1);
 
@@ -1666,7 +1641,7 @@ void setup() {
     lcd.begin(16, 2);
     lcd.clear();
 
-    // buttons debounce encoder push
+    // buttons debounce encoder & push
     pinMode(btnPush, INPUT_PULLUP);
     pinMode(ENC_A, INPUT_PULLUP);
     pinMode(ENC_B, INPUT_PULLUP);
@@ -1674,10 +1649,11 @@ void setup() {
     dbBtnPush.interval(debounceInterval);
 
     // analog buttons setup
-    analogButtons.add(bvfoab);
-    analogButtons.add(bmode);
-    analogButtons.add(brit);
-    analogButtons.add(bsplit);
+    abm.init(KEYS_PIN, 5, 20);
+    abm.add(bvfoab);
+    abm.add(bmode);
+    abm.add(brit);
+    abm.add(bsplit);
 
     // pin mode of the PTT
     pinMode(inPTT, INPUT_PULLUP);
@@ -1692,21 +1668,12 @@ void setup() {
     si5351.output_enable(SI5351_CLK0, 0);
     si5351.output_enable(SI5351_CLK1, 0);
     si5351.output_enable(SI5351_CLK2, 0);
-
-    // Xtal capacitive load
-    #if defined (COLAB)
-        // COLAB boards have no capacitor in place, so max it.
-        si5351.init(SI5351_CRYSTAL_LOAD_10PF, 0);
-    #else
-        // my board have 2x22pf caps in place
-        si5351.init(SI5351_CRYSTAL_LOAD_0PF, 0);
-    #endif
-
+    // Si5351 Xtal capacitive load
+    si5351.init(SI5351_CRYSTAL_LOAD_10PF, 0);
     // setup the PLL usage
     si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
     si5351.set_ms_source(SI5351_CLK1, SI5351_PLLB);
     si5351.set_ms_source(SI5351_CLK2, SI5351_PLLB);
-
     // use low power on the Si5351
     si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_2MA);
     si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_2MA);
@@ -1714,15 +1681,14 @@ void setup() {
 
 
     // check the EEPROM to know if I need to initialize it
-    boolean eepromOk = checkInitEEPROM();
-    if (!eepromOk) {
+    if (checkInitEEPROM()) {
         // LCD
         lcd.setCursor(0, 0);
         lcd.print(F("Init EEPROM...  "));
         lcd.setCursor(0, 1);
         lcd.print(F("Please wait...  "));
         saveEEPROM();
-        delayCat();
+        delayCat(); // see note below on the welcome screen
         lcd.clear();
     } else {
         // just if it's already ok
@@ -1794,13 +1760,7 @@ void loop() {
 
     // check PTT and make the RX/TX changes
     tbool = digitalRead(inPTT);
-    if (tx) {
-        // check if we must go RX
-        going2RX(tbool);
-    } else {
-        // check if we must go TX
-        going2TX(tbool);
-    }
+    if (tx) { going2RX(tbool); } else { going2TX(tbool); }
 
     // debouce for the push
     dbBtnPush.update();
@@ -1817,11 +1777,7 @@ void loop() {
         }
 
         // Second line of the LCD, I must show the bargraph only if not rit nor steps
-        if ((!ritActive and !mustShowStep) and smeterOk) {
-            // just show the bar graph about 3 times per second
-            // it makes RQM on the receiver if left continously updating
-            showBarGraph();
-        }
+        if ((!ritActive and !mustShowStep) and smeterOk) showBarGraph();
 
         // decrement step counter
         if (mustShowStep) {
@@ -1829,7 +1785,7 @@ void loop() {
             showStepCounter -= 1;
 
             // compare to show it just once, as showing it continuosly generate
-            //RQM from the arduino
+            // QRM from the arduino
             if (showStepCounter == (showStepTimer - 1)) showStep();
 
             // detect the count end and restore to normal
@@ -1855,7 +1811,7 @@ void loop() {
     if ((millis() - lastMilis) >= SM_SAMPLING_INTERVAL) {
         // I must sample the input
         smeter();
-        // and reset the lastreading to keep track
+        // and reset the last reading to keep track
         lastMilis = millis();
     }
 
@@ -1863,5 +1819,5 @@ void loop() {
     cat.check();
 
     // analog buttons check
-    analogButtons.check();
+    abm.check();
 }
