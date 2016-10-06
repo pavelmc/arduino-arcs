@@ -82,7 +82,7 @@
  * if you have the any of the COLAB shields uncomment the following line.
  * (the sketch is configured by default for my particular hardware)
  ******************************************************************************/
-//#define COLAB
+#define COLAB
 
 /*********************** FILTER PRE-CONFIGURATIONS *****************************
  * As this project aims to easy the user configuration we will pre-stablish some
@@ -1123,8 +1123,8 @@ void loadEEPROMConfig() {
 void showBarGraph() {
     // we are working on a 2x16 and we have 13 bars to show (0-12)
     byte ave = 0, i;
-    static byte barMax = 0;
-    static boolean lastShowStep;
+    volatile static byte barMax = 0;
+    volatile static boolean lastShowStep;
 
     // find the average
     for (i=0; i<15; i++) ave += pep[i];
@@ -1235,7 +1235,7 @@ void takeSample() {
 // have a moving average
 void smeter() {
     // static smeter array counter
-    static byte smeterCount = 0;
+    volatile static byte smeterCount = 0;
 
     // no matter what, I must keep taking samples
     takeSample();
