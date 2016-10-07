@@ -276,6 +276,10 @@ Si5351 si5351;
 // a scope of the last 6 samples (aka: 2/3 moving average)
 #define SM_SAMPLING_INTERVAL  250
 
+// EERPOM saving interval (if some parameter has changed) in 1/4 seconds var is
+// word so max is 65535 of 1/4 secs or: ~ 16383 sec ~ 273 min ~ 4h 33 min
+#define SAVE_INTERVAL 40      // aprox 10 minutes
+
 // hardware pre configured values
 #if defined (SSBF_FT747GX)
     // Pre configured values for a Single conversion radio using the FT-747GX
@@ -369,8 +373,9 @@ boolean split =        false;      // this holds th split state
 boolean catTX =        false;      // CAT command to go to PTT
 byte sMeter =          0;          // hold the value of the Smeter readings
                                    // in both RX and TX modes
-byte qcounter =        0;          // Timer to be incremented each 1/4 second
-                                   // approximately, to trigger a VFO update
+word qcounter =        0;          // Timer to be incremented each 1/4 second
+                                   // approximately, to trigger a EEPROM update
+                                   // if needed
 
 // temp vars (used in the loop function)
 boolean tbool   = false;
@@ -1074,6 +1079,8 @@ boolean checkInitEEPROM() {
 
 
 // initialize the EEPROM mem, also used to store the values in the setup mode
+// this procedure has a protection for the EEPROM life using update semantics
+// it actually only write a cell if it has changed
 void saveEEPROM() {
     // load the parameters in the environment
     conf.vfoa       = vfoa;
@@ -1118,7 +1125,7 @@ void showBarGraph() {
     // we are working on a 2x16 and we have 13 bars to show (0-12)
     byte ave = 0, i;
     volatile static byte barMax = 0;
-    volatile static boolean lastShowStep;
+    volatile static boolean lastShowStep = 0;
 
     // find the average
     for (i=0; i<15; i++) ave += pep[i];
@@ -1381,6 +1388,8 @@ void btnVFOABClick() {
 
         // Save the VFOs and modes in the eeprom
         saveEEPROM();
+        // reset the timed save counter to avoid re-saving
+        qcounter = 0;
     } else {
         // SETUP mode
         if (!inSetup) {
@@ -1673,10 +1682,19 @@ void loop() {
 
     // sample and process the S-meter in RX & TX
     if ((millis() - lastMilis) >= SM_SAMPLING_INTERVAL) {
+        // Reset the last reading to keep track
+        lastMilis = millis();
+
         // I must sample the input
         smeter();
-        // and reset the last reading to keep track
-        lastMilis = millis();
+
+        // time counter for VFO remember after power off
+        if (qcounter >= SAVE_INTERVAL) {
+            saveEEPROM();
+            qcounter = 0;
+        } else {
+            qcounter += 1;
+        }
     }
 
     // CAT check
