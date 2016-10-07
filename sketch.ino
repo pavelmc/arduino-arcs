@@ -159,10 +159,10 @@ Bounce dbBtnPush = Bounce();
 BMux abm;
 
 // creating the analog buttons for the BMux lib
-Button bvfoab   = Button(507, &btnVFOABClick);      // 10k
-Button bmode    = Button(318, &btnModeClick);       // 4.7k
-Button brit     = Button(180, &btnRITClick);        // 2.2k
-Button bsplit   = Button(696, &btnSPLITClick);      // 22k
+Button bvfoab   = Button(510, &btnVFOABClick);      // 10k
+Button bmode    = Button(316, &btnModeClick);       // 4.7k
+Button brit     = Button(178, &btnRITClick);        // 2.2k
+Button bsplit   = Button(697, &btnSPLITClick);      // 22k
 
 // the CAT radio lib
 ft857d cat = ft857d();
@@ -358,7 +358,6 @@ boolean mustShowStep = false;     // var to show the step instead the bargraph
 #define showStepTimer   8000      // a relative amount of time to show the mode
                                   // aprox 3 secs
 word showStepCounter = showStepTimer; // the timer counter
-boolean showStepEnd =  false;     // this one rises when the mustShowStep falls
 boolean runMode =      true;      // true: normal, false: setup
 boolean activeVFO =    true;      // true: A, False: B
 byte VFOAMode =        MODE_LSB;
@@ -369,6 +368,7 @@ boolean tx =           false;     // whether we are on TX mode or not
 byte pep[BARGRAPH_SAMPLES];        // s-meter readings storage
 long lastMilis =       0;          // to track the last sampled time
 boolean smeterOk =     false;      // it's ok to show the bar graph
+boolean barReDraw =    false;      // bar needs to be redrawn from zero
 boolean split =        false;      // this holds th split state
 boolean catTX =        false;      // CAT command to go to PTT
 byte sMeter =          0;          // hold the value of the Smeter readings
@@ -466,6 +466,8 @@ void toggleRit() {
         // going to deactivate: reset the stored VFO
         *ptrVFO = tvfo;
         ritActive = false;
+        // flag to redraw the bar graph
+        barReDraw = true;
     }
 }
 
@@ -1141,21 +1143,11 @@ void showBarGraph() {
     // if the same no action is required, remember we have to minimize the
     // writes to the LCD to minimize QRM
 
-    // but there is a special case: just after the show step expires we have
-    // to push the limits to be sure the step label get fully erased
-    if (showStepEnd and ave == barMax) ave = ave + 1;
+    // if we get a barReDraw = true; then reset to redrawn the entire bar
+    if (barReDraw) barMax = 0;
 
     // growing bar: print the difference
     if (ave > barMax) {
-        // special case
-        if (showStepEnd) {
-            barMax = 0;
-            showStepEnd = false;
-
-            // grow to erase the full step label
-            if (ave < 5 ) ave = 5;
-        }
-
         // LCD position & print the bars
         lcd.setCursor(3 + barMax, 1);
 
@@ -1182,17 +1174,16 @@ void showBarGraph() {
                     break;
             }
         }
+
+        // second part of the erase
+        if (barReDraw) {
+            barReDraw = false;
+            barMax = 12;
+        }
     }
 
     // shrinking bar: erase the old ones print spaces to erase just the diff
     if (barMax > ave) {
-        // special case
-        if (showStepEnd) {
-            barMax = 5;
-            showStepEnd = false;
-        }
-
-        // erase it
         i = barMax;
         while (i > ave) {
             lcd.setCursor(3 + i, 1);
@@ -1203,9 +1194,6 @@ void showBarGraph() {
 
     // put the var for the next iteration
     barMax = ave;
-
-    // load the last step for the next iteration
-    lastShowStep = mustShowStep;
 }
 
 
@@ -1520,7 +1508,7 @@ void setup() {
     dbBtnPush.interval(debounceInterval);
 
     // analog buttons setup
-    abm.init(KEYS_PIN, 5, 20);
+    abm.init(KEYS_PIN, 3, 20);
     abm.add(bvfoab);
     abm.add(bmode);
     abm.add(brit);
@@ -1664,7 +1652,8 @@ void loop() {
             // detect the count end and restore to normal
             if (showStepCounter == 0) {
                 mustShowStep = false;
-                showStepEnd = true;
+                // flag to redraw the bar graph
+                barReDraw = true;
             }
         }
 
