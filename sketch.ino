@@ -82,7 +82,7 @@
  * if you have the any of the COLAB shields uncomment the following line.
  * (the sketch is configured by default for my particular hardware)
  ******************************************************************************/
-#define COLAB
+//#define COLAB
 
 /*********************** FILTER PRE-CONFIGURATIONS *****************************
  * As this project aims to easy the user configuration we will pre-stablish some
@@ -159,10 +159,10 @@ Bounce dbBtnPush = Bounce();
 BMux abm;
 
 // creating the analog buttons for the BMux lib
-Button bvfoab   = Button(597, &btnVFOABClick);      // 10k
-Button bmode    = Button(372, &btnModeClick);       // 4.7k
-Button brit     = Button(208, &btnRITClick);        // 2.2k
-Button bsplit   = Button(817, &btnSPLITClick);      // 22k
+Button bvfoab   = Button(507, &btnVFOABClick);      // 10k
+Button bmode    = Button(318, &btnModeClick);       // 4.7k
+Button brit     = Button(180, &btnRITClick);        // 2.2k
+Button bsplit   = Button(696, &btnSPLITClick);      // 22k
 
 // the CAT radio lib
 ft857d cat = ft857d();
@@ -1128,8 +1128,8 @@ void showBarGraph() {
     volatile static boolean lastShowStep = 0;
 
     // find the average
-    for (i=0; i<15; i++) ave += pep[i];
-    ave /= 15;
+    for (i=0; i<BARGRAPH_SAMPLES; i++) ave += pep[i];
+    ave /= BARGRAPH_SAMPLES;
 
     // set the smeter reading on the global scope for CAT readings
     sMeter = ave;
