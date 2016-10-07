@@ -887,15 +887,10 @@ void updateLcd() {
         spaces(1);
     }
 
-    if (activeVFO) {
-        formatFreq(vfoa);
-        spaces(1);
-        showModeLcd(VFOAMode);
-    } else {
-        formatFreq(vfob);
-        spaces(1);
-        showModeLcd(VFOBMode);
-    }
+    // show VFO and mode
+    formatFreq(*ptrVFO);
+    spaces(1);
+    showModeLcd(*ptrMode);
 
     // second line
     lcd.setCursor(0, 1);
