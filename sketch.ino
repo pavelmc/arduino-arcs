@@ -354,10 +354,9 @@ boolean update = true;            // lcd update flag in normal mode
 byte encoderState = DIR_NONE;     // encoder state
 byte config = 0;                  // holds the configuration item selected
 boolean inSetup = false;          // the setup mode, just looking or modifying
-boolean mustShowStep = false;     // var to show the step instead the bargraph
-#define showStepTimer   8000      // a relative amount of time to show the mode
-                                  // aprox 3 secs
-word showStepCounter = showStepTimer; // the timer counter
+#define STEP_SHOW_TIME  6         // the time the step must be shown in 1/4 secs
+                                  // aprox 1.5 secs
+byte showStepCounter = 0;         // the step timer counter
 boolean runMode =      true;      // true: normal, false: setup
 boolean activeVFO =    true;      // true: A, False: B
 byte VFOAMode =        MODE_LSB;
@@ -449,10 +448,7 @@ void changeStep() {
     }
 
     // if in normal mode reset the counter to show the change in the LCD
-    if (runMode) showStepCounter = showStepTimer;     // aprox half second
-
-    // tell the LCD that it must show the change
-    mustShowStep = true;
+    if (runMode) showStepCounter = STEP_SHOW_TIME;
 }
 
 
@@ -911,9 +907,6 @@ void updateLcd() {
 
     // if we have a RIT or steps we manage it here and the bar will hold
     if (ritActive) showRit();
-
-    // show the step if it must
-    if (mustShowStep) showStep();
 }
 
 
@@ -1638,25 +1631,7 @@ void loop() {
         }
 
         // Second line of the LCD, I must show the bargraph only if not rit nor steps
-        if ((!ritActive and !mustShowStep) and smeterOk) showBarGraph();
-
-        // decrement step counter
-        if (mustShowStep) {
-            // decrement the counter
-            showStepCounter -= 1;
-
-            // compare to show it just once, as showing it continuosly generate
-            // QRM from the arduino
-            if (showStepCounter == (showStepTimer - 1)) showStep();
-
-            // detect the count end and restore to normal
-            if (showStepCounter == 0) {
-                mustShowStep = false;
-                // flag to redraw the bar graph
-                barReDraw = true;
-            }
-        }
-
+        if ((!ritActive and showStepCounter == 0) and smeterOk) showBarGraph();
     } else {
         // setup mode
 
@@ -1669,20 +1644,32 @@ void loop() {
 
     }
 
-    // sample and process the S-meter in RX & TX
+    // timed actions, it ticks every 1/4 second (250 msecs)
     if ((millis() - lastMilis) >= SM_SAMPLING_INTERVAL) {
         // Reset the last reading to keep track
         lastMilis = millis();
 
-        // I must sample the input
+        // I must sample the input for the bar graph
         smeter();
 
         // time counter for VFO remember after power off
-        if (qcounter >= SAVE_INTERVAL) {
+        if (qcounter < SAVE_INTERVAL) {
+            qcounter += 1;
+        } else {
+            // the saveEEPROM has already a mechanism to change only the parts
+            // that has changed, to protect the EEPROM of wear out
             saveEEPROM();
             qcounter = 0;
-        } else {
-            qcounter += 1;
+        }
+
+        // step show time show the first time
+        if (showStepCounter == STEP_SHOW_TIME) showStep();
+
+        // decrement timer
+        if (showStepCounter > 0) {
+            showStepCounter -= 1;
+            // flag to redraw the bar graph only if zero
+            if (showStepCounter == 0) barReDraw = true;
         }
     }
 
