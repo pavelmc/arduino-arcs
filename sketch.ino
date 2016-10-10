@@ -127,8 +127,8 @@
 #define EEP_VER     4
 #define FMW_VER     9
 
-// place in the eeprom where to store the info
-#define ECPP 128
+// The index in the eeprom where to store the info
+#define ECPP 0  // conf store up to 35 bytes so far.
 
 // the limits of the VFO, for now just 40m for now; you can tweak it with the
 // limits of your particular hardware, again this are LCD diplay frequencies.
@@ -281,7 +281,7 @@ Si5351 si5351;
 
 // EERPOM saving interval (if some parameter has changed) in 1/4 seconds; var i
 // word so max is 65535 in 1/4 secs is ~ 16383 sec ~ 273 min ~ 4h 33 min
-#define SAVE_INTERVAL 40      // aprox 10 minutes
+#define SAVE_INTERVAL 2400      // 10 minutes = 60 sec * 10 * 4 ticks
 
 // hardware pre configured values
 #if defined (SSBF_FT747GX)
@@ -368,7 +368,7 @@ boolean ritActive =    false;     // true: rit active, false: rit disabled
 boolean tx =           false;     // whether we are on TX mode or not
 #define BARGRAPH_SAMPLES    6
 byte pep[BARGRAPH_SAMPLES];        // s-meter readings storage
-long lastMilis =       0;          // to track the last sampled time
+unsigned long lastMilis = 0;       // to track the last sampled time
 boolean smeterOk =     false;      // it's ok to show the bar graph
 boolean barReDraw =    false;      // bar needs to be redrawn from zero
 boolean split =        false;      // this holds th split state
@@ -384,7 +384,7 @@ boolean tbool   = false;
 
 // structured data: Main Configuration Parameters
 struct mConf {
-    char finger[9] =  EEPROMfingerprint;
+    char finger[9] =  EEPROMfingerprint;  // nine, all strings ends with a null
     byte version = EEP_VER;
     long ifreq;
     long vfoa;
@@ -1069,8 +1069,14 @@ boolean checkInitEEPROM() {
     EEPROM.get(ECPP, conf);
 
     // check for the initializer and version
-    if (strcmp(conf.finger, EEPROMfingerprint) and EEP_VER == conf.version)
+    if (conf.version == EEP_VER) {
+        // so far version is the same, but the fingerprint has a different trick
+        for (int i=0; i<sizeof(conf.finger); i++) {
+            if (conf.finger[i] != EEPROMfingerprint[i]) return false;
+        }
+        // if it reach this point is because it's the same
         return true;
+    }
 
     // return false: default
     return false;
@@ -1092,6 +1098,8 @@ void saveEEPROM() {
     conf.cw         = cw;
     conf.xfo        = xfo;
     conf.ppm        = si5351_ppm;
+    conf.version    = EEP_VER;
+    strcpy(conf.finger, EEPROMfingerprint);
 
     // write it
     EEPROM.put(ECPP, conf);
@@ -1370,11 +1378,6 @@ void btnVFOABClick() {
 
         // set the LCD update flag
         update = true;
-
-        // Save the VFOs and modes in the eeprom
-        saveEEPROM();
-        // reset the timed save counter to avoid re-saving
-        qcounter = 0;
     } else {
         // SETUP mode
         if (!inSetup) {
