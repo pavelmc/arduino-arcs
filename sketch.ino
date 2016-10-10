@@ -127,6 +127,9 @@
 #define EEP_VER     4
 #define FMW_VER     9
 
+// place in the eeprom where to store the info
+#define ECPP 128
+
 // the limits of the VFO, for now just 40m for now; you can tweak it with the
 // limits of your particular hardware, again this are LCD diplay frequencies.
 #define F_MIN      65000000     // 6.500.000
@@ -276,8 +279,8 @@ Si5351 si5351;
 // a scope of the last 6 samples (aka: 2/3 moving average)
 #define SM_SAMPLING_INTERVAL  250
 
-// EERPOM saving interval (if some parameter has changed) in 1/4 seconds var is
-// word so max is 65535 of 1/4 secs or: ~ 16383 sec ~ 273 min ~ 4h 33 min
+// EERPOM saving interval (if some parameter has changed) in 1/4 seconds; var i
+// word so max is 65535 in 1/4 secs is ~ 16383 sec ~ 273 min ~ 4h 33 min
 #define SAVE_INTERVAL 40      // aprox 10 minutes
 
 // hardware pre configured values
@@ -339,7 +342,7 @@ Si5351 si5351;
 // Otherwise set it to zero and you can set it up via the SETUP menu, but it
 // will get reset to zero each time you program the arduino...
 // so... PUT YOUR VALUE HERE
-long si5351_ppm = 224380;    // it has the *10 included
+long si5351_ppm = 225600;    // it has the *10 included
 
 // the variables
 long vfoa = 71038000;             // default starting VFO A freq
@@ -436,15 +439,13 @@ void changeStep() {
         // simple increment
         step += 1;
     } else {
-        // default start mode is 2 (10Hz)
+        // default start mode is 2 (10Hz ~ 100)
         step = 2;
         // in setup mode and just specific modes it's allowed to go to 1 hz
-        boolean allowedModes = false;
-        allowedModes = allowedModes or (config == CONFIG_LSB);
-        allowedModes = allowedModes or (config == CONFIG_USB);
-        allowedModes = allowedModes or (config == CONFIG_PPM);
-        allowedModes = allowedModes or (config == CONFIG_XFO);
-        if (!runMode and allowedModes) step = 1;
+        boolean am = false;
+        am = am or (config == CONFIG_LSB) or (config == CONFIG_USB);
+        am = am or (config == CONFIG_PPM) or (config == CONFIG_XFO);
+        if (!runMode and am) step = 1;
     }
 
     // if in normal mode reset the counter to show the change in the LCD
@@ -472,10 +473,7 @@ void toggleRit() {
 long getStep () {
     // we get the step from the global step var
     long ret = 1;
-
-    // validation just in case
-    if (step == 0) step = 1;
-    for (byte i=0; i < step; i++) ret *= 10;
+    for (byte i=0; i < step; i++, ret *= 10);
     return ret;
 }
 
@@ -551,6 +549,14 @@ void swapVFO(byte force = 2) {
 }
 
 
+// check some values don't go below zero
+void belowZero(long *value) {
+    // some values are not meant to be below zero, this check and fix that
+    if (*value < 0) *value = 0;
+}
+
+
+
 /******************************** ENCODER *************************************/
 
 
@@ -615,10 +621,12 @@ void updateSetupValues(int dir) {
             case CONFIG_IF:
                 // change the IF value
                 ifreq += getStep() * dir;
+                belowZero(&ifreq);
                 break;
             case CONFIG_VFO_A:
                 // change VFOa
                 *ptrVFO += getStep() * dir;
+                belowZero(ptrVFO);
                 break;
             case CONFIG_MODE_A:
                 // hot swap it
@@ -653,6 +661,7 @@ void updateSetupValues(int dir) {
             case CONFIG_XFO:
                 // change XFO
                 xfo += getStep() * dir;
+                belowZero(&xfo);
                 break;
         }
 
@@ -667,7 +676,7 @@ void updateSetupValues(int dir) {
 
 // update the configuration item before selecting it
 void updateShowConfig(int dir) {
-    // move the config item
+    // move the config item, it's a byte, so we use a temp var here
     int tconfig = config;
     tconfig += dir;
 
@@ -689,7 +698,7 @@ void showModeSetup(byte mode) {
 }
 
 
-// print a string of spaces, to save some space
+// print a string of spaces, to save some flash/eeprom "space"
 void spaces(byte m) {
     // print m spaces in the LCD
     while (m) {
@@ -706,10 +715,10 @@ void showConfigLabels() {
             lcd.print(F("  IF frequency  "));
             break;
         case CONFIG_VFO_A:
-            lcd.print(F("VFO A freq"));
+            lcd.print(F("   VFO A freq   "));
             break;
         case CONFIG_MODE_A:
-            lcd.print(F("VFO A mode"));
+            lcd.print(F("   VFO A mode   "));
             break;
         case CONFIG_USB:
             lcd.print(F(" BFO freq. USB  "));
@@ -724,7 +733,7 @@ void showConfigLabels() {
             lcd.print(F("Si5351 PPM error"));
             break;
         case CONFIG_XFO:
-            lcd.print(F("XFO frequency   "));
+            lcd.print(F("  XFO frequency "));
             break;
     }
 }
@@ -1057,7 +1066,7 @@ void updateAllFreq() {
 // check if the EEPROM is initialized
 boolean checkInitEEPROM() {
     // read the eeprom config data
-    EEPROM.get(0, conf);
+    EEPROM.get(ECPP, conf);
 
     // check for the initializer and version
     if (strcmp(conf.finger, EEPROMfingerprint) and EEP_VER == conf.version)
@@ -1085,14 +1094,14 @@ void saveEEPROM() {
     conf.ppm        = si5351_ppm;
 
     // write it
-    EEPROM.put(0, conf);
+    EEPROM.put(ECPP, conf);
 }
 
 
 // load the eprom contents
 void loadEEPROMConfig() {
     // write it
-    EEPROM.get(0, conf);
+    EEPROM.get(ECPP, conf);
 
     // load the parameters to the environment
     vfoa        = conf.vfoa;
@@ -1436,6 +1445,7 @@ void btnRITClick() {
         if (config == CONFIG_LSB) lsb = 0;
         if (config == CONFIG_USB) usb = 0;
         if (config == CONFIG_CW) cw = 0;
+        if (config == CONFIG_IF) ifreq = 0;
         if (config == CONFIG_PPM) {
             // reset, ppm
             si5351_ppm = 0;
@@ -1528,7 +1538,7 @@ void setup() {
 
 
     // check the EEPROM to know if I need to initialize it
-    if (checkInitEEPROM()) {
+    if (!checkInitEEPROM()) {
         // LCD
         lcd.setCursor(0, 0);
         lcd.print(F("Init EEPROM...  "));
