@@ -128,7 +128,7 @@
 #define FMW_VER     9
 
 // The index in the eeprom where to store the info
-#define ECPP 0  // conf store up to 35 bytes so far.
+#define ECPP 0  // conf store up to 36 bytes so far.
 
 // the limits of the VFO, for now just 40m for now; you can tweak it with the
 // limits of your particular hardware, again this are LCD diplay frequencies.
@@ -286,19 +286,19 @@ Si5351 si5351;
 // hardware pre configured values
 #if defined (SSBF_FT747GX)
     // Pre configured values for a Single conversion radio using the FT-747GX
-    int lsb =        -16000;
-    int usb =         16000;
-    int cw =              0;
+    long lsb =       -14500;
+    long usb =        14500;
+    long cw =             0;
     long xfo =            0;
-    long ifreq =   82076600;
+    long ifreq =   82129800;
 #endif
 
 #if defined (SSBF_URSS_500H)
     // Pre configured values for a Single conversion radio using the Polosa
     // Angara 500H filter
-    int lsb =        -17500;
-    int usb =         17500;
-    int cw =              0;
+    long lsb =        -17500;
+    long usb =         17500;
+    long cw =              0;
     long xfo =            0;
     long ifreq =    4980800;
 #endif
@@ -306,9 +306,9 @@ Si5351 si5351;
 #if defined (SSBF_RFT_SEG15)
     // Pre configured values for a Double conversion radio using the RFT SEG15
     // RF board using the filter marked as:
-    int lsb =        -14350;
-    int usb =         14350;
-    int cw =              0;
+    long lsb =        -14350;
+    long usb =         14350;
+    long cw =              0;
     long ifreq =  282000000;
     /***************************************************************************
      *                     !!!!!!!!!!!    WARNING   !!!!!!!!!!
@@ -341,12 +341,12 @@ Si5351 si5351;
 //
 // Otherwise set it to zero and you can set it up via the SETUP menu, but it
 // will get reset to zero each time you program the arduino...
-// so... PUT YOUR VALUE HERE
+// so... PUT YOUR OWN VALUE HERE
 long si5351_ppm = 225600;    // it has the *10 included
 
 // the variables
-long vfoa = 71038000;             // default starting VFO A freq
-long vfob = 71755000;             // default starting VFO B freq
+long vfoa = 71100000;             // default starting VFO A freq
+long vfob = 71250000;             // default starting VFO B freq
 long tvfo = 0;                    // temporal VFO storage for RIT usage
 long txSplitVfo =  0;             // temporal VFO storage for RIT usage when TX
 byte step = 3;                    // default steps position index:
@@ -554,7 +554,6 @@ void belowZero(long *value) {
     // some values are not meant to be below zero, this check and fix that
     if (*value < 0) *value = 0;
 }
-
 
 
 /******************************** ENCODER *************************************/
@@ -1002,17 +1001,20 @@ void showStep() {
 }
 
 
-/********************************* SET & GET **********************************/
+/******************************* Si5351 Update ********************************/
 
 
 // set the calculated freq to the VFO
 void setFreqVFO() {
+    // temp var to hold the calculated value
     long freq = *ptrVFO + ifreq;
 
+    // apply the ssb factor
     if (*ptrMode == MODE_USB) freq += usb;
     if (*ptrMode == MODE_LSB) freq += lsb;
     if (*ptrMode == MODE_CW)  freq += cw;
 
+    // set the Si5351 up with the change
     si5351.set_freq(freq, 0, SI5351_CLK0);
 }
 
