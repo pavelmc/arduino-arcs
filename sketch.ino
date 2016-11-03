@@ -82,7 +82,7 @@
  * if you have the any of the COLAB shields uncomment the following line.
  * (the sketch is configured by default for my particular hardware)
  ******************************************************************************/
-//#define COLAB
+#define COLAB
 
 /*********************** FILTER PRE-CONFIGURATIONS *****************************
  * As this project aims to easy the user configuration we will pre-stablish some
@@ -197,7 +197,7 @@ byte bar[8] = {
   B11111,
   B11111,
   B11111,
-  B11111,
+  B10001,
   B11111,
   B11111,
   B11111
@@ -367,10 +367,11 @@ byte VFOBMode =        MODE_LSB;
 boolean ritActive =    false;     // true: rit active, false: rit disabled
 boolean tx =           false;     // whether we are on TX mode or not
 #define BARGRAPH_SAMPLES    6
-byte pep[BARGRAPH_SAMPLES];        // s-meter readings storage
+byte pep[BARGRAPH_SAMPLES] = {0, 0, 0, 0, 0, 0};
+                                   // s-meter readings storage
 unsigned long lastMilis = 0;       // to track the last sampled time
 boolean smeterOk =     false;      // it's ok to show the bar graph
-boolean barReDraw =    false;      // bar needs to be redrawn from zero
+boolean barReDraw =    true;       // bar needs to be redrawn from zero
 boolean split =        false;      // this holds th split state
 boolean catTX =        false;      // CAT command to go to PTT
 byte sMeter =          0;          // hold the value of the Smeter readings
@@ -575,28 +576,23 @@ void encoderMoved(int dir) {
 
 // update freq procedure
 void updateFreq(int dir) {
-    long newFreq = *ptrVFO;
+    long freq = *ptrVFO;
 
     if (ritActive) {
         // we fix the steps to 10 Hz in rit mode
-        newFreq += 100 * dir;
+        freq += 100 * dir;
+        // check we don't exceed the MAX_RIT
+        if (abs(tvfo - freq) > MAX_RIT) return;
     } else {
         // otherwise we use the default step on the environment
-        newFreq += getStep() * dir;
-    }
-
-    // limit check
-    if (ritActive) {
-        // check we don't exceed the MAX_RIT
-        if (abs(tvfo - newFreq) > MAX_RIT) return;
-    } else {
-        // limit check for normal VFO
-        if(newFreq > F_MAX) newFreq = F_MIN;
-        if(newFreq < F_MIN) newFreq = F_MAX;
+        freq += getStep() * dir;
+        // check we don't exceed the limits
+        if(freq > F_MAX) freq = F_MIN;
+        if(freq < F_MIN) freq = F_MAX;
     }
 
     // apply the change
-    *ptrVFO = newFreq;
+    *ptrVFO = freq;
 
     // update the output freq
     setFreqVFO();
@@ -693,7 +689,7 @@ void showModeSetup(byte mode) {
     // now I have to print it out
     lcd.setCursor(0, 1);
     spaces(11);
-    showModeLcd(mode);
+    showModeLcd(mode); // this one has a implicit extra space after it
 }
 
 
@@ -759,31 +755,19 @@ void showSign(long val) {
 
 
 // show the ppm as a signed long
-void showConfigValueSigned(long val) {
-    if (config == CONFIG_PPM) {
-        lcd.print(F("PPM: "));
-    } else {
-        lcd.print(F("Val:"));
-    }
+void showConfigValue(long val) {
+    lcd.print(F("Val:"));
 
-    // detect the sign
-    showSign(val);
+    // Show the sign only on config and not VFO & IF
+    boolean t;
+    t = config == CONFIG_VFO_A or config == CONFIG_XFO or config == CONFIG_IF;
+    if (!runMode and !t) showSign(val);
 
     // print it
     formatFreq(abs(val));
-}
-
-
-// Show the value for the setup item
-void showConfigValue(long val) {
-    lcd.print(F("Val:"));
-    formatFreq(val);
 
     // if on normal mode we show in 10 Hz
-    if (runMode) {
-        lcd.print("0");
-    }
-
+    if (runMode) lcd.print("0");
     lcd.print(F("hz"));
 }
 
@@ -805,16 +789,16 @@ void showModConfig() {
         case CONFIG_MODE_A:
             showModeSetup(VFOAMode);
         case CONFIG_USB:
-            showConfigValueSigned(usb);
+            showConfigValue(usb);
             break;
         case CONFIG_LSB:
-            showConfigValueSigned(lsb);
+            showConfigValue(lsb);
             break;
         case CONFIG_CW:
-            showConfigValueSigned(cw);
+            showConfigValue(cw);
             break;
         case CONFIG_PPM:
-            showConfigValueSigned(si5351_ppm);
+            showConfigValue(si5351_ppm);
             break;
         case CONFIG_XFO:
             showConfigValue(xfo);
@@ -928,13 +912,8 @@ void showRit() {
      *
      **************************************************************************/
 
-    // get the active VFO to calculate the deviation
-    long vfo = *ptrVFO;
-
-    long diff = vfo - tvfo;
-
-    // scale it down, we don't need Hz resolution here
-    diff /= 10;
+    // get the active VFO to calculate the deviation & scallit down
+    long diff = (*ptrVFO - tvfo)/100;
 
     // we start on line 2, char 3 of the second line
     lcd.setCursor(3, 1);
@@ -947,15 +926,15 @@ void showRit() {
     // print the freq now, we have a max of 10 Khz (9.990 Khz)
     diff = abs(diff);
 
-    // Khz part
-    word t = diff / 1000;
+    // Khz part (999)
+    word t = diff / 100;
     lcd.print(t);
     lcd.print(".");
     // hz part
-    t = diff % 1000;
-    if (t < 100) lcd.print("0");
+    t = diff % 100;
     if (t < 10) lcd.print("0");
     lcd.print(t);
+    spaces(1);
     // unit
     lcd.print(F("kHz"));
 }
@@ -1043,20 +1022,16 @@ void updateAllFreq() {
     }
 
     // XFO update
-    #if defined (SSBF_RFT_SEG15)
-        // RFT SEG-15 CASE:
-        // the XFO is in PLACE but it is not generated in any case
-        si5351.output_enable(SI5351_CLK1, 0);
-    #else
+    #ifndef SSBF_RFT_SEG15
         // just put it out if it's set
-        if (xfo == 0) {
-            // this is only enabled if we have a freq to send outside
-            si5351.output_enable(SI5351_CLK1, 0);
-        } else {
+        if (xfo != 0) {
             si5351.output_enable(SI5351_CLK1, 1);
             si5351.set_freq(xfo, 0, SI5351_CLK1);
             // WARNING This has a shared PLL with the BFO and accuracy may be
             // affected
+        } else {
+            // this is only enabled if we have a freq to send outside
+            si5351.output_enable(SI5351_CLK1, 0);
         }
     #endif
 }
@@ -1134,7 +1109,6 @@ void showBarGraph() {
     // we are working on a 2x16 and we have 13 bars to show (0-12)
     byte ave = 0, i;
     volatile static byte barMax = 0;
-    volatile static boolean lastShowStep = 0;
 
     // find the average
     for (i=0; i<BARGRAPH_SAMPLES; i++) ave += pep[i];
@@ -1143,15 +1117,22 @@ void showBarGraph() {
     // set the smeter reading on the global scope for CAT readings
     sMeter = ave;
 
-    // scale it down to 0-12 from 0-15 now
-    ave = map(ave, 0, 15, 0, 12);
+    // scale it down to 0-12 from 0-15 now (rest 3)
+    // we opted to mask the inherent band noise over making a map that get a
+    // bad visual effect
+    //if (ave > 0 and ave <= 3) ave = 0;
+    if (ave > 12) ave = 12;
 
     // printing only the needed part of the bar, if growing or shrinking
     // if the same no action is required, remember we have to minimize the
     // writes to the LCD to minimize QRM
 
     // if we get a barReDraw = true; then reset to redrawn the entire bar
-    if (barReDraw) barMax = 0;
+    if (barReDraw) {
+        barMax = 0;
+        // forcing the write of one line
+        if (ave == 0) ave = 1;
+    }
 
     // growing bar: print the difference
     if (ave > barMax) {
@@ -1182,11 +1163,8 @@ void showBarGraph() {
             }
         }
 
-        // second part of the erase
-        if (barReDraw) {
-            barReDraw = false;
-            barMax = 12;
-        }
+        // second part of the erase, preparing for the blanking
+        if (barReDraw) barMax = 12;
     }
 
     // shrinking bar: erase the old ones print spaces to erase just the diff
@@ -1201,6 +1179,8 @@ void showBarGraph() {
 
     // put the var for the next iteration
     barMax = ave;
+    //reset the redraw flag
+    barReDraw = false;
 }
 
 
@@ -1209,13 +1189,20 @@ void takeSample() {
     // we are sensing a value that must move in the 0-1.1v so internal reference
     analogReference(INTERNAL);
     word val;
-    byte anPin;
 
-    if (tx) { anPin = 1; } else { anPin = 0; }
-    val = analogRead(anPin);
+    if (!tx) {
+        val = analogRead(1);
+    } else {
+        val = analogRead(0);
+    }
 
     // scale it to 4 bits (0-15) for CAT purposes
     val = map(val, 0, 1023, 0, 15);
+
+    // security check for overflows, as map can pass peaks
+    val &= B00001111;
+
+    Serial.println(val);
 
     // push it in the array
     for (byte i = 0; i < BARGRAPH_SAMPLES - 1; i++) pep[i] = pep[i + 1];
@@ -1275,11 +1262,7 @@ void catSetFreq(long f) {
     if (f < F_MIN) return;
 
     // set the freq for the active VFO
-    if (activeVFO) {
-        vfoa = f;
-    } else {
-        vfob = f;
-    }
+    *ptrVFO =  f;
 
     // apply changes
     updateAllFreq();
@@ -1317,7 +1300,7 @@ byte catGetMode() {
 
 // get the s meter status to CAT
 byte catGetSMeter() {
-    // returns a byte in wich the s-meter is scaled to 4 bytes (15)
+    // returns a byte in wich the s-meter is scaled to 4 bits (15)
     // it's scaled already this our code
     return sMeter;
 }
@@ -1348,7 +1331,7 @@ byte catGetTXStatus() {
 // delay with CAT check, this is for the welcome screen
 // see the note in the setup; default ~2 secs
 void delayCat(int del = 2000) {
-    // delay in msecs to wait
+    // delay in msecs to wait, 2000 ~2 seconds by default
     long delay = millis() + del;
     long m = 0;
 
@@ -1421,9 +1404,7 @@ void btnModeClick() {
         changeMode();
         update = true;
     } else if (inSetup) {
-        // setup mode, just inside a value edit
-
-        // get out of here
+        // setup mode, just inside a value edit, then get out of here
         inSetup = false;
 
         // user feedback
@@ -1447,10 +1428,10 @@ void btnRITClick() {
         // SETUP mode just inside a value edit.
 
         // where we are to know what to reset?
-        if (config == CONFIG_LSB) lsb = 0;
-        if (config == CONFIG_USB) usb = 0;
-        if (config == CONFIG_CW) cw = 0;
-        if (config == CONFIG_IF) ifreq = 0;
+        if (config == CONFIG_LSB) lsb   = 0;
+        if (config == CONFIG_USB) usb   = 0;
+        if (config == CONFIG_CW)  cw    = 0;
+        if (config == CONFIG_IF)  ifreq = 0;
         if (config == CONFIG_PPM) {
             // reset, ppm
             si5351_ppm = 0;
@@ -1510,18 +1491,18 @@ void setup() {
     dbBtnPush.attach(btnPush);
     dbBtnPush.interval(debounceInterval);
 
+    // pin mode of the PTT
+    pinMode(inPTT, INPUT_PULLUP);
+    pinMode(PTT, OUTPUT);
+    // default awake mode is RX
+    digitalWrite(PTT, 0);
+
     // analog buttons setup
     abm.init(KEYS_PIN, 3, 20);
     abm.add(bvfoab);
     abm.add(bmode);
     abm.add(brit);
     abm.add(bsplit);
-
-    // pin mode of the PTT
-    pinMode(inPTT, INPUT_PULLUP);
-    pinMode(PTT, OUTPUT);
-    // default awake mode is RX
-    digitalWrite(PTT, 0);
 
     // I2C init
     Wire.begin();
@@ -1541,20 +1522,19 @@ void setup() {
     si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_2MA);
     si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_2MA);
 
-
     // check the EEPROM to know if I need to initialize it
-    if (!checkInitEEPROM()) {
-        // LCD
+    if (checkInitEEPROM()) {
+        // just if it's already ok
+        loadEEPROMConfig();
+    } else {
+        // full init, LCD banner by 1 second
         lcd.setCursor(0, 0);
         lcd.print(F("Init EEPROM...  "));
         lcd.setCursor(0, 1);
         lcd.print(F("Please wait...  "));
         saveEEPROM();
-        delayCat(); // see note below on the welcome screen
+        delayCat(1000); // see note below on the welcome screen
         lcd.clear();
-    } else {
-        // just if it's already ok
-        loadEEPROMConfig();
     }
 
     // Welcome screen
@@ -1572,7 +1552,7 @@ void setup() {
     delayCat();
     lcd.setCursor(0, 0);
     lcd.print(F(" by Pavel CO7WT "));
-    delayCat();
+    delayCat(1000);
     lcd.clear();
 
     // Check for setup mode
@@ -1612,7 +1592,7 @@ void setup() {
 void loop() {
     // encoder check
     encoderState = encoder.process();
-    if (encoderState == DIR_CW) encoderMoved(+1);
+    if (encoderState == DIR_CW)  encoderMoved(+1);
     if (encoderState == DIR_CCW) encoderMoved(-1);
 
     // LCD update check in normal mode
@@ -1673,7 +1653,7 @@ void loop() {
         }
 
         // step show time show the first time
-        if (showStepCounter == STEP_SHOW_TIME) showStep();
+        if (showStepCounter >= STEP_SHOW_TIME) showStep();
 
         // decrement timer
         if (showStepCounter > 0) {
