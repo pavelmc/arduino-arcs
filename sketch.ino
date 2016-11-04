@@ -138,8 +138,9 @@
 // encoder pins
 #define ENC_A    3              // Encoder pin A
 #define ENC_B    2              // Encoder pin B
-#define inPTT   13              // PTT/CW KEY Line with pullup from the outside
-#define PTT     12              // PTT actuator, this will put thet radio on TX
+#define inPTT   12              // PTT/CW KEY Line with pullup from the outside
+#define PTT     13              // PTT actuator, this will put the radio on TX
+                                // this match the red led on pin 13 with the PTT
 
 #if defined (COLAB)
     // Any of the COLAB shields
