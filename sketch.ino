@@ -11,7 +11,10 @@
  *  * SQ9NJE (http://sq9nje.pl)
  *  * AK2B (http://ak2b.blogspot.com)
  *  * WJ6C for the idea and hardware support.
- *  * Many other Cuban hams with critics and opinions
+ *  * Many other hams with critics and opinions
+ *
+ * Latest version is always found on the Github repository (URL below)
+ * https://www.github.com/pavelmc/arduino-arcs/
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +40,7 @@
  *  * We are fine with that specs, as we need the VFO source to be unique
  *   (it has it's own PLL) to minimize the crosstalk between outputs
  *    > CLK0 is used to VFO (the VFO will *always* be above the RF freq)
- *    > CLK1 will be used optionally as a XFO for trx with a second conversion
+ *    > CLK1 will be used optionally as a XFO for trx with a second conversions
  *    > CLK2 is used for the BFO
  *
  *  * Please have in mind that this IC has a SQUARE wave output and you need to
@@ -68,9 +71,9 @@
  * Be aware that the library use the freq on 1/10 hz resolution, so 10 Khz
  * is expressed as 10_000_0 (note the extra zero)
  *
- * This will allow us to climb up to 160 Mhz & we don't need the extra accuracy
+ * This will allow us to climb up to 160 Mhz, we don't need the extra accuracy
  *
- * Check you have in the Si5351 this param defined as this:
+ * Check you have in the Si5351 lybrary this parameter defined as this:
  *     #define SI5351_FREQ_MULT                    10ULL
  *
  * Also we use a module with a 27 Mhz xtal, check this also
@@ -78,14 +81,16 @@
  *
 * *****************************************************************************/
 
+
 /************************** USER BOARD SELECTION *******************************
  * if you have the any of the COLAB shields uncomment the following line.
  * (the sketch is configured by default for my particular hardware)
  ******************************************************************************/
 #define COLAB
 
+
 /*********************** FILTER PRE-CONFIGURATIONS *****************************
- * As this project aims to easy the user configuration we will pre-stablish some
+ * As this project aims to ease the user configuration we will hard code some
  * defaults for some of the most common hardware configurations we have in Cuba
  *
  * The idea is that if you find a matching hardware case is just a matter of
@@ -98,6 +103,7 @@
  *
  * WARNING: at least one must be un-commented for the compiler to work
  ******************************************************************************/
+
 // Single conversion Radio using the SSB filter of an FT-80C/FT-747GX
 // the filter reads: "Type: XF-8.2M-242-02, CF: 8.2158 Mhz"
 #define SSBF_FT747GX
@@ -140,7 +146,7 @@
 #define ENC_B    2              // Encoder pin B
 #define inPTT   12              // PTT/CW KEY Line with pullup from the outside
 #define PTT     13              // PTT actuator, this will put the radio on TX
-                                // this match the red led on pin 13 with the PTT
+                                // this match the led on pin 13 with the PTT
 
 #if defined (COLAB)
     // Any of the COLAB shields
@@ -163,7 +169,8 @@ Bounce dbPTT = Bounce();
 #define KEYS_PIN  2
 BMux abm;
 
-// creating the analog buttons for the BMux lib
+// Creating the analog buttons for the BMux lib; see the BMux doc for details
+// you may have to tweak this values a little for your hardware case
 Button bvfoab   = Button(510, &btnVFOABClick);      // 10k
 Button bmode    = Button(316, &btnModeClick);       // 4.7k
 Button brit     = Button(178, &btnRITClick);        // 2.2k
@@ -278,7 +285,7 @@ Si5351 si5351;
 #define CONFIG_MAX 7               // the amount of configure options
 
 // sampling interval for the AGC, 1/4 second, averaged every 4 samples and with
-// a scope of the last 6 samples (aka: 2/3 moving average)
+// a scope of the last 6 samples (aka: 2/3 moving mean)
 #define SM_SAMPLING_INTERVAL  250
 
 // EERPOM saving interval (if some parameter has changed) in 1/4 seconds; var i
@@ -296,7 +303,7 @@ Si5351 si5351;
 #endif
 
 #if defined (SSBF_URSS_500H)
-    // Pre configured values for a Single conversion radio using the Polosa
+    // Pre configured values for a Single conversion radio using the Polosa or
     // Angara 500H filter
     long lsb =        -17500;
     long usb =         17500;
@@ -323,7 +330,7 @@ Si5351 si5351;
      *  steps you want.
      *
      *  This is because the XFO & BFO share the same VCO inside the Si5351 and
-     *  the firmware has to make some compromises to get the two oscillators
+     *  the library has to make some compromises to get the two oscillators
      *  running at the same time, in this case some accuracy is sacrificed and
      *  you get as a result the BFO jumping in about 150 hz steps even if you
      *  instruct it as 1 Hz.
@@ -405,8 +412,8 @@ struct mConf {
 struct mConf conf;
 
 // pointers to the actual values
-long *ptrVFO;
-byte *ptrMode;
+long *ptrVFO;       // will hold the value of the selected VFO
+byte *ptrMode;      // idem but for the mode of the *ptrVFO
 
 
 /******************************* MISCELLANEOUS ********************************/
@@ -439,7 +446,7 @@ void changeMode() {
 void changeStep() {
     // calculating the next step
     if (step < 7) {
-        // simple increment
+        // simply increment
         step += 1;
     } else {
         // default start mode is 2 (10Hz ~ 100)
