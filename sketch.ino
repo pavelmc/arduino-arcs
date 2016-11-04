@@ -156,6 +156,7 @@ Rotary encoder = Rotary(ENC_A, ENC_B);
 // the debounce instances
 #define debounceInterval  10    // in milliseconds
 Bounce dbBtnPush = Bounce();
+Bounce dbPTT = Bounce();
 
 // analog buttons library declaration (BMux)
 // define the analog pin to handle the buttons
@@ -480,52 +481,41 @@ long getStep () {
 }
 
 
-// in TX, check if we must go to RX
-void going2RX(boolean lptt) {
-    // if hardware PTT or CAT changed, I must go to RX
-    if (lptt or !catTX) {
-        // PTT released, going to RX
-        tx = false;
-        digitalWrite(PTT, tx);
+// hardware or software commands in to RX
+void going2RX() {
+    // PTT released, going to RX
+    tx = false;
+    digitalWrite(PTT, LOW);
 
-        // make changes if tx goes active when RIT is active
-        if (ritActive) {
-            // get the TX vfo and store it as the reference for the RIT
-            tvfo = *ptrVFO;
-            // restore the rit VFO to the actual VFO
-            *ptrVFO = txSplitVfo;
-        }
-
-        // make the split changes if needed
-        splitCheck();
-
-        // rise the update flag
-        update = true;
+    // make changes if tx goes active when RIT is active
+    if (ritActive) {
+        // get the TX vfo and store it as the reference for the RIT
+        tvfo = *ptrVFO;
+        // restore the rit VFO to the actual VFO
+        *ptrVFO = txSplitVfo;
     }
+
+    // make the split changes if needed
+    splitCheck();
 }
 
 
-// in RX, check if we must go to TX
-void going2TX(boolean lptt) {
-    if (!lptt or catTX) {
-        // PTT asserted, going into TX
-        tx = true;
-        digitalWrite(PTT, tx);
+// hardware or software commands in to TX
+void going2TX() {
+    // PTT asserted, going into TX
+    tx = true;
+    digitalWrite(PTT, 1);
 
-        // make changes if tx goes active when RIT is active
-        if (ritActive) {
-            // save the actual rit VFO
-            txSplitVfo = *ptrVFO;
-            // set the TX freq to the active VFO
-            *ptrVFO = tvfo;
-        }
-
-        // make the split changes if needed
-        splitCheck();
-
-        // rise the update flag
-        update = true;
+    // make changes if tx goes active when RIT is active
+    if (ritActive) {
+        // save the actual rit VFO
+        txSplitVfo = *ptrVFO;
+        // set the TX freq to the active VFO
+        *ptrVFO = tvfo;
     }
+
+    // make the split changes if needed
+    splitCheck();
 }
 
 
@@ -1241,7 +1231,15 @@ void smeter() {
 
 // instruct the sketch that must go in/out of TX
 void catGoPtt(boolean tx) {
-    catTX = tx;
+    if (tx) {
+        // going to TX
+        going2TX();
+    } else {
+        // goint to RX
+        going2RX();
+    }
+
+    // update the state
     update = true;
 }
 
@@ -1494,6 +1492,8 @@ void setup() {
 
     // pin mode of the PTT
     pinMode(inPTT, INPUT_PULLUP);
+    dbPTT.attach(inPTT);
+    dbPTT.interval(debounceInterval);
     pinMode(PTT, OUTPUT);
     // default awake mode is RX
     digitalWrite(PTT, 0);
@@ -1603,9 +1603,20 @@ void loop() {
         update = false;
     }
 
-    // check PTT and make the RX/TX changes
-    tbool = digitalRead(inPTT);
-    if (tx) { going2RX(tbool); } else { going2TX(tbool); }
+    // check Hardware PTT and make the RX/TX changes
+    if (dbPTT.update()) {
+        // state changed, if shorted to GND going to TX
+        if (dbPTT.fell()) {
+            // line asserted (PTT Closed) going to TX
+            going2TX();
+        } else {
+            // line left open, going to RX
+            going2RX();
+        }
+
+        // update flag
+        update = true;
+    }
 
     // debouce for the push
     dbBtnPush.update();
