@@ -1200,8 +1200,6 @@ void takeSample() {
     // security check for overflows, as map can pass peaks
     val &= B00001111;
 
-    Serial.println(val);
-
     // push it in the array
     for (byte i = 0; i < BARGRAPH_SAMPLES - 1; i++) pep[i] = pep[i + 1];
     pep[BARGRAPH_SAMPLES - 1] = val;
