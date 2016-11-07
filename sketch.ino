@@ -53,6 +53,7 @@
 * of comment out the feature and it will keep out of compilation
 *******************************************************************************/
 //#define CAT_CONTROL True
+//#define SMETER True
 
 // define the max count for analog buttons in the BMux library
 #define BUTTONS_COUNT 4
@@ -67,7 +68,7 @@
 #include <LiquidCrystal.h>  // default
 
 // optional features libraries
-#if defined (CAT_CONTROL)
+#ifdef CAT_CONTROL
     #include <ft857d.h>         // https://github.com/pavelmc/ft857d/
 #endif
 
@@ -96,7 +97,7 @@
  * if you have the any of the COLAB shields uncomment the following line.
  * (the sketch is configured by default for my particular hardware)
  ******************************************************************************/
-#define COLAB
+//#define COLAB
 
 
 /*********************** FILTER PRE-CONFIGURATIONS *****************************
@@ -158,7 +159,7 @@
 #define PTT     13              // PTT actuator, this will put the radio on TX
                                 // this match the led on pin 13 with the PTT
 
-#if defined (COLAB)
+#ifdef COLAB
     // Any of the COLAB shields
     #define btnPush  11             // Encoder Button
 #else
@@ -186,13 +187,13 @@ Button bmode    = Button(316, &btnModeClick);       // 4.7k
 Button brit     = Button(178, &btnRITClick);        // 2.2k
 Button bsplit   = Button(697, &btnSPLITClick);      // 22k
 
-#if defined (CAT_CONTROL)
+#ifdef CAT_CONTROL
     // the CAT radio lib
     ft857d cat = ft857d();
 #endif
 
 // lcd pins assuming a 1602 (16x2) at 4 bits
-#if defined (COLAB)
+#ifdef COLAB
     // COLAB shield + Arduino Mini/UNO Board
     #define LCD_RS      5
     #define LCD_E       6
@@ -305,7 +306,7 @@ Si5351 si5351;
 #define SAVE_INTERVAL 2400      // 10 minutes = 60 sec * 10 * 4 ticks
 
 // hardware pre configured values
-#if defined (SSBF_FT747GX)
+#ifdef SSBF_FT747GX
     // Pre configured values for a Single conversion radio using the FT-747GX
     long lsb =       -14500;
     long usb =        14500;
@@ -314,7 +315,7 @@ Si5351 si5351;
     long ifreq =   82129800;
 #endif
 
-#if defined (SSBF_URSS_500H)
+#ifdef SSBF_URSS_500H
     // Pre configured values for a Single conversion radio using the Polosa or
     // Angara 500H filter
     long lsb =        -17500;
@@ -324,7 +325,7 @@ Si5351 si5351;
     long ifreq =    4980800;
 #endif
 
-#if defined (SSBF_RFT_SEG15)
+#ifdef SSBF_RFT_SEG15
     // Pre configured values for a Double conversion radio using the RFT SEG15
     // RF board using the filter marked as:
     long lsb =        -14350;
@@ -387,16 +388,19 @@ byte VFOAMode =        MODE_LSB;
 byte VFOBMode =        MODE_LSB;
 boolean ritActive =    false;     // true: rit active, false: rit disabled
 boolean tx =           false;     // whether we are on TX mode or not
-#define BARGRAPH_SAMPLES    6
-byte pep[BARGRAPH_SAMPLES] = {0, 0, 0, 0, 0, 0};
-                                   // s-meter readings storage
+#ifdef SMETER
+    #define BARGRAPH_SAMPLES    6
+    byte pep[BARGRAPH_SAMPLES] = {0, 0, 0, 0, 0, 0};
+                                        // s-meter readings storage
+    boolean smeterOk = false;           // it's ok to show the bar graph
+    byte sMeter = 0;                    // hold the value of the Smeter readings
+                                        // in both RX and TX modes
+#endif
+
 unsigned long lastMilis = 0;       // to track the last sampled time
-boolean smeterOk =     false;      // it's ok to show the bar graph
 boolean barReDraw =    true;       // bar needs to be redrawn from zero
 boolean split =        false;      // this holds th split state
 boolean catTX =        false;      // CAT command to go to PTT
-byte sMeter =          0;          // hold the value of the Smeter readings
-                                   // in both RX and TX modes
 word qcounter =        0;          // Timer to be incremented each 1/4 second
                                    // approximately, to trigger a EEPROM update
                                    // if needed
@@ -1113,139 +1117,139 @@ void loadEEPROMConfig() {
 
 /**************************** SMETER / TX POWER *******************************/
 
+#ifdef SMETER
+    // show the bar graph for the RX or TX modes
+    void showBarGraph() {
+        // we are working on a 2x16 and we have 13 bars to show (0-12)
+        byte ave = 0, i;
+        volatile static byte barMax = 0;
 
-// show the bar graph for the RX or TX modes
-void showBarGraph() {
-    // we are working on a 2x16 and we have 13 bars to show (0-12)
-    byte ave = 0, i;
-    volatile static byte barMax = 0;
+        // find the average
+        for (i=0; i<BARGRAPH_SAMPLES; i++) ave += pep[i];
+        ave /= BARGRAPH_SAMPLES;
 
-    // find the average
-    for (i=0; i<BARGRAPH_SAMPLES; i++) ave += pep[i];
-    ave /= BARGRAPH_SAMPLES;
+        // set the smeter reading on the global scope for CAT readings
+        sMeter = ave;
 
-    // set the smeter reading on the global scope for CAT readings
-    sMeter = ave;
+        // scale it down to 0-12 from 0-15 now (rest 3)
+        // we opted to mask the inherent band noise over making a map that get a
+        // bad visual effect
+        //if (ave > 0 and ave <= 3) ave = 0;
+        if (ave > 12) ave = 12;
 
-    // scale it down to 0-12 from 0-15 now (rest 3)
-    // we opted to mask the inherent band noise over making a map that get a
-    // bad visual effect
-    //if (ave > 0 and ave <= 3) ave = 0;
-    if (ave > 12) ave = 12;
+        // printing only the needed part of the bar, if growing or shrinking
+        // if the same no action is required, remember we have to minimize the
+        // writes to the LCD to minimize QRM
 
-    // printing only the needed part of the bar, if growing or shrinking
-    // if the same no action is required, remember we have to minimize the
-    // writes to the LCD to minimize QRM
+        // if we get a barReDraw = true; then reset to redrawn the entire bar
+        if (barReDraw) {
+            barMax = 0;
+            // forcing the write of one line
+            if (ave == 0) ave = 1;
+        }
 
-    // if we get a barReDraw = true; then reset to redrawn the entire bar
-    if (barReDraw) {
-        barMax = 0;
-        // forcing the write of one line
-        if (ave == 0) ave = 1;
-    }
+        // growing bar: print the difference
+        if (ave > barMax) {
+            // LCD position & print the bars
+            lcd.setCursor(3 + barMax, 1);
 
-    // growing bar: print the difference
-    if (ave > barMax) {
-        // LCD position & print the bars
-        lcd.setCursor(3 + barMax, 1);
+            // write it
+            for (i = barMax; i <= ave; i++) {
+                switch (i) {
+                    case 0:
+                        lcd.write(byte(1));
+                        break;
+                    case 2:
+                        lcd.write(byte(2));
+                        break;
+                    case 4:
+                        lcd.write(byte(3));
+                        break;
+                    case 6:
+                        lcd.write(byte(4));
+                        break;
+                    case 8:
+                        lcd.write(byte(5));
+                        break;
+                    default:
+                        lcd.write(byte(0));
+                        break;
+                }
+            }
 
-        // write it
-        for (i = barMax; i <= ave; i++) {
-            switch (i) {
-                case 0:
-                    lcd.write(byte(1));
-                    break;
-                case 2:
-                    lcd.write(byte(2));
-                    break;
-                case 4:
-                    lcd.write(byte(3));
-                    break;
-                case 6:
-                    lcd.write(byte(4));
-                    break;
-                case 8:
-                    lcd.write(byte(5));
-                    break;
-                default:
-                    lcd.write(byte(0));
-                    break;
+            // second part of the erase, preparing for the blanking
+            if (barReDraw) barMax = 12;
+        }
+
+        // shrinking bar: erase the old ones print spaces to erase just the diff
+        if (barMax > ave) {
+            i = barMax;
+            while (i > ave) {
+                lcd.setCursor(3 + i, 1);
+                lcd.print(" ");
+                i--;
             }
         }
 
-        // second part of the erase, preparing for the blanking
-        if (barReDraw) barMax = 12;
+        // put the var for the next iteration
+        barMax = ave;
+        //reset the redraw flag
+        barReDraw = false;
     }
 
-    // shrinking bar: erase the old ones print spaces to erase just the diff
-    if (barMax > ave) {
-        i = barMax;
-        while (i > ave) {
-            lcd.setCursor(3 + i, 1);
-            lcd.print(" ");
-            i--;
+
+    // take a sample an inject it on the array
+    void takeSample() {
+        // we are sensing a value that must move in the 0-1.1v so internal reference
+        analogReference(INTERNAL);
+        word val;
+
+        if (!tx) {
+            val = analogRead(1);
+        } else {
+            val = analogRead(0);
+        }
+
+        // scale it to 4 bits (0-15) for CAT purposes
+        val = map(val, 0, 1023, 0, 15);
+
+        // security check for overflows, as map can pass peaks
+        val &= B00001111;
+
+        // push it in the array
+        for (byte i = 0; i < BARGRAPH_SAMPLES - 1; i++) pep[i] = pep[i + 1];
+        pep[BARGRAPH_SAMPLES - 1] = val;
+
+        // reset the reference for the buttons handling
+        analogReference(DEFAULT);
+    }
+
+
+    // smeter reading, this take a sample of the smeter/txpower each time; an will
+    // rise a flag when they have rotated the array of measurements 2/3 times to
+    // have a moving average
+    void smeter() {
+        // static smeter array counter
+        volatile static byte smeterCount = 0;
+
+        // no matter what, I must keep taking samples
+        takeSample();
+
+        // it has rotated already?
+        if (smeterCount > (BARGRAPH_SAMPLES * 2 / 3)) {
+            // rise the flag about the need to show the bar graph and reset the count
+            smeterOk = true;
+            smeterCount = 0;
+        } else {
+            // just increment it
+            smeterCount += 1;
         }
     }
-
-    // put the var for the next iteration
-    barMax = ave;
-    //reset the redraw flag
-    barReDraw = false;
-}
-
-
-// take a sample an inject it on the array
-void takeSample() {
-    // we are sensing a value that must move in the 0-1.1v so internal reference
-    analogReference(INTERNAL);
-    word val;
-
-    if (!tx) {
-        val = analogRead(1);
-    } else {
-        val = analogRead(0);
-    }
-
-    // scale it to 4 bits (0-15) for CAT purposes
-    val = map(val, 0, 1023, 0, 15);
-
-    // security check for overflows, as map can pass peaks
-    val &= B00001111;
-
-    // push it in the array
-    for (byte i = 0; i < BARGRAPH_SAMPLES - 1; i++) pep[i] = pep[i + 1];
-    pep[BARGRAPH_SAMPLES - 1] = val;
-
-    // reset the reference for the buttons handling
-    analogReference(DEFAULT);
-}
-
-
-// smeter reading, this take a sample of the smeter/txpower each time; an will
-// rise a flag when they have rotated the array of measurements 2/3 times to
-// have a moving average
-void smeter() {
-    // static smeter array counter
-    volatile static byte smeterCount = 0;
-
-    // no matter what, I must keep taking samples
-    takeSample();
-
-    // it has rotated already?
-    if (smeterCount > (BARGRAPH_SAMPLES * 2 / 3)) {
-        // rise the flag about the need to show the bar graph and reset the count
-        smeterOk = true;
-        smeterCount = 0;
-    } else {
-        // just increment it
-        smeterCount += 1;
-    }
-}
-
+#endif
 
 /******************************* CAT ******************************************/
 
-#if defined (CAT_CONTROL)
+#ifdef CAT_CONTROL
     // instruct the sketch that must go in/out of TX
     void catGoPtt(boolean tx) {
         if (tx) {
@@ -1318,7 +1322,11 @@ void smeter() {
     byte catGetSMeter() {
         // returns a byte in wich the s-meter is scaled to 4 bits (15)
         // it's scaled already this our code
-        return sMeter;
+        #ifdef SMETER
+            return sMeter;
+        #else
+            return 0;
+        #endif
     }
 
 
@@ -1340,7 +1348,11 @@ void smeter() {
          */
 
         // build the byte to return
-        return tx<<7 + split<<5 + sMeter;
+        #ifdef SMETER
+            return tx<<7 + split<<5 + sMeter;
+        #else
+            return tx<<7 + split<<5;
+        #endif
     }
 
 
@@ -1477,7 +1489,7 @@ void btnSPLITClick() {
 
 
 void setup() {
-    #if defined (CAT_CONTROL)
+    #ifdef CAT_CONTROL
         // CAT Library setup
         cat.addCATPtt(catGoPtt);
         cat.addCATAB(catGoToggleVFOs);
@@ -1553,7 +1565,7 @@ void setup() {
         lcd.setCursor(0, 1);
         lcd.print(F("Please wait...  "));
         saveEEPROM();
-        #if defined (CAT_CONTROL)
+        #ifdef CAT_CONTROL
             delayCat(); // 2 secs
         #else
             delay(2000);
@@ -1573,14 +1585,14 @@ void setup() {
     lcd.print(FMW_VER);
     lcd.print(F("  Mfv: "));
     lcd.print(EEP_VER);
-    #if defined (CAT_CONTROL)
+    #ifdef CAT_CONTROL
         delayCat(); // 2 secs
     #else
         delay(2000);
     #endif
     lcd.setCursor(0, 0);
     lcd.print(F(" by Pavel CO7WT "));
-    #if defined (CAT_CONTROL)
+    #ifdef CAT_CONTROL
         delayCat(1000); // 1 sec
     #else
         delay(1000);
@@ -1589,7 +1601,7 @@ void setup() {
 
     // Check for setup mode
     if (digitalRead(btnPush) == LOW) {
-        #if defined (CAT_CONTROL)
+        #ifdef CAT_CONTROL
             // CAT is disabled in SETUP mode
             cat.enabled = false;
         #endif
@@ -1665,8 +1677,11 @@ void loop() {
             update = true;
         }
 
-        // Second line of the LCD, I must show the bargraph only if not rit nor steps
-        if ((!ritActive and showStepCounter == 0) and smeterOk) showBarGraph();
+        #ifdef SMETER
+            // Second line of the LCD, I must show the bargraph only if not rit nor steps
+            if ((!ritActive and showStepCounter == 0) and smeterOk)
+                showBarGraph();
+        #endif
     } else {
         // setup mode
 
@@ -1684,8 +1699,10 @@ void loop() {
         // Reset the last reading to keep track
         lastMilis = millis();
 
-        // I must sample the input for the bar graph
-        smeter();
+        #ifdef SMETER
+            // I must sample the input for the bar graph
+            smeter();
+        #endif
 
         // time counter for VFO remember after power off
         if (qcounter < SAVE_INTERVAL) {
@@ -1708,7 +1725,7 @@ void loop() {
         }
     }
 
-    #if defined (CAT_CONTROL)
+    #ifdef CAT_CONTROL
         // CAT check
         cat.check();
     #endif
