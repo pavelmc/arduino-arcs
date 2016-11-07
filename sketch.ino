@@ -48,6 +48,12 @@
  *    of the nasty harmonics
  ******************************************************************************/
 
+/****************************** FEATURES SEGMENTATION *************************
+* Here we activate/deactivate some of the sketch features, it's just a matter
+* of comment out the feature and it will keep out of compilation
+*******************************************************************************/
+//#define CAT_CONTROL True
+
 // define the max count for analog buttons in the BMux library
 #define BUTTONS_COUNT 4
 
@@ -56,10 +62,14 @@
 #include <si5351.h>         // https://github.com/etherkit/Si5351Arduino/
 #include <Bounce2.h>        // https://github.com/thomasfredericks/Bounce2/
 #include <BMux.h>           // https://github.com/pavelmc/BMux/
-#include <ft857d.h>         // https://github.com/pavelmc/ft857d/
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
 #include <LiquidCrystal.h>  // default
+
+// optional features libraries
+#if defined (CAT_CONTROL)
+    #include <ft857d.h>         // https://github.com/pavelmc/ft857d/
+#endif
 
 // the fingerprint to know the EEPROM is initialized, we need to stamp something
 // on it, as the 5th birthday anniversary of my daughter was the date I begin to
@@ -176,8 +186,10 @@ Button bmode    = Button(316, &btnModeClick);       // 4.7k
 Button brit     = Button(178, &btnRITClick);        // 2.2k
 Button bsplit   = Button(697, &btnSPLITClick);      // 22k
 
-// the CAT radio lib
-ft857d cat = ft857d();
+#if defined (CAT_CONTROL)
+    // the CAT radio lib
+    ft857d cat = ft857d();
+#endif
 
 // lcd pins assuming a 1602 (16x2) at 4 bits
 #if defined (COLAB)
@@ -1233,119 +1245,119 @@ void smeter() {
 
 /******************************* CAT ******************************************/
 
+#if defined (CAT_CONTROL)
+    // instruct the sketch that must go in/out of TX
+    void catGoPtt(boolean tx) {
+        if (tx) {
+            // going to TX
+            going2TX();
+        } else {
+            // goint to RX
+            going2RX();
+        }
 
-// instruct the sketch that must go in/out of TX
-void catGoPtt(boolean tx) {
-    if (tx) {
-        // going to TX
-        going2TX();
-    } else {
-        // goint to RX
-        going2RX();
+        // update the state
+        update = true;
     }
 
-    // update the state
-    update = true;
-}
 
-
-// set VFO toggles from CAT
-void catGoToggleVFOs() {
-    activeVFO = !activeVFO;
-    update = true;
-}
-
-
-// set freq from CAT
-void catSetFreq(long f) {
-    // we use 1/10 hz so scale it
-    f *= 10;
-
-    // check for the freq boundaries
-    if (f > F_MAX) return;
-    if (f < F_MIN) return;
-
-    // set the freq for the active VFO
-    *ptrVFO =  f;
-
-    // apply changes
-    updateAllFreq();
-    update = true;
-}
-
-
-// set mode from CAT
-void catSetMode(byte m) {
-    // the mode can be any of the CAT ones, we have to restrict it to our modes
-    if (m > 2) return;  // no change
-
-    // by luck we use the same mode than the CAT lib so far
-    *ptrMode = m;
-
-    // Apply the changes
-    updateAllFreq();
-    update = true;
-}
-
-
-// get freq from CAT
-long catGetFreq() {
-    // get the active VFO freq and pass it
-    return *ptrVFO / 10;
-}
-
-
-// get mode from CAT
-byte catGetMode() {
-    // get the active VFO mode and pass it
-    return *ptrMode;
-}
-
-
-// get the s meter status to CAT
-byte catGetSMeter() {
-    // returns a byte in wich the s-meter is scaled to 4 bits (15)
-    // it's scaled already this our code
-    return sMeter;
-}
-
-
-// get the TXstatus to CAT
-byte catGetTXStatus() {
-    // prepare a byte like the one the CAT wants:
-
-    /*
-     * this must return a byte in wich the different bits means this:
-     * 0b abcdefgh
-     *  a = 0 = PTT off
-     *  a = 1 = PTT on
-     *  b = 0 = HI SWR off
-     *  b = 1 = HI SWR on
-     *  c = 0 = split on
-     *  c = 1 = split off
-     *  d = dummy data
-     *  efgh = PO meter data
-     */
-
-    // build the byte to return
-    return tx<<7 + split<<5 + sMeter;
-}
-
-
-// delay with CAT check, this is for the welcome screen
-// see the note in the setup; default ~2 secs
-void delayCat(int del = 2000) {
-    // delay in msecs to wait, 2000 ~2 seconds by default
-    long delay = millis() + del;
-    long m = 0;
-
-    // loop to waste time
-    while (m < delay) {
-        cat.check();
-        m = millis();
+    // set VFO toggles from CAT
+    void catGoToggleVFOs() {
+        activeVFO = !activeVFO;
+        update = true;
     }
-}
 
+
+    // set freq from CAT
+    void catSetFreq(long f) {
+        // we use 1/10 hz so scale it
+        f *= 10;
+
+        // check for the freq boundaries
+        if (f > F_MAX) return;
+        if (f < F_MIN) return;
+
+        // set the freq for the active VFO
+        *ptrVFO =  f;
+
+        // apply changes
+        updateAllFreq();
+        update = true;
+    }
+
+
+    // set mode from CAT
+    void catSetMode(byte m) {
+        // the mode can be any of the CAT ones, we have to restrict it to our modes
+        if (m > 2) return;  // no change
+
+        // by luck we use the same mode than the CAT lib so far
+        *ptrMode = m;
+
+        // Apply the changes
+        updateAllFreq();
+        update = true;
+    }
+
+
+    // get freq from CAT
+    long catGetFreq() {
+        // get the active VFO freq and pass it
+        return *ptrVFO / 10;
+    }
+
+
+    // get mode from CAT
+    byte catGetMode() {
+        // get the active VFO mode and pass it
+        return *ptrMode;
+    }
+
+
+    // get the s meter status to CAT
+    byte catGetSMeter() {
+        // returns a byte in wich the s-meter is scaled to 4 bits (15)
+        // it's scaled already this our code
+        return sMeter;
+    }
+
+
+    // get the TXstatus to CAT
+    byte catGetTXStatus() {
+        // prepare a byte like the one the CAT wants:
+
+        /*
+         * this must return a byte in wich the different bits means this:
+         * 0b abcdefgh
+         *  a = 0 = PTT off
+         *  a = 1 = PTT on
+         *  b = 0 = HI SWR off
+         *  b = 1 = HI SWR on
+         *  c = 0 = split on
+         *  c = 1 = split off
+         *  d = dummy data
+         *  efgh = PO meter data
+         */
+
+        // build the byte to return
+        return tx<<7 + split<<5 + sMeter;
+    }
+
+
+    // delay with CAT check, this is for the welcome screen
+    // see the note in the setup; default ~2 secs
+    void delayCat(int del = 2000) {
+        // delay in msecs to wait, 2000 ~2 seconds by default
+        long delay = millis() + del;
+        long m = 0;
+
+        // loop to waste time
+        while (m < delay) {
+            cat.check();
+            m = millis();
+        }
+    }
+#endif
 
 /******************************* BUTTONS *************************************/
 
@@ -1465,17 +1477,19 @@ void btnSPLITClick() {
 
 
 void setup() {
-    // CAT Library setup
-    cat.addCATPtt(catGoPtt);
-    cat.addCATAB(catGoToggleVFOs);
-    cat.addCATFSet(catSetFreq);
-    cat.addCATMSet(catSetMode);
-    cat.addCATGetFreq(catGetFreq);
-    cat.addCATGetMode(catGetMode);
-    cat.addCATSMeter(catGetSMeter);
-    cat.addCATTXStatus(catGetTXStatus);
-    // now we activate the library
-    cat.begin(57600, SERIAL_8N1);
+    #if defined (CAT_CONTROL)
+        // CAT Library setup
+        cat.addCATPtt(catGoPtt);
+        cat.addCATAB(catGoToggleVFOs);
+        cat.addCATFSet(catSetFreq);
+        cat.addCATMSet(catSetMode);
+        cat.addCATGetFreq(catGetFreq);
+        cat.addCATGetMode(catGetMode);
+        cat.addCATSMeter(catGetSMeter);
+        cat.addCATTXStatus(catGetTXStatus);
+        // now we activate the library
+        cat.begin(57600, SERIAL_8N1);
+    #endif
 
     // LCD init, create the custom chars first
     lcd.createChar(0, bar);
@@ -1539,7 +1553,11 @@ void setup() {
         lcd.setCursor(0, 1);
         lcd.print(F("Please wait...  "));
         saveEEPROM();
-        delayCat(1000); // see note below on the welcome screen
+        #if defined (CAT_CONTROL)
+            delayCat(); // 2 secs
+        #else
+            delay(2000);
+        #endif
         lcd.clear();
     }
 
@@ -1555,23 +1573,33 @@ void setup() {
     lcd.print(FMW_VER);
     lcd.print(F("  Mfv: "));
     lcd.print(EEP_VER);
-    delayCat();
+    #if defined (CAT_CONTROL)
+        delayCat(); // 2 secs
+    #else
+        delay(2000);
+    #endif
     lcd.setCursor(0, 0);
     lcd.print(F(" by Pavel CO7WT "));
-    delayCat(1000);
+    #if defined (CAT_CONTROL)
+        delayCat(1000); // 1 sec
+    #else
+        delay(1000);
+    #endif
     lcd.clear();
 
     // Check for setup mode
     if (digitalRead(btnPush) == LOW) {
-        // CAT is disabled in SETUP mode
-        cat.enabled = false;
+        #if defined (CAT_CONTROL)
+            // CAT is disabled in SETUP mode
+            cat.enabled = false;
+        #endif
 
         // we are in the setup mode
         lcd.setCursor(0, 0);
         lcd.print(F(" You are in the "));
         lcd.setCursor(0, 1);
         lcd.print(F("   SETUP MODE   "));
-        delay(2000); // 2 secs
+        delay(2000);
         lcd.clear();
 
         // rise the flag of setup mode for every body to see it.
@@ -1680,8 +1708,10 @@ void loop() {
         }
     }
 
-    // CAT check
-    cat.check();
+    #if defined (CAT_CONTROL)
+        // CAT check
+        cat.check();
+    #endif
 
     // analog buttons check
     abm.check();
