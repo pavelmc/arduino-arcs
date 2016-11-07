@@ -54,15 +54,17 @@
 *******************************************************************************/
 //#define CAT_CONTROL True
 //#define SMETER True
+//#define ABUT
 
-// define the max count for analog buttons in the BMux library
-#define BUTTONS_COUNT 4
+#ifdef ABUT
+    // define the max count for analog buttons in the BMux library
+    #define BUTTONS_COUNT 4
+#endif
 
 // now the main include block
 #include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
 #include <si5351.h>         // https://github.com/etherkit/Si5351Arduino/
 #include <Bounce2.h>        // https://github.com/thomasfredericks/Bounce2/
-#include <BMux.h>           // https://github.com/pavelmc/BMux/
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
 #include <LiquidCrystal.h>  // default
@@ -70,6 +72,10 @@
 // optional features libraries
 #ifdef CAT_CONTROL
     #include <ft857d.h>         // https://github.com/pavelmc/ft857d/
+#endif
+
+#ifdef ABUT
+    #include <BMux.h>           // https://github.com/pavelmc/BMux/
 #endif
 
 // the fingerprint to know the EEPROM is initialized, we need to stamp something
@@ -175,17 +181,20 @@ Rotary encoder = Rotary(ENC_A, ENC_B);
 Bounce dbBtnPush = Bounce();
 Bounce dbPTT = Bounce();
 
-// analog buttons library declaration (BMux)
-// define the analog pin to handle the buttons
-#define KEYS_PIN  2
-BMux abm;
+#ifdef ABUT
+    // analog buttons library declaration (BMux)
+    // define the analog pin to handle the buttons
+    #define KEYS_PIN  2
+    BMux abm;
 
-// Creating the analog buttons for the BMux lib; see the BMux doc for details
-// you may have to tweak this values a little for your hardware case
-Button bvfoab   = Button(510, &btnVFOABClick);      // 10k
-Button bmode    = Button(316, &btnModeClick);       // 4.7k
-Button brit     = Button(178, &btnRITClick);        // 2.2k
-Button bsplit   = Button(697, &btnSPLITClick);      // 22k
+    // Creating the analog buttons for the BMux lib; see the BMux doc for details
+    // you may have to tweak this values a little for your hardware case
+    Button bvfoab   = Button(510, &btnVFOABClick);      // 10k
+    Button bmode    = Button(316, &btnModeClick);       // 4.7k
+    Button brit     = Button(178, &btnRITClick);        // 2.2k
+    Button bsplit   = Button(697, &btnSPLITClick);      // 22k
+#endif
+
 
 #ifdef CAT_CONTROL
     // the CAT radio lib
@@ -1373,117 +1382,117 @@ void loadEEPROMConfig() {
 
 /******************************* BUTTONS *************************************/
 
+#ifdef ABUT
+    // VFO A/B button click >>>> (OK/SAVE click)
+    void btnVFOABClick() {
+        // normal mode
+        if (runMode) {
+            // we force to deactivate the RIT on VFO change, as it will confuse
+            // the users and have a non logical use, only if activated and
+            // BEFORE we change the active VFO
+            if (ritActive) toggleRit();
 
-// VFO A/B button click >>>> (OK/SAVE click)
-void btnVFOABClick() {
-    // normal mode
-    if (runMode) {
-        // we force to deactivate the RIT on VFO change, as it will confuse
-        // the users and have a non logical use, only if activated and
-        // BEFORE we change the active VFO
-        if (ritActive) toggleRit();
+            // now we swap the VFO.
+            swapVFO();
 
-        // now we swap the VFO.
-        swapVFO();
+            // update VFO/BFO and instruct to update the LCD
+            updateAllFreq();
 
-        // update VFO/BFO and instruct to update the LCD
-        updateAllFreq();
-
-        // set the LCD update flag
-        update = true;
-    } else {
-        // SETUP mode
-        if (!inSetup) {
-            // I'm going to setup a element
-            inSetup = true;
-
-            // change the mode to follow VFO A
-            if (config == CONFIG_USB) VFOAMode = MODE_USB;
-            if (config == CONFIG_LSB) VFOAMode = MODE_LSB;
-
-            // config update on the LCD
-            showModConfig();
+            // set the LCD update flag
+            update = true;
         } else {
-            // get out of the setup change
+            // SETUP mode
+            if (!inSetup) {
+                // I'm going to setup a element
+                inSetup = true;
+
+                // change the mode to follow VFO A
+                if (config == CONFIG_USB) VFOAMode = MODE_USB;
+                if (config == CONFIG_LSB) VFOAMode = MODE_LSB;
+
+                // config update on the LCD
+                showModConfig();
+            } else {
+                // get out of the setup change
+                inSetup = false;
+
+                // save to the eeprom
+                saveEEPROM();
+
+                // lcd delay to show it properly (user feedback)
+                lcd.setCursor(0, 0);
+                lcd.print(F("##   SAVED    ##"));
+                delay(1000);
+
+                // show setup
+                showConfig();
+
+                // reset the minimum step if set (1hz > 10 hz)
+                if (step == 1) step = 2;
+            }
+        }
+    }
+
+
+    // MODE button click >>>> (CANCEL click)
+    void btnModeClick() {
+        // normal mode
+        if (runMode) {
+            changeMode();
+            update = true;
+        } else if (inSetup) {
+            // setup mode, just inside a value edit, then get out of here
             inSetup = false;
 
-            // save to the eeprom
-            saveEEPROM();
-
-            // lcd delay to show it properly (user feedback)
+            // user feedback
             lcd.setCursor(0, 0);
-            lcd.print(F("##   SAVED    ##"));
+            lcd.print(F(" #  Canceled  # "));
             delay(1000);
 
-            // show setup
+            // show it
             showConfig();
-
-            // reset the minimum step if set (1hz > 10 hz)
-            if (step == 1) step = 2;
         }
     }
-}
 
 
-// MODE button click >>>> (CANCEL click)
-void btnModeClick() {
-    // normal mode
-    if (runMode) {
-        changeMode();
-        update = true;
-    } else if (inSetup) {
-        // setup mode, just inside a value edit, then get out of here
-        inSetup = false;
+    // RIT button click >>>> (RESET values click)
+    void btnRITClick() {
+        // normal mode
+        if (runMode) {
+            toggleRit();
+            update = true;
+        } else if (inSetup) {
+            // SETUP mode just inside a value edit.
 
-        // user feedback
-        lcd.setCursor(0, 0);
-        lcd.print(F(" #  Canceled  # "));
-        delay(1000);
+            // where we are to know what to reset?
+            if (config == CONFIG_LSB) lsb   = 0;
+            if (config == CONFIG_USB) usb   = 0;
+            if (config == CONFIG_CW)  cw    = 0;
+            if (config == CONFIG_IF)  ifreq = 0;
+            if (config == CONFIG_PPM) {
+                // reset, ppm
+                si5351_ppm = 0;
+                si5351.set_correction(0);
+            }
 
-        // show it
-        showConfig();
+            // update the freqs for
+            updateAllFreq();
+            showModConfig();
+        }
     }
-}
 
 
-// RIT button click >>>> (RESET values click)
-void btnRITClick() {
-    // normal mode
-    if (runMode) {
-        toggleRit();
-        update = true;
-    } else if (inSetup) {
-        // SETUP mode just inside a value edit.
-
-        // where we are to know what to reset?
-        if (config == CONFIG_LSB) lsb   = 0;
-        if (config == CONFIG_USB) usb   = 0;
-        if (config == CONFIG_CW)  cw    = 0;
-        if (config == CONFIG_IF)  ifreq = 0;
-        if (config == CONFIG_PPM) {
-            // reset, ppm
-            si5351_ppm = 0;
-            si5351.set_correction(0);
+    // SPLIT button click  >>>> (Nothing yet)
+    void btnSPLITClick() {
+        // normal mode
+        if (runMode) {
+            split = !split;
+            update = true;
         }
 
-        // update the freqs for
-        updateAllFreq();
-        showModConfig();
+        // no function in SETUP yet.
     }
-}
-
-
-// SPLIT button click  >>>> (Nothing yet)
-void btnSPLITClick() {
-    // normal mode
-    if (runMode) {
-        split = !split;
-        update = true;
-    }
-
-    // no function in SETUP yet.
-}
-
+#endif
 
 /************************* SETUP and LOOP *************************************/
 
@@ -1529,12 +1538,14 @@ void setup() {
     // default awake mode is RX
     digitalWrite(PTT, 0);
 
-    // analog buttons setup
-    abm.init(KEYS_PIN, 3, 20);
-    abm.add(bvfoab);
-    abm.add(bmode);
-    abm.add(brit);
-    abm.add(bsplit);
+    #ifdef ABUT
+        // analog buttons setup
+        abm.init(KEYS_PIN, 3, 20);
+        abm.add(bvfoab);
+        abm.add(bmode);
+        abm.add(brit);
+        abm.add(bsplit);
+    #endif
 
     // I2C init
     Wire.begin();
@@ -1730,6 +1741,8 @@ void loop() {
         cat.check();
     #endif
 
-    // analog buttons check
-    abm.check();
+    #ifdef ABUT
+        // analog buttons check
+        abm.check();
+    #endif
 }
