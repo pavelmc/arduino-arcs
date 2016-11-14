@@ -52,14 +52,17 @@
 * Here we activate/deactivate some of the sketch features, it's just a matter
 * of comment out the feature and it will keep out of compilation
 *******************************************************************************/
-//#define CAT_CONTROL True
-//#define SMETER True
-//#define ABUT
+#define CAT_CONTROL True
+#define SMETER True
+#define ABUT
 
 #ifdef ABUT
     // define the max count for analog buttons in the BMux library
     #define BUTTONS_COUNT 4
 #endif
+
+// Enable weak pullups in the rotary lib before inclusion
+#define ENABLE_PULLUPS
 
 // now the main include block
 #include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
@@ -75,6 +78,7 @@
 #endif
 
 #ifdef ABUT
+    #define BMUX_SAMPLING 10    // 10 samples per second
     #include <BMux.h>           // https://github.com/pavelmc/BMux/
 #endif
 
@@ -1209,8 +1213,7 @@ void loadEEPROMConfig() {
 
     // take a sample an inject it on the array
     void takeSample() {
-        // we are sensing a value that must move in the 0-1.1v so internal reference
-        analogReference(INTERNAL);
+        // reference is 5v
         word val;
 
         if (!tx) {
@@ -1228,9 +1231,6 @@ void loadEEPROMConfig() {
         // push it in the array
         for (byte i = 0; i < BARGRAPH_SAMPLES - 1; i++) pep[i] = pep[i + 1];
         pep[BARGRAPH_SAMPLES - 1] = val;
-
-        // reset the reference for the buttons handling
-        analogReference(DEFAULT);
     }
 
 
@@ -1523,21 +1523,6 @@ void setup() {
     lcd.begin(16, 2);
     lcd.clear();
 
-    // buttons debounce encoder & push
-    pinMode(btnPush, INPUT_PULLUP);
-    pinMode(ENC_A, INPUT_PULLUP);
-    pinMode(ENC_B, INPUT_PULLUP);
-    dbBtnPush.attach(btnPush);
-    dbBtnPush.interval(debounceInterval);
-
-    // pin mode of the PTT
-    pinMode(inPTT, INPUT_PULLUP);
-    dbPTT.attach(inPTT);
-    dbPTT.interval(debounceInterval);
-    pinMode(PTT, OUTPUT);
-    // default awake mode is RX
-    digitalWrite(PTT, 0);
-
     #ifdef ABUT
         // analog buttons setup
         abm.init(KEYS_PIN, 3, 20);
@@ -1546,6 +1531,18 @@ void setup() {
         abm.add(brit);
         abm.add(bsplit);
     #endif
+
+    // buttons debounce & PTT
+    pinMode(btnPush, INPUT_PULLUP);
+    dbBtnPush.attach(btnPush);
+    dbBtnPush.interval(debounceInterval);
+    // pin mode of the PTT
+    pinMode(inPTT, INPUT_PULLUP);
+    dbPTT.attach(inPTT);
+    dbPTT.interval(debounceInterval);
+    // default awake mode is RX
+    pinMode(PTT, OUTPUT);
+    digitalWrite(PTT, 0);
 
     // I2C init
     Wire.begin();
