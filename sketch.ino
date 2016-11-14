@@ -403,10 +403,10 @@ boolean ritActive =    false;     // true: rit active, false: rit disabled
 boolean tx =           false;     // whether we are on TX mode or not
 #ifdef SMETER
     #define BARGRAPH_SAMPLES    6
-    byte pep[BARGRAPH_SAMPLES] = {0, 0, 0, 0, 0, 0};
+    word pep[BARGRAPH_SAMPLES] = {0, 0, 0, 0, 0, 0};
                                         // s-meter readings storage
     boolean smeterOk = false;           // it's ok to show the bar graph
-    byte sMeter = 0;                    // hold the value of the Smeter readings
+    word sMeter = 0;                    // hold the value of the Smeter readings
                                         // in both RX and TX modes
 #endif
 
@@ -1134,7 +1134,7 @@ void loadEEPROMConfig() {
     // show the bar graph for the RX or TX modes
     void showBarGraph() {
         // we are working on a 2x16 and we have 13 bars to show (0-12)
-        byte ave = 0, i;
+        unsigned long ave = 0, i;
         volatile static byte barMax = 0;
 
         // find the average
@@ -1144,11 +1144,8 @@ void loadEEPROMConfig() {
         // set the smeter reading on the global scope for CAT readings
         sMeter = ave;
 
-        // scale it down to 0-12 from 0-15 now (rest 3)
-        // we opted to mask the inherent band noise over making a map that get a
-        // bad visual effect
-        //if (ave > 0 and ave <= 3) ave = 0;
-        if (ave > 12) ave = 12;
+        // scale it down to 0-12 from word
+        byte local = map(ave, 0, 1023, 0, 12);
 
         // printing only the needed part of the bar, if growing or shrinking
         // if the same no action is required, remember we have to minimize the
@@ -1158,16 +1155,16 @@ void loadEEPROMConfig() {
         if (barReDraw) {
             barMax = 0;
             // forcing the write of one line
-            if (ave == 0) ave = 1;
+            if (local == 0) local = 1;
         }
 
         // growing bar: print the difference
-        if (ave > barMax) {
+        if (local > barMax) {
             // LCD position & print the bars
             lcd.setCursor(3 + barMax, 1);
 
             // write it
-            for (i = barMax; i <= ave; i++) {
+            for (i = barMax; i <= local; i++) {
                 switch (i) {
                     case 0:
                         lcd.write(byte(1));
@@ -1195,9 +1192,9 @@ void loadEEPROMConfig() {
         }
 
         // shrinking bar: erase the old ones print spaces to erase just the diff
-        if (barMax > ave) {
+        if (barMax > local) {
             i = barMax;
-            while (i > ave) {
+            while (i > local) {
                 lcd.setCursor(3 + i, 1);
                 lcd.print(" ");
                 i--;
@@ -1205,7 +1202,7 @@ void loadEEPROMConfig() {
         }
 
         // put the var for the next iteration
-        barMax = ave;
+        barMax = local;
         //reset the redraw flag
         barReDraw = false;
     }
@@ -1221,12 +1218,6 @@ void loadEEPROMConfig() {
         } else {
             val = analogRead(0);
         }
-
-        // scale it to 4 bits (0-15) for CAT purposes
-        val = map(val, 0, 1023, 0, 15);
-
-        // security check for overflows, as map can pass peaks
-        val &= B00001111;
 
         // push it in the array
         for (byte i = 0; i < BARGRAPH_SAMPLES - 1; i++) pep[i] = pep[i + 1];
@@ -1332,7 +1323,7 @@ void loadEEPROMConfig() {
         // returns a byte in wich the s-meter is scaled to 4 bits (15)
         // it's scaled already this our code
         #ifdef SMETER
-            return sMeter;
+            return sMeter >> 6 ;
         #else
             return 0;
         #endif
