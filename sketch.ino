@@ -50,11 +50,25 @@
 
 /****************************** FEATURES SEGMENTATION *************************
 * Here we activate/deactivate some of the sketch features, it's just a matter
-* of comment out the feature and it will keep out of compilation
+* of comment out the feature and it will keep out of compilation (smaller code)
+*
+* For example: you want a full remote station via CAT and then things like
+* the rotary control, the analog buttons & LCD are not needed... Simple:
+* Uncomment all this below BUT CAT_CONTROL
+*
+* You can play with others to create your particular solution, I'm thinking
+* about a poor ham fellow that has only a Arduino mini with a ATMega168 and
+* just 16k of firmware space... sacrificing the CAT and/or smeter can make it
+* fit in it.
 *******************************************************************************/
 #define CAT_CONTROL True
-#define SMETER True
-#define ABUT
+#define ABUT True
+//#define NOLCD True
+
+#ifndef NOLCD
+    // if you don't have a LCD the SMETER has no meaning
+    #define SMETER True
+#endif  // nolcd
 
 #ifdef ABUT
     // define the max count for analog buttons in the BMux library
@@ -70,17 +84,19 @@
 #include <Bounce2.h>        // https://github.com/thomasfredericks/Bounce2/
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
-#include <LiquidCrystal.h>  // default
+#ifndef NOLCD
+    #include <LiquidCrystal.h>  // default
+#endif  // nolcd
 
 // optional features libraries
 #ifdef CAT_CONTROL
     #include <ft857d.h>         // https://github.com/pavelmc/ft857d/
-#endif
+#endif // cat_control
 
 #ifdef ABUT
     #define BMUX_SAMPLING 10    // 10 samples per second
     #include <BMux.h>           // https://github.com/pavelmc/BMux/
-#endif
+#endif // abut
 
 // the fingerprint to know the EEPROM is initialized, we need to stamp something
 // on it, as the 5th birthday anniversary of my daughter was the date I begin to
@@ -175,7 +191,7 @@
 #else
     // Pavel's hardware
     #define btnPush  4              // Encoder Button
-#endif
+#endif // colab
 
 // rotary encoder library setup
 Rotary encoder = Rotary(ENC_A, ENC_B);
@@ -197,7 +213,7 @@ Bounce dbPTT = Bounce();
     Button bmode    = Button(316, &btnModeClick);       // 4.7k
     Button brit     = Button(178, &btnRITClick);        // 2.2k
     Button bsplit   = Button(697, &btnSPLITClick);      // 22k
-#endif
+#endif  //abut
 
 
 #ifdef CAT_CONTROL
@@ -205,88 +221,94 @@ Bounce dbPTT = Bounce();
     ft857d cat = ft857d();
 #endif
 
-// lcd pins assuming a 1602 (16x2) at 4 bits
-#ifdef COLAB
-    // COLAB shield + Arduino Mini/UNO Board
-    #define LCD_RS      5
-    #define LCD_E       6
-    #define LCD_D4      7
-    #define LCD_D5      8
-    #define LCD_D6      9
-    #define LCD_D7      10
-#else
-    // Pavel's hardware
-    #define LCD_RS      8    // 14 < Real pins in a 28PDIP
-    #define LCD_E       7    // 13
-    #define LCD_D4      6    // 12
-    #define LCD_D5      5    // 11
-    #define LCD_D6      10   // 16
-    #define LCD_D7      9    // 15
-#endif
+#ifndef NOLCD
+    // lcd pins assuming a 1602 (16x2) at 4 bits
+    #ifdef COLAB
+        // COLAB shield + Arduino Mini/UNO Board
+        #define LCD_RS      5
+        #define LCD_E       6
+        #define LCD_D4      7
+        #define LCD_D5      8
+        #define LCD_D6      9
+        #define LCD_D7      10
+    #else
+        // Pavel's hardware
+        #define LCD_RS      8    // 14 < Real pins in a 28PDIP
+        #define LCD_E       7    // 13
+        #define LCD_D4      6    // 12
+        #define LCD_D5      5    // 11
+        #define LCD_D6      10   // 16
+        #define LCD_D7      9    // 15
+    #endif // colab
+#endif // nolcd
 
-// lcd library setup
-LiquidCrystal lcd(LCD_RS, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
-// defining the chars
+#ifndef NOLCD
+    // lcd library setup
+    LiquidCrystal lcd(LCD_RS, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
-byte bar[8] = {
-  B11111,
-  B11111,
-  B11111,
-  B10001,
-  B11111,
-  B11111,
-  B11111
-};
+    #ifdef SMETER
+        // defining the chars for the Smeter
+        byte bar[8] = {
+          B11111,
+          B11111,
+          B11111,
+          B10001,
+          B11111,
+          B11111,
+          B11111
+        };
 
-byte s1[8] = {
-  B11111,
-  B10011,
-  B11011,
-  B11011,
-  B11011,
-  B10001,
-  B11111
-};
+        byte s1[8] = {
+          B11111,
+          B10011,
+          B11011,
+          B11011,
+          B11011,
+          B10001,
+          B11111
+        };
 
-byte s3[8] = {
-  B11111,
-  B10001,
-  B11101,
-  B10001,
-  B11101,
-  B10001,
-  B11111
-};
+        byte s3[8] = {
+          B11111,
+          B10001,
+          B11101,
+          B10001,
+          B11101,
+          B10001,
+          B11111
+        };
 
-byte s5[8] = {
-  B11111,
-  B10001,
-  B10111,
-  B10001,
-  B11101,
-  B10001,
-  B11111
-};
+        byte s5[8] = {
+          B11111,
+          B10001,
+          B10111,
+          B10001,
+          B11101,
+          B10001,
+          B11111
+        };
 
-byte s7[8] = {
-  B11111,
-  B10001,
-  B11101,
-  B11011,
-  B11011,
-  B11011,
-  B11111
-};
+        byte s7[8] = {
+          B11111,
+          B10001,
+          B11101,
+          B11011,
+          B11011,
+          B11011,
+          B11111
+        };
 
-byte s9[8] = {
-  B11111,
-  B10001,
-  B10101,
-  B10001,
-  B11101,
-  B11101,
-  B11111
-};
+        byte s9[8] = {
+          B11111,
+          B10001,
+          B10101,
+          B10001,
+          B11101,
+          B11101,
+          B11111
+        };
+    #endif  // smeter
+#endif  // nolcd
 
 // Si5351 library declaration
 Si5351 si5351;
@@ -310,9 +332,8 @@ Si5351 si5351;
 // --
 #define CONFIG_MAX 7               // the amount of configure options
 
-// sampling interval for the AGC, 1/4 second, averaged every 4 samples and with
-// a scope of the last 6 samples (aka: 2/3 moving mean)
-#define SM_SAMPLING_INTERVAL  250
+// Tick interval for the timed actions like the SMeter and the autosave
+#define TICK_INTERVAL  250
 
 // EERPOM saving interval (if some parameter has changed) in 1/4 seconds; var i
 // word so max is 65535 in 1/4 secs is ~ 16383 sec ~ 273 min ~ 4h 33 min
@@ -326,7 +347,7 @@ Si5351 si5351;
     long cw =             0;
     long xfo =            0;
     long ifreq =   82129800;
-#endif
+#endif  // 747
 
 #ifdef SSBF_URSS_500H
     // Pre configured values for a Single conversion radio using the Polosa or
@@ -336,7 +357,7 @@ Si5351 si5351;
     long cw =              0;
     long xfo =            0;
     long ifreq =    4980800;
-#endif
+#endif  // urss filter 500
 
 #ifdef SSBF_RFT_SEG15
     // Pre configured values for a Double conversion radio using the RFT SEG15
@@ -369,7 +390,7 @@ Si5351 si5351;
      *  turn it on. It is used only for the calculations
     */
     long xfo =  279970000;
-#endif
+#endif  // seg 15
 
 // Put the value here if you have the default ppm corrections for you Si5351
 // if you set it here it will be stored on the EEPROM on the initial start.
@@ -403,7 +424,7 @@ boolean ritActive =    false;     // true: rit active, false: rit disabled
 boolean tx =           false;     // whether we are on TX mode or not
 #ifdef SMETER
     #define BARGRAPH_SAMPLES    6
-    word pep[BARGRAPH_SAMPLES] = {0, 0, 0, 0, 0, 0};
+    word pep[BARGRAPH_SAMPLES] = {};
                                         // s-meter readings storage
     boolean smeterOk = false;           // it's ok to show the bar graph
     word sMeter = 0;                    // hold the value of the Smeter readings
@@ -595,8 +616,10 @@ void encoderMoved(int dir) {
         updateFreq(dir);
         update = true;
     } else {
-        // update the values in the setup mode
-        updateSetupValues(dir);
+        #ifndef NOLCD   // no meaning if no lcd
+            // update the values in the setup mode
+            updateSetupValues(dir);
+        #endif  // nolcd
     }
 }
 
@@ -628,383 +651,384 @@ void updateFreq(int dir) {
 
 /************************** LCD INTERFACE RELATED *****************************/
 
+#ifndef NOLCD
+    // update the setup values
+    void updateSetupValues(int dir) {
+        // we are in setup mode, showing or modifying?
+        if (!inSetup) {
+            // just showing, show the config on the LCD
+            updateShowConfig(dir);
+        } else {
+            // change the VFO to A by default
+            swapVFO(1);
+            // I'm modifying, switch on the config item
+            switch (config) {
+                case CONFIG_IF:
+                    // change the IF value
+                    ifreq += getStep() * dir;
+                    belowZero(&ifreq);
+                    break;
+                case CONFIG_VFO_A:
+                    // change VFOa
+                    *ptrVFO += getStep() * dir;
+                    belowZero(ptrVFO);
+                    break;
+                case CONFIG_MODE_A:
+                    // hot swap it
+                    changeMode();
+                    // set the default mode in the VFO A
+                    showModeSetup(VFOAMode);
+                    break;
+                case CONFIG_USB:
+                    // change the mode to USB
+                    *ptrMode = MODE_USB;
+                    // change the USB BFO
+                    usb += getStep() * dir;
+                    break;
+                case CONFIG_LSB:
+                    // change the mode to LSB
+                    *ptrMode = MODE_LSB;
+                    // change the LSB BFO
+                    lsb += getStep() * dir;
+                    break;
+                case CONFIG_CW:
+                    // change the mode to CW
+                    *ptrMode = MODE_CW;
+                    // change the CW BFO
+                    cw += getStep() * dir;
+                    break;
+                case CONFIG_PPM:
+                    // change the Si5351 PPM
+                    si5351_ppm += getStep() * dir;
+                    // instruct the lib to use the new ppm value
+                    si5351.set_correction(si5351_ppm);
+                    break;
+                case CONFIG_XFO:
+                    // change XFO
+                    xfo += getStep() * dir;
+                    belowZero(&xfo);
+                    break;
+            }
 
-// update the setup values
-void updateSetupValues(int dir) {
-    // we are in setup mode, showing or modifying?
-    if (!inSetup) {
-        // just showing, show the config on the LCD
-        updateShowConfig(dir);
-    } else {
-        // change the VFO to A by default
-        swapVFO(1);
-        // I'm modifying, switch on the config item
+            // for all cases update the freqs
+            updateAllFreq();
+
+            // update el LCD
+            showModConfig();
+        }
+    }
+
+
+    // update the configuration item before selecting it
+    void updateShowConfig(int dir) {
+        // move the config item, it's a byte, so we use a temp var here
+        int tconfig = config;
+        tconfig += dir;
+
+        if (tconfig > CONFIG_MAX) tconfig = 0;
+        if (tconfig < 0) tconfig = CONFIG_MAX;
+        config = tconfig;
+
+        // update the LCD
+        showConfig();
+    }
+
+
+    // show the mode for the passed mode in setup mode
+    void showModeSetup(byte mode) {
+        // now I have to print it out
+        lcd.setCursor(0, 1);
+        spaces(11);
+        showModeLcd(mode); // this one has a implicit extra space after it
+    }
+
+
+    // print a string of spaces, to save some flash/eeprom "space"
+    void spaces(byte m) {
+        // print m spaces in the LCD
+        while (m) {
+            lcd.print(" ");
+            m--;
+        }
+    }
+
+
+    // show the labels of the config
+    void showConfigLabels() {
         switch (config) {
             case CONFIG_IF:
-                // change the IF value
-                ifreq += getStep() * dir;
-                belowZero(&ifreq);
+                lcd.print(F("  IF frequency  "));
                 break;
             case CONFIG_VFO_A:
-                // change VFOa
-                *ptrVFO += getStep() * dir;
-                belowZero(ptrVFO);
+                lcd.print(F("   VFO A freq   "));
                 break;
             case CONFIG_MODE_A:
-                // hot swap it
-                changeMode();
-                // set the default mode in the VFO A
-                showModeSetup(VFOAMode);
+                lcd.print(F("   VFO A mode   "));
                 break;
             case CONFIG_USB:
-                // change the mode to USB
-                *ptrMode = MODE_USB;
-                // change the USB BFO
-                usb += getStep() * dir;
+                lcd.print(F(" BFO freq. USB  "));
                 break;
             case CONFIG_LSB:
-                // change the mode to LSB
-                *ptrMode = MODE_LSB;
-                // change the LSB BFO
-                lsb += getStep() * dir;
+                lcd.print(F(" BFO freq. LSB  "));
                 break;
             case CONFIG_CW:
-                // change the mode to CW
-                *ptrMode = MODE_CW;
-                // change the CW BFO
-                cw += getStep() * dir;
+                lcd.print(F(" BFO freq. CW   "));
                 break;
             case CONFIG_PPM:
-                // change the Si5351 PPM
-                si5351_ppm += getStep() * dir;
-                // instruct the lib to use the new ppm value
-                si5351.set_correction(si5351_ppm);
+                lcd.print(F("Si5351 PPM error"));
                 break;
             case CONFIG_XFO:
-                // change XFO
-                xfo += getStep() * dir;
-                belowZero(&xfo);
+                lcd.print(F("  XFO frequency "));
                 break;
         }
-
-        // for all cases update the freqs
-        updateAllFreq();
-
-        // update el LCD
-        showModConfig();
     }
-}
 
 
-// update the configuration item before selecting it
-void updateShowConfig(int dir) {
-    // move the config item, it's a byte, so we use a temp var here
-    int tconfig = config;
-    tconfig += dir;
-
-    if (tconfig > CONFIG_MAX) tconfig = 0;
-    if (tconfig < 0) tconfig = CONFIG_MAX;
-    config = tconfig;
-
-    // update the LCD
-    showConfig();
-}
-
-
-// show the mode for the passed mode in setup mode
-void showModeSetup(byte mode) {
-    // now I have to print it out
-    lcd.setCursor(0, 1);
-    spaces(11);
-    showModeLcd(mode); // this one has a implicit extra space after it
-}
-
-
-// print a string of spaces, to save some flash/eeprom "space"
-void spaces(byte m) {
-    // print m spaces in the LCD
-    while (m) {
-        lcd.print(" ");
-        m--;
+    // show the setup main menu
+    void showConfig() {
+        // we have update the whole LCD screen
+        lcd.setCursor(0, 0);
+        lcd.print(F("#> SETUP MENU <#"));
+        lcd.setCursor(0, 1);
+        // show the specific item label
+        showConfigLabels();
     }
-}
 
 
-// show the labels of the config
-void showConfigLabels() {
-    switch (config) {
-        case CONFIG_IF:
-            lcd.print(F("  IF frequency  "));
-            break;
-        case CONFIG_VFO_A:
-            lcd.print(F("   VFO A freq   "));
-            break;
-        case CONFIG_MODE_A:
-            lcd.print(F("   VFO A mode   "));
-            break;
-        case CONFIG_USB:
-            lcd.print(F(" BFO freq. USB  "));
-            break;
-        case CONFIG_LSB:
-            lcd.print(F(" BFO freq. LSB  "));
-            break;
-        case CONFIG_CW:
-            lcd.print(F(" BFO freq. CW   "));
-            break;
-        case CONFIG_PPM:
-            lcd.print(F("Si5351 PPM error"));
-            break;
-        case CONFIG_XFO:
-            lcd.print(F("  XFO frequency "));
-            break;
+    // print the sign of a passed parameter
+    void showSign(long val) {
+        // just print it
+        if (val > 0) lcd.print("+");
+        if (val < 0) lcd.print("-");
+        if (val == 0) lcd.print(" ");
     }
-}
 
 
-// show the setup main menu
-void showConfig() {
-    // we have update the whole LCD screen
-    lcd.setCursor(0, 0);
-    lcd.print(F("#> SETUP MENU <#"));
-    lcd.setCursor(0, 1);
-    // show the specific item label
-    showConfigLabels();
-}
+    // show the ppm as a signed long
+    void showConfigValue(long val) {
+        lcd.print(F("Val:"));
 
+        // Show the sign only on config and not VFO & IF
+        boolean t;
+        t = config == CONFIG_VFO_A or config == CONFIG_XFO or config == CONFIG_IF;
+        if (!runMode and !t) showSign(val);
 
-// print the sign of a passed parameter
-void showSign(long val) {
-    // just print it
-    if (val > 0) lcd.print("+");
-    if (val < 0) lcd.print("-");
-    if (val == 0) lcd.print(" ");
-}
+        // print it
+        formatFreq(abs(val));
 
-
-// show the ppm as a signed long
-void showConfigValue(long val) {
-    lcd.print(F("Val:"));
-
-    // Show the sign only on config and not VFO & IF
-    boolean t;
-    t = config == CONFIG_VFO_A or config == CONFIG_XFO or config == CONFIG_IF;
-    if (!runMode and !t) showSign(val);
-
-    // print it
-    formatFreq(abs(val));
-
-    // if on normal mode we show in 10 Hz
-    if (runMode) lcd.print("0");
-    lcd.print(F("hz"));
-}
-
-
-// update the specific setup item
-void showModConfig() {
-    lcd.setCursor(0, 0);
-    showConfigLabels();
-
-    // show the specific values
-    lcd.setCursor(0, 1);
-    switch (config) {
-        case CONFIG_IF:
-            showConfigValue(ifreq);
-            break;
-        case CONFIG_VFO_A:
-            showConfigValue(vfoa);
-            break;
-        case CONFIG_MODE_A:
-            showModeSetup(VFOAMode);
-        case CONFIG_USB:
-            showConfigValue(usb);
-            break;
-        case CONFIG_LSB:
-            showConfigValue(lsb);
-            break;
-        case CONFIG_CW:
-            showConfigValue(cw);
-            break;
-        case CONFIG_PPM:
-            showConfigValue(si5351_ppm);
-            break;
-        case CONFIG_XFO:
-            showConfigValue(xfo);
-            break;
+        // if on normal mode we show in 10 Hz
+        if (runMode) lcd.print("0");
+        lcd.print(F("hz"));
     }
-}
 
 
-// format the freq to easy viewing
-void formatFreq(long freq) {
-    // for easy viewing we format a freq like 7.110 to 7.110.00
-    long t;
+    // update the specific setup item
+    void showModConfig() {
+        lcd.setCursor(0, 0);
+        showConfigLabels();
 
-    // get the freq in Hz as the lib needs in 1/10 hz resolution
-    freq /= 10;
-
-    // Mhz part
-    t = freq / 1000000;
-    if (t < 10) lcd.print(" ");
-    if (t == 0) {
-        spaces(2);
-    } else {
-        lcd.print(t);
-        // first dot: optional
-        lcd.print(".");
+        // show the specific values
+        lcd.setCursor(0, 1);
+        switch (config) {
+            case CONFIG_IF:
+                showConfigValue(ifreq);
+                break;
+            case CONFIG_VFO_A:
+                showConfigValue(vfoa);
+                break;
+            case CONFIG_MODE_A:
+                showModeSetup(VFOAMode);
+            case CONFIG_USB:
+                showConfigValue(usb);
+                break;
+            case CONFIG_LSB:
+                showConfigValue(lsb);
+                break;
+            case CONFIG_CW:
+                showConfigValue(cw);
+                break;
+            case CONFIG_PPM:
+                showConfigValue(si5351_ppm);
+                break;
+            case CONFIG_XFO:
+                showConfigValue(xfo);
+                break;
+        }
     }
-    // Khz part
-    t = (freq % 1000000);
-    t /= 1000;
-    if (t < 100) lcd.print("0");
-    if (t < 10) lcd.print("0");
-    lcd.print(t);
-    // second dot: forced
-    lcd.print(".");
-    // hz part
-    t = (freq % 1000);
-    if (t < 100) lcd.print("0");
-    // check if in config and show up to 1hz resolution
-    if (!runMode) {
+
+
+    // format the freq to easy viewing
+    void formatFreq(long freq) {
+        // for easy viewing we format a freq like 7.110 to 7.110.00
+        long t;
+
+        // get the freq in Hz as the lib needs in 1/10 hz resolution
+        freq /= 10;
+
+        // Mhz part
+        t = freq / 1000000;
+        if (t < 10) lcd.print(" ");
+        if (t == 0) {
+            spaces(2);
+        } else {
+            lcd.print(t);
+            // first dot: optional
+            lcd.print(".");
+        }
+        // Khz part
+        t = (freq % 1000000);
+        t /= 1000;
+        if (t < 100) lcd.print("0");
         if (t < 10) lcd.print("0");
         lcd.print(t);
-    } else {
-        lcd.print(t/10);
-    }
-}
-
-
-// lcd update in normal mode
-void updateLcd() {
-    // this is the designed normal mode LCD
-    /******************************************************
-     *   0123456789abcdef
-     *  ------------------
-     *  |A 14.280.25 lsb |
-     *  |RX 0000000000000|
-     *
-     *  |RX +9.99 Khz    |
-     *
-     *  |RX 100hz        |
-     *  ------------------
-     ******************************************************/
-
-    // first line
-    lcd.setCursor(0, 0);
-    // active a?
-    if (activeVFO) {
-        lcd.print(F("A"));
-    } else {
-        lcd.print(F("B"));
+        // second dot: forced
+        lcd.print(".");
+        // hz part
+        t = (freq % 1000);
+        if (t < 100) lcd.print("0");
+        // check if in config and show up to 1hz resolution
+        if (!runMode) {
+            if (t < 10) lcd.print("0");
+            lcd.print(t);
+        } else {
+            lcd.print(t/10);
+        }
     }
 
-    // split?
-    if (split) {
-        // ok, show the split status as a * sign
-        lcd.print(F("*"));
-    } else {
-        // print a separator.
+
+    // lcd update in normal mode
+    void updateLcd() {
+        // this is the designed normal mode LCD
+        /******************************************************
+         *   0123456789abcdef
+         *  ------------------
+         *  |A 14.280.25 lsb |
+         *  |RX 0000000000000|
+         *
+         *  |RX +9.99 Khz    |
+         *
+         *  |RX 100hz        |
+         *  ------------------
+         ******************************************************/
+
+        // first line
+        lcd.setCursor(0, 0);
+        // active a?
+        if (activeVFO) {
+            lcd.print(F("A"));
+        } else {
+            lcd.print(F("B"));
+        }
+
+        // split?
+        if (split) {
+            // ok, show the split status as a * sign
+            lcd.print(F("*"));
+        } else {
+            // print a separator.
+            spaces(1);
+        }
+
+        // show VFO and mode
+        formatFreq(*ptrVFO);
         spaces(1);
-    }
+        showModeLcd(*ptrMode);
 
-    // show VFO and mode
-    formatFreq(*ptrVFO);
-    spaces(1);
-    showModeLcd(*ptrMode);
-
-    // second line
-    lcd.setCursor(0, 1);
-    if (tx) {
-        lcd.print(F("TX "));
-    } else {
-        lcd.print(F("RX "));
-    }
-
-    // if we have a RIT or steps we manage it here and the bar will hold
-    if (ritActive) showRit();
-}
-
-
-// show rit in LCD
-void showRit() {
-    /***************************************************************************
-     * RIT show something like this on the line of the non active VFO
-     *
-     *   |0123456789abcdef|
-     *   |----------------|
-     *   |RX RIT -9.99 khz|
-     *   |----------------|
-     *
-     *             WARNING !!!!!!!!!!!!!!!!!!!!1
-     *  If the user change the VFO we need to *RESET* & disable the RIT ASAP.
-     *
-     **************************************************************************/
-
-    // get the active VFO to calculate the deviation & scallit down
-    long diff = (*ptrVFO - tvfo)/100;
-
-    // we start on line 2, char 3 of the second line
-    lcd.setCursor(3, 1);
-    lcd.print(F("RIT "));
-
-    // show the difference in Khz on the screen with sign
-    // diff can overflow the input of showSign, so we scale it down
-    showSign(diff);
-
-    // print the freq now, we have a max of 10 Khz (9.990 Khz)
-    diff = abs(diff);
-
-    // Khz part (999)
-    word t = diff / 100;
-    lcd.print(t);
-    lcd.print(".");
-    // hz part
-    t = diff % 100;
-    if (t < 10) lcd.print("0");
-    lcd.print(t);
-    spaces(1);
-    // unit
-    lcd.print(F("kHz"));
-}
-
-
-// show the mode on the LCD
-void showModeLcd(byte mode) {
-    // print it
-    switch (mode) {
-        case MODE_USB:
-          lcd.print(F("USB "));
-          break;
-        case MODE_LSB:
-          lcd.print(F("LSB "));
-          break;
-        case MODE_CW:
-          lcd.print(F("CW  "));
-          break;
-    }
-}
-
-
-// show the vfo step
-void showStep() {
-    // in nomal or setup mode?
-    if (runMode) {
-        // in normal mode is the second line, third char
-        lcd.setCursor(3, 1);
-    } else {
-        // in setup mode is just in the begining of the second line
+        // second line
         lcd.setCursor(0, 1);
+        if (tx) {
+            lcd.print(F("TX "));
+        } else {
+            lcd.print(F("RX "));
+        }
+
+        // if we have a RIT or steps we manage it here and the bar will hold
+        if (ritActive) showRit();
     }
 
-    // show it
-    if (step == 1) lcd.print(F("  1Hz"));
-    if (step == 2) lcd.print(F(" 10Hz"));
-    if (step == 3) lcd.print(F("100Hz"));
-    if (step == 4) lcd.print(F(" 1kHz"));
-    if (step == 5) lcd.print(F("10kHz"));
-    if (step == 6) lcd.print(F(" 100k"));
-    if (step == 7) lcd.print(F(" 1MHz"));
-    spaces(11);
-}
+
+    // show rit in LCD
+    void showRit() {
+        /***************************************************************************
+         * RIT show something like this on the line of the non active VFO
+         *
+         *   |0123456789abcdef|
+         *   |----------------|
+         *   |RX RIT -9.99 khz|
+         *   |----------------|
+         *
+         *             WARNING !!!!!!!!!!!!!!!!!!!!1
+         *  If the user change the VFO we need to *RESET* & disable the RIT ASAP.
+         *
+         **************************************************************************/
+
+        // get the active VFO to calculate the deviation & scallit down
+        long diff = (*ptrVFO - tvfo)/100;
+
+        // we start on line 2, char 3 of the second line
+        lcd.setCursor(3, 1);
+        lcd.print(F("RIT "));
+
+        // show the difference in Khz on the screen with sign
+        // diff can overflow the input of showSign, so we scale it down
+        showSign(diff);
+
+        // print the freq now, we have a max of 10 Khz (9.990 Khz)
+        diff = abs(diff);
+
+        // Khz part (999)
+        word t = diff / 100;
+        lcd.print(t);
+        lcd.print(".");
+        // hz part
+        t = diff % 100;
+        if (t < 10) lcd.print("0");
+        lcd.print(t);
+        spaces(1);
+        // unit
+        lcd.print(F("kHz"));
+    }
+
+
+    // show the mode on the LCD
+    void showModeLcd(byte mode) {
+        // print it
+        switch (mode) {
+            case MODE_USB:
+              lcd.print(F("USB "));
+              break;
+            case MODE_LSB:
+              lcd.print(F("LSB "));
+              break;
+            case MODE_CW:
+              lcd.print(F("CW  "));
+              break;
+        }
+    }
+
+
+    // show the vfo step
+    void showStep() {
+        // in nomal or setup mode?
+        if (runMode) {
+            // in normal mode is the second line, third char
+            lcd.setCursor(3, 1);
+        } else {
+            // in setup mode is just in the begining of the second line
+            lcd.setCursor(0, 1);
+        }
+
+        // show it
+        if (step == 1) lcd.print(F("  1Hz"));
+        if (step == 2) lcd.print(F(" 10Hz"));
+        if (step == 3) lcd.print(F("100Hz"));
+        if (step == 4) lcd.print(F(" 1kHz"));
+        if (step == 5) lcd.print(F("10kHz"));
+        if (step == 6) lcd.print(F(" 100k"));
+        if (step == 7) lcd.print(F(" 1MHz"));
+        spaces(11);
+    }
+#endif  // nolcd
 
 
 /******************************* Si5351 Update ********************************/
@@ -1401,8 +1425,10 @@ void loadEEPROMConfig() {
                 if (config == CONFIG_USB) VFOAMode = MODE_USB;
                 if (config == CONFIG_LSB) VFOAMode = MODE_LSB;
 
-                // config update on the LCD
-                showModConfig();
+                #ifndef NOLCD
+                    // config update on the LCD
+                    showModConfig();
+                #endif  // nolcd
             } else {
                 // get out of the setup change
                 inSetup = false;
@@ -1410,13 +1436,15 @@ void loadEEPROMConfig() {
                 // save to the eeprom
                 saveEEPROM();
 
-                // lcd delay to show it properly (user feedback)
-                lcd.setCursor(0, 0);
-                lcd.print(F("##   SAVED    ##"));
-                delay(1000);
+                #ifndef NOLCD
+                    // lcd delay to show it properly (user feedback)
+                    lcd.setCursor(0, 0);
+                    lcd.print(F("##   SAVED    ##"));
+                    delay(1000);
 
-                // show setup
-                showConfig();
+                    // show setup
+                    showConfig();
+                #endif  // nolcd
 
                 // reset the minimum step if set (1hz > 10 hz)
                 if (step == 1) step = 2;
@@ -1435,13 +1463,15 @@ void loadEEPROMConfig() {
             // setup mode, just inside a value edit, then get out of here
             inSetup = false;
 
-            // user feedback
-            lcd.setCursor(0, 0);
-            lcd.print(F(" #  Canceled  # "));
-            delay(1000);
+            #ifndef NOLCD
+                // user feedback
+                lcd.setCursor(0, 0);
+                lcd.print(F(" #  Canceled  # "));
+                delay(1000);
 
-            // show it
-            showConfig();
+                // show it
+                showConfig();
+            #endif  // nolcd
         }
     }
 
@@ -1468,7 +1498,9 @@ void loadEEPROMConfig() {
 
             // update the freqs for
             updateAllFreq();
-            showModConfig();
+            #ifndef NOLCD
+                showModConfig();
+            #endif  // nolcd
         }
     }
 
@@ -1503,16 +1535,18 @@ void setup() {
         cat.begin(57600, SERIAL_8N1);
     #endif
 
-    // LCD init, create the custom chars first
-    lcd.createChar(0, bar);
-    lcd.createChar(1, s1);
-    lcd.createChar(2, s3);
-    lcd.createChar(3, s5);
-    lcd.createChar(4, s7);
-    lcd.createChar(5, s9);
-    // now load the library
-    lcd.begin(16, 2);
-    lcd.clear();
+    #ifndef NOLCD
+        // LCD init, create the custom chars first
+        lcd.createChar(0, bar);
+        lcd.createChar(1, s1);
+        lcd.createChar(2, s3);
+        lcd.createChar(3, s5);
+        lcd.createChar(4, s7);
+        lcd.createChar(5, s9);
+        // now load the library
+        lcd.begin(16, 2);
+        lcd.clear();
+    #endif  // nolcd
 
     #ifdef ABUT
         // analog buttons setup
@@ -1558,45 +1592,61 @@ void setup() {
         // just if it's already ok
         loadEEPROMConfig();
     } else {
-        // full init, LCD banner by 1 second
-        lcd.setCursor(0, 0);
-        lcd.print(F("Init EEPROM...  "));
-        lcd.setCursor(0, 1);
-        lcd.print(F("Please wait...  "));
+        #ifndef NOLCD
+            // full init, LCD banner by 1 second
+            lcd.setCursor(0, 0);
+            lcd.print(F("Init EEPROM...  "));
+            lcd.setCursor(0, 1);
+            lcd.print(F("Please wait...  "));
+        #endif  // nolcd
+        
         saveEEPROM();
+        
         #ifdef CAT_CONTROL
             delayCat(); // 2 secs
         #else
             delay(2000);
         #endif
-        lcd.clear();
+
+        #ifndef NOLCD
+            lcd.clear();
+        #endif  // nolcd
     }
 
-    // Welcome screen
+    #ifndef NOLCD
+        // Welcome screen
+        lcd.clear();
+        lcd.print(F("  Aduino Arcs  "));
+        lcd.setCursor(0, 1);
+        lcd.print(F("Fv: "));
+        lcd.print(FMW_VER);
+        lcd.print(F("  Mfv: "));
+        lcd.print(EEP_VER);
+    #endif  / nolcd
 
     // A software controlling the CAT via USB will reset the sketch upon
     // connection, so we need turn the cat.check() when running the welcome
     // banners (use case: Fldigi)
-    lcd.clear();
-    lcd.print(F("  Aduino Arcs  "));
-    lcd.setCursor(0, 1);
-    lcd.print(F("Fv: "));
-    lcd.print(FMW_VER);
-    lcd.print(F("  Mfv: "));
-    lcd.print(EEP_VER);
     #ifdef CAT_CONTROL
         delayCat(); // 2 secs
     #else
         delay(2000);
     #endif
-    lcd.setCursor(0, 0);
-    lcd.print(F(" by Pavel CO7WT "));
+
+    #ifndef NOLCD
+        lcd.setCursor(0, 0);
+        lcd.print(F(" by Pavel CO7WT "));
+    #endif  // nolcd
+
     #ifdef CAT_CONTROL
         delayCat(1000); // 1 sec
     #else
         delay(1000);
     #endif
-    lcd.clear();
+
+    #ifndef NOLCD
+        lcd.clear(); 
+    #endif  // nolcd
 
     // Check for setup mode
     if (digitalRead(btnPush) == LOW) {
@@ -1605,19 +1655,20 @@ void setup() {
             cat.enabled = false;
         #endif
 
-        // we are in the setup mode
-        lcd.setCursor(0, 0);
-        lcd.print(F(" You are in the "));
-        lcd.setCursor(0, 1);
-        lcd.print(F("   SETUP MODE   "));
-        delay(2000);
-        lcd.clear();
+        #ifndef NOLCD
+            // we are in the setup mode
+            lcd.setCursor(0, 0);
+            lcd.print(F(" You are in the "));
+            lcd.setCursor(0, 1);
+            lcd.print(F("   SETUP MODE   "));
+            delay(2000);
+            lcd.clear();
+            // show setup mode
+            showConfig();
+        #endif  // nolcd
 
         // rise the flag of setup mode for every body to see it.
         runMode = false;
-
-        // show setup mode
-        showConfig();
     }
 
     // setting up VFO A as principal.
@@ -1642,8 +1693,10 @@ void loop() {
 
     // LCD update check in normal mode
     if (update and runMode) {
-        // update and reset the flag
-        updateLcd();
+        #ifndef NOLCD
+            // update and reset the flag
+            updateLcd();
+        #endif  // nolcd
         update = false;
     }
 
@@ -1688,13 +1741,15 @@ void loop() {
         if (tbool) {
             // change the step and show it on the LCD
             changeStep();
-            showStep();
+            #ifndef NOLCD
+                showStep();
+            #endif     // nolcd
         }
 
     }
 
     // timed actions, it ticks every 1/4 second (250 msecs)
-    if ((millis() - lastMilis) >= SM_SAMPLING_INTERVAL) {
+    if ((millis() - lastMilis) >= TICK_INTERVAL) {
         // Reset the last reading to keep track
         lastMilis = millis();
 
@@ -1714,7 +1769,11 @@ void loop() {
         }
 
         // step show time show the first time
-        if (showStepCounter >= STEP_SHOW_TIME) showStep();
+        if (showStepCounter >= STEP_SHOW_TIME) {
+            #ifndef NOLCD
+                showStep();
+            #endif  // nolcd
+        }
 
         // decrement timer
         if (showStepCounter > 0) {
