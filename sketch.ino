@@ -311,7 +311,7 @@
 long lsb =       -1450;
 long usb =        1450;
 long cw =            0;
-long ifreq =   8212980;
+long ifreq =   1000000; // 8212980
 
 // This value is not the real PPM value is just the freq correction for your
 // particular xtal from the 27.00000 Mhz one, if you can measure it put it here
@@ -415,7 +415,7 @@ void changeMode() {
 // change the steps
 void changeStep() {
     // calculating the next step
-    if (step < 6) {
+    if (step < 7) {
         // simply increment
         step += 1;
     } else {
@@ -456,7 +456,7 @@ long getStep () {
     // we get the step from the global step var
     long ret = 1;
     for (byte i=0; i < step; i++, ret *= 10);
-    return ret;
+    return ret/10;
 }
 
 
@@ -775,9 +775,6 @@ void belowZero(long *value) {
         // for easy viewing we format a freq like 7.110 to 7.110.00
         long t;
 
-        // get the freq in Hz as the lib needs in 1/10 hz resolution
-        freq /= 10;
-
         // Mhz part
         t = freq / 1000000;
         if (t < 10) lcd.print(" ");
@@ -875,8 +872,8 @@ void belowZero(long *value) {
          *
          **************************************************************************/
 
-        // get the active VFO to calculate the deviation & scallit down
-        long diff = (*ptrVFO - tvfo)/100;
+        // get the active VFO to calculate the deviation & scale it down
+        long diff = (*ptrVFO - tvfo);
 
         // we start on line 2, char 3 of the second line
         lcd.setCursor(3, 1);
