@@ -52,18 +52,39 @@
 * Here we activate/deactivate some of the sketch features, it's just a matter
 * of comment out the feature and it will keep out of compilation (smaller code)
 *
-* For example: you want a full remote station via CAT and then things like
-* the rotary control, the analog buttons & LCD are not needed... Simple:
-* Uncomment all this below BUT CAT_CONTROL
+* For example: one user requested a "headless" mode: no lcd, no buttons, just
+* cat control via serial/usb from the PC. for that we have the headless mode.
 *
-* You can play with others to create your particular solution, I'm thinking
-* about a poor ham fellow that has only a Arduino mini with a ATMega168 and
-* just 16k of firmware space... sacrificing the CAT and/or smeter can make it
-* fit in it.
+* Uncomment the line that define the HEADLESS macro an you a re done.
 *******************************************************************************/
 #define CAT_CONTROL True
 #define ABUT True
-//#define NOLCD True
+#define ROTARY True
+
+// if you want a headless control unit just uncomment this
+// you will get no LCD / buttons /rotary; only cat control
+#define HEADLESS True
+
+#ifdef HEADLESS
+    // no LCD 
+    #define NOLCD True
+
+    // no Analog Buttons
+    #ifdef ABUT
+        #undef ABUT
+    #endif // ABUT
+
+    // no rotary ot push buttons
+    #ifdef ROTARY
+        #undef ROTARY
+    #endif // ROTARY
+
+    // YES CAT_CONTROL
+    #ifndef CAT_CONTROL
+        #define CAT_CONTROL True
+    #endif  // CAT_CONTROL
+#endif  // headless
+
 
 #ifndef NOLCD
     // if you don't have a LCD the SMETER has no meaning
@@ -79,14 +100,17 @@
 #define ENABLE_PULLUPS
 
 // now the main include block
-#include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
 #include <si5351.h>         // https://github.com/etherkit/Si5351Arduino/
-#include <Bounce2.h>        // https://github.com/thomasfredericks/Bounce2/
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
 #ifndef NOLCD
     #include <LiquidCrystal.h>  // default
 #endif  // nolcd
+
+#ifdef ROTARY
+    #include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
+    #include <Bounce2.h>        // https://github.com/thomasfredericks/Bounce2/
+#endif  // rotary
 
 // optional features libraries
 #ifdef CAT_CONTROL
@@ -178,28 +202,32 @@
 #define F_MIN      65000000     // 6.500.000
 #define F_MAX      75000000     // 7.500.000
 
-// encoder pins
-#define ENC_A    3              // Encoder pin A
-#define ENC_B    2              // Encoder pin B
-#define inPTT   12              // PTT/CW KEY Line with pullup from the outside
+// PTT OUT pin
 #define PTT     13              // PTT actuator, this will put the radio on TX
                                 // this match the led on pin 13 with the PTT
 
-#ifdef COLAB
-    // Any of the COLAB shields
-    #define btnPush  11             // Encoder Button
-#else
-    // Pavel's hardware
-    #define btnPush  4              // Encoder Button
-#endif // colab
+#ifdef ROTARY
+    // encoder pins
+    #define ENC_A    3              // Encoder pin A
+    #define ENC_B    2              // Encoder pin B
+    #define inPTT   12              // PTT/CW KEY Line with pullup
 
-// rotary encoder library setup
-Rotary encoder = Rotary(ENC_A, ENC_B);
+    #ifdef COLAB
+        // Any of the COLAB shields
+        #define btnPush  11             // Encoder Button
+    #else
+        // Pavel's hardware
+        #define btnPush  4              // Encoder Button
+    #endif // colab
 
-// the debounce instances
-#define debounceInterval  10    // in milliseconds
-Bounce dbBtnPush = Bounce();
-Bounce dbPTT = Bounce();
+    // rotary encoder library setup
+    Rotary encoder = Rotary(ENC_A, ENC_B);
+
+    // the debounce instances
+    #define debounceInterval  10    // in milliseconds
+    Bounce dbBtnPush = Bounce();
+    Bounce dbPTT = Bounce();
+#endif  // rotary
 
 #ifdef ABUT
     // analog buttons library declaration (BMux)
@@ -513,21 +541,22 @@ void changeStep() {
 }
 
 
-// RIT toggle
-void toggleRit() {
-    if (!ritActive) {
-        // going to activate it: store the active VFO
-        tvfo = *ptrVFO;
-        ritActive = true;
-    } else {
-        // going to deactivate: reset the stored VFO
-        *ptrVFO = tvfo;
-        ritActive = false;
-        // flag to redraw the bar graph
-        barReDraw = true;
+#ifdef ABUT
+    // RIT toggle
+    void toggleRit() {
+        if (!ritActive) {
+            // going to activate it: store the active VFO
+            tvfo = *ptrVFO;
+            ritActive = true;
+        } else {
+            // going to deactivate: reset the stored VFO
+            *ptrVFO = tvfo;
+            ritActive = false;
+            // flag to redraw the bar graph
+            barReDraw = true;
+        }
     }
-}
-
+#endif  // abut
 
 // return the right step size to move
 long getStep () {
@@ -1557,15 +1586,19 @@ void setup() {
         abm.add(bsplit);
     #endif
 
-    // buttons debounce & PTT
-    pinMode(btnPush, INPUT_PULLUP);
-    dbBtnPush.attach(btnPush);
-    dbBtnPush.interval(debounceInterval);
-    // pin mode of the PTT
-    pinMode(inPTT, INPUT_PULLUP);
-    dbPTT.attach(inPTT);
-    dbPTT.interval(debounceInterval);
-    // default awake mode is RX
+    #ifdef ROTARY
+        // buttons debounce & PTT
+        pinMode(btnPush, INPUT_PULLUP);
+        dbBtnPush.attach(btnPush);
+        dbBtnPush.interval(debounceInterval);
+        // pin mode of the PTT
+        pinMode(inPTT, INPUT_PULLUP);
+        dbPTT.attach(inPTT);
+        dbPTT.interval(debounceInterval);
+        // default awake mode is RX
+    #endif  // ROTARY
+
+    // set PTT at the start to LOW aka RX
     pinMode(PTT, OUTPUT);
     digitalWrite(PTT, 0);
 
@@ -1648,28 +1681,30 @@ void setup() {
         lcd.clear(); 
     #endif  // nolcd
 
-    // Check for setup mode
-    if (digitalRead(btnPush) == LOW) {
-        #ifdef CAT_CONTROL
-            // CAT is disabled in SETUP mode
-            cat.enabled = false;
-        #endif
+    #ifdef ROTRAY
+        // Check for setup mode
+        if (digitalRead(btnPush) == LOW) {
+            #ifdef CAT_CONTROL
+                // CAT is disabled in SETUP mode
+                cat.enabled = false;
+            #endif
 
-        #ifndef NOLCD
-            // we are in the setup mode
-            lcd.setCursor(0, 0);
-            lcd.print(F(" You are in the "));
-            lcd.setCursor(0, 1);
-            lcd.print(F("   SETUP MODE   "));
-            delay(2000);
-            lcd.clear();
-            // show setup mode
-            showConfig();
-        #endif  // nolcd
+            #ifndef NOLCD
+                // we are in the setup mode
+                lcd.setCursor(0, 0);
+                lcd.print(F(" You are in the "));
+                lcd.setCursor(0, 1);
+                lcd.print(F("   SETUP MODE   "));
+                delay(2000);
+                lcd.clear();
+                // show setup mode
+                showConfig();
+            #endif  // nolcd
 
-        // rise the flag of setup mode for every body to see it.
-        runMode = false;
-    }
+            // rise the flag of setup mode for every body to see it.
+            runMode = false;
+        }
+    #endif  // rotary
 
     // setting up VFO A as principal.
     activeVFO = true;
@@ -1686,10 +1721,12 @@ void setup() {
 
 
 void loop() {
-    // encoder check
-    encoderState = encoder.process();
-    if (encoderState == DIR_CW)  encoderMoved(+1);
-    if (encoderState == DIR_CCW) encoderMoved(-1);
+    #ifdef ROTARY
+        // encoder check
+        encoderState = encoder.process();
+        if (encoderState == DIR_CW)  encoderMoved(+1);
+        if (encoderState == DIR_CCW) encoderMoved(-1);
+    #endif  // rotary
 
     // LCD update check in normal mode
     if (update and runMode) {
@@ -1700,53 +1737,55 @@ void loop() {
         update = false;
     }
 
-    // check Hardware PTT and make the RX/TX changes
-    if (dbPTT.update()) {
-        // state changed, if shorted to GND going to TX
-        if (dbPTT.fell()) {
-            // line asserted (PTT Closed) going to TX
-            going2TX();
-        } else {
-            // line left open, going to RX
-            going2RX();
-        }
+    #ifdef ROTARY
+        // check Hardware PTT and make the RX/TX changes
+        if (dbPTT.update()) {
+            // state changed, if shorted to GND going to TX
+            if (dbPTT.fell()) {
+                // line asserted (PTT Closed) going to TX
+                going2TX();
+            } else {
+                // line left open, going to RX
+                going2RX();
+            }
 
-        // update flag
-        update = true;
-    }
-
-    // debouce for the push
-    dbBtnPush.update();
-    tbool = dbBtnPush.fell();
-
-    if (runMode) {
-        // we are in normal mode
-
-        // step (push button)
-        if (tbool) {
-            // VFO step change
-            changeStep();
+            // update flag
             update = true;
         }
 
-        #ifdef SMETER
-            // Second line of the LCD, I must show the bargraph only if not rit nor steps
-            if ((!ritActive and showStepCounter == 0) and smeterOk)
-                showBarGraph();
-        #endif
-    } else {
-        // setup mode
+        // debouce for the push
+        dbBtnPush.update();
+        tbool = dbBtnPush.fell();
 
-        // Push button is step in Config mode
-        if (tbool) {
-            // change the step and show it on the LCD
-            changeStep();
-            #ifndef NOLCD
-                showStep();
-            #endif     // nolcd
+        if (runMode) {
+            // we are in normal mode
+
+            // step (push button)
+            if (tbool) {
+                // VFO step change
+                changeStep();
+                update = true;
+            }
+
+            #ifdef SMETER
+                // Second line of the LCD, I must show the bargraph only if not rit nor steps
+                if ((!ritActive and showStepCounter == 0) and smeterOk)
+                    showBarGraph();
+            #endif
+        } else {
+            // setup mode
+
+            // Push button is step in Config mode
+            if (tbool) {
+                // change the step and show it on the LCD
+                changeStep();
+                #ifndef NOLCD
+                    showStep();
+                #endif     // nolcd
+            }
+
         }
-
-    }
+    #endif  // rotary
 
     // timed actions, it ticks every 1/4 second (250 msecs)
     if ((millis() - lastMilis) >= TICK_INTERVAL) {
