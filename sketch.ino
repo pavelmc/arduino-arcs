@@ -873,7 +873,7 @@ void belowZero(long *value) {
          **************************************************************************/
 
         // get the active VFO to calculate the deviation & scale it down
-        long diff = (*ptrVFO - tvfo);
+        long diff = (*ptrVFO - tvfo)/10;
 
         // we start on line 2, char 3 of the second line
         lcd.setCursor(3, 1);
