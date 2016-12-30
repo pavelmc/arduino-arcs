@@ -10,8 +10,9 @@
  *  * NT7S (http://nt7s.com)
  *  * SQ9NJE (http://sq9nje.pl)
  *  * AK2B (http://ak2b.blogspot.com)
+ *  * QRL Labs team (http://qrp-labs.com)
  *  * WJ6C for the idea and hardware support.
- *  * Many other hams with critics and opinions
+ *  * Many other hams with code, ideas, critics and opinions
  *
  * Latest version is always found on the Github repository (URL below)
  * https://www.github.com/pavelmc/arduino-arcs/
@@ -31,17 +32,14 @@
 *******************************************************************************/
 
 /*******************************************************************************
- * Important information you need to know about this code
- *  * The Si5351 original lib use the PLLs like this
- *    * CLK0 uses the PLLA
- *    * CLK1 uses the PLLB
- *    * CLK2 uses the PLLB
+ * Important information you need to know about this code & Si5351
  *
- *  * We are fine with that specs, as we need the VFO source to be unique
- *   (it has it's own PLL) to minimize the crosstalk between outputs
- *    > CLK0 is used to VFO (the VFO will *always* be above the RF freq)
- *    > CLK1 will be used optionally as a XFO for trx with a second conversions
- *    > CLK2 is used for the BFO
+ * We use a Si5351a control code that presume this:
+ *  * We use CLK0 & CLK1 ONLY
+ *  * CLK0 use PLLA & CLK1 use PLLB
+ *  * CLK0 is employed as VFO (to mix with the RF from/to the antenna)
+ *  * CLK1 is employed as BFO (to mix with the IF to mod/demodulate the audio)
+ *  * We use the full power in all outputs (8mA ~0dB)
  *
  *  * Please have in mind that this IC has a SQUARE wave output and you need to
  *    apply some kind of low-pass/band-pass filtering to smooth it and get rid
@@ -60,10 +58,11 @@
 #define CAT_CONTROL True
 #define ABUT True
 #define ROTARY True
+#define SMETER True
 
-// if you want a headless control unit just uncomment this
-// you will get no LCD / buttons /rotary; only cat control
-#define HEADLESS True
+// if you want a headless control unit just uncomment this line below and 
+// you will get no LCD / buttons / rotary; only cat control
+/* #define HEADLESS True */
 
 #ifdef HEADLESS
     // no LCD 
@@ -86,9 +85,11 @@
 #endif  // headless
 
 
-#ifndef NOLCD
-    // if you don't have a LCD the SMETER has no meaning
-    #define SMETER True
+#ifdef NOLCD
+    // then we must unset the SMETER as we don't have a LCD to show smeter
+    #ifdef SMETER
+        #undef SMETER
+    #endif  // smeter
 #endif  // nolcd
 
 #ifdef ABUT
@@ -100,13 +101,11 @@
 #define ENABLE_PULLUPS
 
 // now the main include block
-#include <si5351.h>         // https://github.com/etherkit/Si5351Arduino/
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
 #ifndef NOLCD
     #include <LiquidCrystal.h>  // default
 #endif  // nolcd
-
 #ifdef ROTARY
     #include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
     #include <Bounce2.h>        // https://github.com/thomasfredericks/Bounce2/
@@ -127,80 +126,24 @@
 // work on this project, so be it: 2016 June 1st
 #define EEPROMfingerprint "20160601"
 
-/***************************** !!! WARNING !!! *********************************
- *
- * Be aware that the library use the freq on 1/10 hz resolution, so 10 Khz
- * is expressed as 10_000_0 (note the extra zero)
- *
- * This will allow us to climb up to 160 Mhz, we don't need the extra accuracy
- *
- * Check you have in the Si5351 lybrary this parameter defined as this:
- *     #define SI5351_FREQ_MULT                    10ULL
- *
- * Also we use a module with a 27 Mhz xtal, check this also
- *     #define SI5351_XTAL_FREQ                    27000000
- *
-* *****************************************************************************/
-
-
 /************************** USER BOARD SELECTION *******************************
- * if you have the any of the COLAB shields uncomment the following line.
+ * if you have the any of the CO-LAB shields uncomment the following line.
  * (the sketch is configured by default for my particular hardware)
  ******************************************************************************/
-//#define COLAB
-
-
-/*********************** FILTER PRE-CONFIGURATIONS *****************************
- * As this project aims to ease the user configuration we will hard code some
- * defaults for some of the most common hardware configurations we have in Cuba
- *
- * The idea is that if you find a matching hardware case is just a matter of
- * uncomment the option and comment the others, compile the sketch an upload and
- * you will get ball park values for your configuration.
- *
- * See the Setup_en|Setup_es PDF files in the doc directory, if you use this and
- * use a custom hardware variant I can code it to make your life easier, write
- * to pavelmc@gmail.com for details [author]
- *
- * WARNING: at least one must be un-commented for the compiler to work
- ******************************************************************************/
-
-// Single conversion Radio using the SSB filter of an FT-80C/FT-747GX
-// the filter reads: "Type: XF-8.2M-242-02, CF: 8.2158 Mhz"
-#define SSBF_FT747GX
-
-// Single conversion Radio using the SSB filter of a Polosa/Angara
-// the filter reads: "ZMFDP-500H-3,1"
-//
-// WARNING !!!! This filters has a very high loss (measured around -20dB)
-//
-// You must connect to it by the low impedance taps and tune both start & end
-// of the filter with a 5-20 pF trimmer and a 33 to 56 pF in parallel depending
-// on the particular trimmer range
-//
-//#define SSBF_URSS_500H
-
-// Double conversion (28.8MHz/200KHz) radio from RF board of a RFT SEG-15
-// the radio has two 200 Khz filters, we used the one that reads:
-// "MF 200 - E - 0235 / RTF 02.83"
-//
-// WARNING !!!! See notes below in the ifdef structure for the RFT SEG-15
-//
-//#define SSBF_RFT_SEG15
-
+#define COLAB
 
 // The eeprom & sketch version; if the eeprom version is lower than the one on
 // the sketch we force an update (init) to make a consistent work on upgrades
 #define EEP_VER     4
-#define FMW_VER     9
+#define FMW_VER     10
 
 // The index in the eeprom where to store the info
 #define ECPP 0  // conf store up to 36 bytes so far.
 
 // the limits of the VFO, for now just 40m for now; you can tweak it with the
 // limits of your particular hardware, again this are LCD diplay frequencies.
-#define F_MIN      65000000     // 6.500.000
-#define F_MAX      75000000     // 7.500.000
+#define F_MIN      6500000     // 6.500.000
+#define F_MAX      7500000     // 7.500.000
 
 // PTT OUT pin
 #define PTT     13              // PTT actuator, this will put the radio on TX
@@ -338,9 +281,6 @@
     #endif  // smeter
 #endif  // nolcd
 
-// Si5351 library declaration
-Si5351 si5351;
-
 // run mode constants
 #define MODE_LSB 0
 #define MODE_USB 1
@@ -355,10 +295,9 @@ Si5351 si5351;
 #define CONFIG_LSB      3
 #define CONFIG_USB      4
 #define CONFIG_CW       5
-#define CONFIG_XFO      6
-#define CONFIG_PPM      7
+#define CONFIG_PPM      6
 // --
-#define CONFIG_MAX 7               // the amount of configure options
+#define CONFIG_MAX 6               // the amount of configure options
 
 // Tick interval for the timed actions like the SMeter and the autosave
 #define TICK_INTERVAL  250
@@ -368,73 +307,27 @@ Si5351 si5351;
 #define SAVE_INTERVAL 2400      // 10 minutes = 60 sec * 10 * 4 ticks
 
 // hardware pre configured values
-#ifdef SSBF_FT747GX
-    // Pre configured values for a Single conversion radio using the FT-747GX
-    long lsb =       -14500;
-    long usb =        14500;
-    long cw =             0;
-    long xfo =            0;
-    long ifreq =   82129800;
-#endif  // 747
+// Pre configured values for a Single conversion radio using the FT-747GX
+long lsb =       -1450;
+long usb =        1450;
+long cw =            0;
+long ifreq =   8212980;
 
-#ifdef SSBF_URSS_500H
-    // Pre configured values for a Single conversion radio using the Polosa or
-    // Angara 500H filter
-    long lsb =        -17500;
-    long usb =         17500;
-    long cw =              0;
-    long xfo =            0;
-    long ifreq =    4980800;
-#endif  // urss filter 500
+// This value is not the real PPM value is just the freq correction for your
+// particular xtal from the 27.00000 Mhz one, if you can measure it put it here
+long si5351_ppm = 2256;
 
-#ifdef SSBF_RFT_SEG15
-    // Pre configured values for a Double conversion radio using the RFT SEG15
-    // RF board using the filter marked as:
-    long lsb =        -14350;
-    long usb =         14350;
-    long cw =              0;
-    long ifreq =  282000000;
-    /***************************************************************************
-     *                     !!!!!!!!!!!    WARNING   !!!!!!!!!!
-     *
-     *  The Si5351 has serious troubles to keep the accuracy in the XFO & BFO
-     *  for the case in where you want to substitute all the frequency
-     *  generators inside the SEG-15.
-     *
-     *  This combination can lead to troubles with the BFO not moving in the
-     *  steps you want.
-     *
-     *  This is because the XFO & BFO share the same VCO inside the Si5351 and
-     *  the library has to make some compromises to get the two oscillators
-     *  running at the same time, in this case some accuracy is sacrificed and
-     *  you get as a result the BFO jumping in about 150 hz steps even if you
-     *  instruct it as 1 Hz.
-     *
-     *  The obvious solution is to keep the XFO as a XTAL one inside the radio
-     *  and move the IF Frequency to tune the differences of your own XFO Xtal
-     *  in our test the XTAL was in the valued showed below.
-     *
-     *  In this case the firmware will keep track of the XFO but will never
-     *  turn it on. It is used only for the calculations
-    */
-    long xfo =  279970000;
-#endif  // seg 15
-
-// Put the value here if you have the default ppm corrections for you Si5351
-// if you set it here it will be stored on the EEPROM on the initial start.
-//
-// Otherwise set it to zero and you can set it up via the SETUP menu, but it
-// will get reset to zero each time you program the arduino...
-// so... PUT YOUR OWN VALUE HERE
-long si5351_ppm = 225600;    // it has the *10 included
+// Si5351a Xtal
+#define XTAL   27000000;          // default FREQ of the XTAL for the Si5351a
 
 // the variables
-long vfoa = 71100000;             // default starting VFO A freq
-long vfob = 71250000;             // default starting VFO B freq
+long XTAL_C = XTAL;               // corrected xtal with the ppm
+long vfoa = 7110000;              // default starting VFO A freq
+long vfob = 7125000;              // default starting VFO B freq
 long tvfo = 0;                    // temporal VFO storage for RIT usage
-long txSplitVfo =  0;             // temporal VFO storage for RIT usage when TX
-byte step = 3;                    // default steps position index:
-                                  // as 1*10E3 = 1000 = 100hz; step position is
+long txSplitVfo = 0;              // temporal VFO storage for RIT usage when TX
+byte step = 2;                    // default steps position index:
+                                  // as 1*10E2 = 100 = 100hz; step position is
                                   // calculated to avoid to use a big array
                                   // see getStep() function
 boolean update = true;            // lcd update flag in normal mode
@@ -479,7 +372,6 @@ struct mConf {
     byte vfoaMode;
     long vfob;
     byte vfobMode;
-    long xfo;
     int lsb;
     int usb;
     int cw;
@@ -523,16 +415,16 @@ void changeMode() {
 // change the steps
 void changeStep() {
     // calculating the next step
-    if (step < 7) {
+    if (step < 6) {
         // simply increment
         step += 1;
     } else {
-        // default start mode is 2 (10Hz ~ 100)
+        // default start mode is 2 (100Hz)
         step = 2;
         // in setup mode and just specific modes it's allowed to go to 1 hz
         boolean am = false;
         am = am or (config == CONFIG_LSB) or (config == CONFIG_USB);
-        am = am or (config == CONFIG_PPM) or (config == CONFIG_XFO);
+        am = am or (config == CONFIG_PPM);
         if (!runMode and am) step = 1;
     }
 
@@ -557,6 +449,7 @@ void changeStep() {
         }
     }
 #endif  // abut
+
 
 // return the right step size to move
 long getStep () {
@@ -637,46 +530,48 @@ void belowZero(long *value) {
 /******************************** ENCODER *************************************/
 
 
-// the encoder has moved
-void encoderMoved(int dir) {
-    // check the run mode
-    if (runMode) {
-        // update freq
-        updateFreq(dir);
-        update = true;
-    } else {
-        #ifndef NOLCD   // no meaning if no lcd
-            // update the values in the setup mode
-            updateSetupValues(dir);
-        #endif  // nolcd
-    }
-}
-
-
-// update freq procedure
-void updateFreq(int dir) {
-    long freq = *ptrVFO;
-
-    if (ritActive) {
-        // we fix the steps to 10 Hz in rit mode
-        freq += 100 * dir;
-        // check we don't exceed the MAX_RIT
-        if (abs(tvfo - freq) > MAX_RIT) return;
-    } else {
-        // otherwise we use the default step on the environment
-        freq += getStep() * dir;
-        // check we don't exceed the limits
-        if(freq > F_MAX) freq = F_MIN;
-        if(freq < F_MIN) freq = F_MAX;
+#ifdef ROTARY
+    // the encoder has moved
+    void encoderMoved(int dir) {
+        // check the run mode
+        if (runMode) {
+            // update freq
+            updateFreq(dir);
+            update = true;
+        } else {
+            #ifndef NOLCD   // no meaning if no lcd
+                // update the values in the setup mode
+                updateSetupValues(dir);
+            #endif  // nolcd
+        }
     }
 
-    // apply the change
-    *ptrVFO = freq;
 
-    // update the output freq
-    setFreqVFO();
-}
 
+    // update freq procedure
+    void updateFreq(int dir) {
+        long freq = *ptrVFO;
+
+        if (ritActive) {
+            // we fix the steps to 10 Hz in rit mode
+            freq += 100 * dir;
+            // check we don't exceed the MAX_RIT
+            if (abs(tvfo - freq) > MAX_RIT) return;
+        } else {
+            // otherwise we use the default step on the environment
+            freq += getStep() * dir;
+            // check we don't exceed the limits
+            if(freq > F_MAX) freq = F_MIN;
+            if(freq < F_MIN) freq = F_MAX;
+        }
+
+        // apply the change
+        *ptrVFO = freq;
+
+        // update the output freq
+        setFreqVFO();
+    }
+#endif  // rotary
 
 /************************** LCD INTERFACE RELATED *****************************/
 
@@ -730,12 +625,7 @@ void updateFreq(int dir) {
                     // change the Si5351 PPM
                     si5351_ppm += getStep() * dir;
                     // instruct the lib to use the new ppm value
-                    si5351.set_correction(si5351_ppm);
-                    break;
-                case CONFIG_XFO:
-                    // change XFO
-                    xfo += getStep() * dir;
-                    belowZero(&xfo);
+                    XTAL_C = XTAL + si5351_ppm;
                     break;
             }
 
@@ -806,9 +696,6 @@ void updateFreq(int dir) {
             case CONFIG_PPM:
                 lcd.print(F("Si5351 PPM error"));
                 break;
-            case CONFIG_XFO:
-                lcd.print(F("  XFO frequency "));
-                break;
         }
     }
 
@@ -839,7 +726,7 @@ void updateFreq(int dir) {
 
         // Show the sign only on config and not VFO & IF
         boolean t;
-        t = config == CONFIG_VFO_A or config == CONFIG_XFO or config == CONFIG_IF;
+        t = config == CONFIG_VFO_A or config == CONFIG_IF;
         if (!runMode and !t) showSign(val);
 
         // print it
@@ -878,9 +765,6 @@ void updateFreq(int dir) {
                 break;
             case CONFIG_PPM:
                 showConfigValue(si5351_ppm);
-                break;
-            case CONFIG_XFO:
-                showConfigValue(xfo);
                 break;
         }
     }
@@ -944,15 +828,15 @@ void updateFreq(int dir) {
         lcd.setCursor(0, 0);
         // active a?
         if (activeVFO) {
-            lcd.print(F("A"));
+            lcd.print("A");
         } else {
-            lcd.print(F("B"));
+            lcd.print("B");
         }
 
         // split?
         if (split) {
             // ok, show the split status as a * sign
-            lcd.print(F("*"));
+            lcd.print("*");
         } else {
             // print a separator.
             spaces(1);
@@ -1060,7 +944,133 @@ void updateFreq(int dir) {
 #endif  // nolcd
 
 
-/******************************* Si5351 Update ********************************/
+/*********************************** Si5351 *********************************/
+
+
+// Enable any of the two possible outputs (CLK0/CLK1)
+void si5351aEnableCLK(byte clk) {
+    if (clk == 0) {
+        // switch CLK0
+        si5351ai2cWrite(16, 79);   
+    } else {
+        // switch CLK1
+        si5351ai2cWrite(17, 111);
+    }
+}
+
+
+// Disable any output (0-7)
+void si5351aDisableCLK(byte clk) {
+    if (clk > 7) clk = 7;
+    // switch it off
+    si5351ai2cWrite(16 + clk, 128);
+}
+
+
+// Frequency in Hz; must be within [7,810 kHz to 200 MHz]
+void si5351aSetFrequency(byte clk, unsigned long frequency) { 
+    #define c 1048574;
+    unsigned long fvco;
+    unsigned long outdivider;
+    byte R = 1;
+    byte a;
+    unsigned long b;
+    float f;
+    unsigned long MSx_P1;
+    unsigned long MSNx_P1;
+    unsigned long MSNx_P2;
+    unsigned long MSNx_P3;
+
+    // With 900 MHz beeing the maximum internal PLL-Frequency
+    outdivider = 900000000 / frequency;  
+
+    // If output divider out of range (>900) use additional Output divider
+    while (outdivider > 900){            
+        R = R * 2;
+        outdivider = outdivider / 2;
+    }
+
+    // finds the even divider which delivers the intended Frequency
+    if (outdivider % 2) outdivider--;    
+
+    // Calculate the PLL-Frequency (given the even divider)
+    fvco = outdivider * R * frequency;   
+
+    // Convert the Output Divider to the bit-setting required in register 44
+    switch (R){                          
+        case 1: R = 0; break;              // Bits [6:4] = 000
+        case 2: R = 16; break;             // Bits [6:4] = 001
+        case 4: R = 32; break;             // Bits [6:4] = 010
+        case 8: R = 48; break;             // Bits [6:4] = 011
+        case 16: R = 64; break;            // Bits [6:4] = 100
+        case 32: R = 80; break;            // Bits [6:4] = 101
+        case 64: R = 96; break;            // Bits [6:4] = 110
+        case 128: R = 112; break;          // Bits [6:4] = 111
+    }
+
+    a = fvco / (unsigned long)XTAL_C;
+    f = fvco - a * (unsigned long)XTAL_C;
+    f = f * c;
+    f = f / (unsigned long)XTAL_C;
+    b = f;
+
+    MSx_P1 = 128 * outdivider - 512;
+    f = 128 * b / c;
+    MSNx_P1 = 128 * a + f - 512;
+    MSNx_P2 = f;
+    MSNx_P2 = 128 * b - MSNx_P2 * c; 
+    MSNx_P3 = c;
+
+    // select the clk to write and disable it's output
+    if (clk == 0) {
+        // clk = 0
+        si5351aDisableCLK(0);
+    } else {
+        clk = 8;
+        si5351aDisableCLK(1);
+    } 
+
+    si5351ai2cWrite(26 + clk, (MSNx_P3 & 65280) >> 8);
+    si5351ai2cWrite(27 + clk, MSNx_P3 & 255);
+    si5351ai2cWrite(28 + clk, (MSNx_P1 & 196608) >> 16);
+    si5351ai2cWrite(29 + clk, (MSNx_P1 & 65280) >> 8);
+    si5351ai2cWrite(30 + clk, MSNx_P1 & 255);
+    f = ((MSNx_P3 & 983040) >> 12) | ((MSNx_P2 & 983040) >> 16);
+    si5351ai2cWrite(31 + clk, (byte)f);
+    si5351ai2cWrite(32 + clk, (MSNx_P2 & 65280) >> 8);
+    si5351ai2cWrite(33 + clk, MSNx_P2 & 255);
+    si5351ai2cWrite(42 + clk, 0);
+    si5351ai2cWrite(43 + clk, 1);
+    si5351ai2cWrite(44 + clk, ((MSx_P1 & 196608) >> 16) | R);
+    si5351ai2cWrite(45 + clk, (MSx_P1 & 65280) >> 8);
+    si5351ai2cWrite(46 + clk, MSx_P1 & 255);
+    si5351ai2cWrite(47 + clk, 0);
+    si5351ai2cWrite(48 + clk, 0);
+    si5351ai2cWrite(49 + clk, 0);
+    if (outdivider == 4){
+        si5351ai2cWrite(44 + clk, 12 | R);
+        si5351ai2cWrite(45 + clk, 0);
+        si5351ai2cWrite(46 + clk, 0);
+    }
+    
+    // PLL reset
+    if (clk == 0) {
+        // This resets PLL A
+        si5351ai2cWrite(177, 32);
+        si5351aEnableCLK(0);
+    } else {
+        // This resets PLL B
+        si5351ai2cWrite(177, 128);
+        si5351aEnableCLK(1);
+    }
+}
+
+void si5351ai2cWrite(byte regist, byte value){
+  Wire.beginTransmission(96);
+  Wire.write(regist);
+  Wire.write(value);
+  Wire.endTransmission();
+}
 
 
 // set the calculated freq to the VFO
@@ -1074,7 +1084,7 @@ void setFreqVFO() {
     if (*ptrMode == MODE_CW)  freq += cw;
 
     // set the Si5351 up with the change
-    si5351.set_freq(freq, 0, SI5351_CLK0);
+    si5351aSetFrequency(0, freq);
 }
 
 
@@ -1084,7 +1094,7 @@ void updateAllFreq() {
     setFreqVFO();
 
     // BFO update
-    long freq = ifreq - xfo;
+    long freq = ifreq;
 
     // mod it by mode
     if (*ptrMode == MODE_USB) freq += usb;
@@ -1094,26 +1104,11 @@ void updateAllFreq() {
     // deactivate it if zero
     if (freq == 0) {
         // deactivate it
-        si5351.output_enable(SI5351_CLK2, 0);
+        si5351aDisableCLK(1);
     } else {
         // output it
-        si5351.output_enable(SI5351_CLK2, 1);
-        si5351.set_freq(freq, 0, SI5351_CLK2);
+        si5351aSetFrequency(1, freq);
     }
-
-    // XFO update
-    #ifndef SSBF_RFT_SEG15
-        // just put it out if it's set
-        if (xfo != 0) {
-            si5351.output_enable(SI5351_CLK1, 1);
-            si5351.set_freq(xfo, 0, SI5351_CLK1);
-            // WARNING This has a shared PLL with the BFO and accuracy may be
-            // affected
-        } else {
-            // this is only enabled if we have a freq to send outside
-            si5351.output_enable(SI5351_CLK1, 0);
-        }
-    #endif
 }
 
 
@@ -1153,7 +1148,6 @@ void saveEEPROM() {
     conf.lsb        = lsb;
     conf.usb        = usb;
     conf.cw         = cw;
-    conf.xfo        = xfo;
     conf.ppm        = si5351_ppm;
     conf.version    = EEP_VER;
     strcpy(conf.finger, EEPROMfingerprint);
@@ -1176,8 +1170,7 @@ void loadEEPROMConfig() {
     lsb         = conf.lsb;
     usb         = conf.usb;
     cw          = conf.cw;
-    xfo         = conf.xfo;
-    si5351_ppm  = conf.ppm;
+    XTAL_C = XTAL + conf.ppm;
 }
 
 
@@ -1522,7 +1515,6 @@ void loadEEPROMConfig() {
             if (config == CONFIG_PPM) {
                 // reset, ppm
                 si5351_ppm = 0;
-                si5351.set_correction(0);
             }
 
             // update the freqs for
@@ -1565,13 +1557,15 @@ void setup() {
     #endif
 
     #ifndef NOLCD
-        // LCD init, create the custom chars first
-        lcd.createChar(0, bar);
-        lcd.createChar(1, s1);
-        lcd.createChar(2, s3);
-        lcd.createChar(3, s5);
-        lcd.createChar(4, s7);
-        lcd.createChar(5, s9);
+        #ifdef SMETER
+            // LCD init, create the custom chars first
+            lcd.createChar(0, bar);
+            lcd.createChar(1, s1);
+            lcd.createChar(2, s3);
+            lcd.createChar(3, s5);
+            lcd.createChar(4, s7);
+            lcd.createChar(5, s9);
+        #endif  // smeter
         // now load the library
         lcd.begin(16, 2);
         lcd.clear();
@@ -1605,20 +1599,8 @@ void setup() {
     // I2C init
     Wire.begin();
 
-    // disable the outputs from the begining
-    si5351.output_enable(SI5351_CLK0, 0);
-    si5351.output_enable(SI5351_CLK1, 0);
-    si5351.output_enable(SI5351_CLK2, 0);
-    // Si5351 Xtal capacitive load
-    si5351.init(SI5351_CRYSTAL_LOAD_10PF, 0);
-    // setup the PLL usage
-    si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
-    si5351.set_ms_source(SI5351_CLK1, SI5351_PLLB);
-    si5351.set_ms_source(SI5351_CLK2, SI5351_PLLB);
-    // use low power on the Si5351
-    si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_2MA);
-    si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_2MA);
-    si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_2MA);
+    // disable all the possible outputs (set freq enable it by default)
+    for (byte i=0; i < 8; i++) si5351aDisableCLK(i);
 
     // check the EEPROM to know if I need to initialize it
     if (checkInitEEPROM()) {
@@ -1710,10 +1692,6 @@ void setup() {
     activeVFO = true;
     ptrVFO = &vfoa;
     ptrMode = &VFOAMode;
-
-    // Enable the Si5351 outputs
-    si5351.output_enable(SI5351_CLK0, 1);
-    si5351.output_enable(SI5351_CLK2, 1);
 
     // start the VFOa and it's mode
     updateAllFreq();
