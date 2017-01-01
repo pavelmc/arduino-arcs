@@ -62,7 +62,7 @@
 
 // if you want a headless control unit just uncomment this line below and 
 // you will get no LCD / buttons / rotary; only cat control
-/* #define HEADLESS True */
+//#define HEADLESS True
 
 #ifdef HEADLESS
     // no LCD 
@@ -308,10 +308,10 @@
 
 // hardware pre configured values
 // Pre configured values for a Single conversion radio using the FT-747GX
-long lsb =       -1450;
-long usb =        1450;
+long lsb =          -1450;
+long usb =           1450;
 long cw =            0;
-long ifreq =   1000000; // 8212980
+long ifreq =         10000000; // 8212980
 
 // This value is not the real PPM value is just the freq correction for your
 // particular xtal from the 27.00000 Mhz one, if you can measure it put it here
@@ -944,27 +944,13 @@ void belowZero(long *value) {
 /*********************************** Si5351 *********************************/
 
 
-// Enable any of the two possible outputs (CLK0/CLK1)
-void si5351aEnableCLK(byte clk) {
-    if (clk == 0) {
-        // switch CLK0
-        si5351ai2cWrite(16, 79);   
-    } else {
-        // switch CLK1
-        si5351ai2cWrite(17, 111);
-    }
-}
-
-
 // Disable any output (0-7)
 void si5351aDisableCLK(byte clk) {
-    if (clk > 7) clk = 7;
-    // switch it off
-    si5351ai2cWrite(16 + clk, 128);
+    si5351ai2cWrite(16 + clk, 0x80);
 }
 
 
-// Frequency in Hz; must be within [7,810 kHz to 200 MHz]
+// Frequency in Hz; must be within [7,810 kHz to ~220 MHz]
 void si5351aSetFrequency(byte clk, unsigned long frequency) { 
     #define c 1048574;
     unsigned long fvco;
@@ -977,38 +963,39 @@ void si5351aSetFrequency(byte clk, unsigned long frequency) {
     unsigned long MSNx_P1;
     unsigned long MSNx_P2;
     unsigned long MSNx_P3;
+    byte shifts = 0;
 
     // With 900 MHz beeing the maximum internal PLL-Frequency
-    outdivider = 900000000 / frequency;  
+    outdivider = 900000000 / frequency;
 
     // If output divider out of range (>900) use additional Output divider
-    while (outdivider > 900){            
+    while (outdivider > 900) {
         R = R * 2;
         outdivider = outdivider / 2;
     }
 
     // finds the even divider which delivers the intended Frequency
-    if (outdivider % 2) outdivider--;    
+    if (outdivider % 2) outdivider--;
 
     // Calculate the PLL-Frequency (given the even divider)
-    fvco = outdivider * R * frequency;   
+    fvco = outdivider * R * frequency;
 
     // Convert the Output Divider to the bit-setting required in register 44
-    switch (R){                          
-        case 1: R = 0; break;              // Bits [6:4] = 000
-        case 2: R = 16; break;             // Bits [6:4] = 001
-        case 4: R = 32; break;             // Bits [6:4] = 010
-        case 8: R = 48; break;             // Bits [6:4] = 011
-        case 16: R = 64; break;            // Bits [6:4] = 100
-        case 32: R = 80; break;            // Bits [6:4] = 101
-        case 64: R = 96; break;            // Bits [6:4] = 110
-        case 128: R = 112; break;          // Bits [6:4] = 111
+    switch (R) {
+        case 1: R = 0; break;
+        case 2: R = 16; break;
+        case 4: R = 32; break;
+        case 8: R = 48; break;
+        case 16: R = 64; break;
+        case 32: R = 80; break;
+        case 64: R = 96; break;
+        case 128: R = 112; break;
     }
 
-    a = fvco / (unsigned long)XTAL_C;
-    f = fvco - a * (unsigned long)XTAL_C;
+    a = fvco / XTAL_C;
+    f = fvco - a * XTAL_C;
     f = f * c;
-    f = f / (unsigned long)XTAL_C;
+    f = f / XTAL_C;
     b = f;
 
     MSx_P1 = 128 * outdivider - 512;
@@ -1019,46 +1006,51 @@ void si5351aSetFrequency(byte clk, unsigned long frequency) {
     MSNx_P3 = c;
 
     // select the clk to write and disable it's output
-    if (clk == 0) {
-        // clk = 0
-        si5351aDisableCLK(0);
-    } else {
-        clk = 8;
-        si5351aDisableCLK(1);
-    } 
+    si5351aDisableCLK(clk);
 
-    si5351ai2cWrite(26 + clk, (MSNx_P3 & 65280) >> 8);
-    si5351ai2cWrite(27 + clk, MSNx_P3 & 255);
-    si5351ai2cWrite(28 + clk, (MSNx_P1 & 196608) >> 16);
-    si5351ai2cWrite(29 + clk, (MSNx_P1 & 65280) >> 8);
-    si5351ai2cWrite(30 + clk, MSNx_P1 & 255);
-    f = ((MSNx_P3 & 983040) >> 12) | ((MSNx_P2 & 983040) >> 16);
-    si5351ai2cWrite(31 + clk, (byte)f);
-    si5351ai2cWrite(32 + clk, (MSNx_P2 & 65280) >> 8);
-    si5351ai2cWrite(33 + clk, MSNx_P2 & 255);
-    si5351ai2cWrite(42 + clk, 0);
-    si5351ai2cWrite(43 + clk, 1);
-    si5351ai2cWrite(44 + clk, ((MSx_P1 & 196608) >> 16) | R);
-    si5351ai2cWrite(45 + clk, (MSx_P1 & 65280) >> 8);
-    si5351ai2cWrite(46 + clk, MSx_P1 & 255);
-    si5351ai2cWrite(47 + clk, 0);
-    si5351ai2cWrite(48 + clk, 0);
-    si5351ai2cWrite(49 + clk, 0);
-    if (outdivider == 4){
-        si5351ai2cWrite(44 + clk, 12 | R);
-        si5351ai2cWrite(45 + clk, 0);
-        si5351ai2cWrite(46 + clk, 0);
+    if (clk > 0 ) shifts = 8;
+
+    // plls
+    si5351ai2cWrite(26 + shifts, (MSNx_P3 & 65280) >> 8);   // Bits [15:8] of MSNx_P3 in register 26
+    if (clk == 0) {
+        si5351ai2cWrite(27, MSNx_P3 & 255);
+        si5351ai2cWrite(28, (MSNx_P1 & 196608) >> 16);
+    } else {
+        si5351ai2cWrite(35, MSNx_P1 & 255);
+        si5351ai2cWrite(36, (MSNx_P2 & 0x00030000) >> 10);
+    }
+    si5351ai2cWrite(29 + shifts, (MSNx_P1 & 65280) >> 8);   // Bits [15:8]  of MSNx_P1 in register 29
+    si5351ai2cWrite(30 + shifts, MSNx_P1 & 255);            // Bits [7:0]  of MSNx_P1 in register 30
+    si5351ai2cWrite(31 + shifts, ((MSNx_P3 & 983040) >> 12) | ((MSNx_P2 & 983040) >> 16)); // Parts of MSNx_P3 and MSNx_P1
+    si5351ai2cWrite(32 + shifts, (MSNx_P2 & 65280) >> 8);   // Bits [15:8]  of MSNx_P2 in register 32
+    si5351ai2cWrite(33 + shifts, MSNx_P2 & 255);            // Bits [7:0]  of MSNx_P2 in register 33
+
+    shifts = clk * 8;
+
+    // multisynths
+    si5351ai2cWrite(42 + shifts, 0);                        // Bits [15:8] of MS0_P3 (always 0) in register 42
+    si5351ai2cWrite(43 + shifts, 1);                        // Bits [7:0]  of MS0_P3 (always 1) in register 43
+    si5351ai2cWrite(44 + shifts, ((MSx_P1 & 196608) >> 16) | R);  // Bits [17:16] of MSx_P1 in bits [1:0] and R in [7:4]
+    si5351ai2cWrite(45 + shifts, (MSx_P1 & 65280) >> 8);    // Bits [15:8]  of MSx_P1 in register 45
+    si5351ai2cWrite(46 + shifts, MSx_P1 & 255);             // Bits [7:0]  of MSx_P1 in register 46
+    si5351ai2cWrite(47 + shifts, 0);                        // Bits [19:16] of MS0_P2 and MS0_P3 are always 0
+    si5351ai2cWrite(48 + shifts, 0);                        // Bits [15:8]  of MS0_P2 are always 0
+    si5351ai2cWrite(49 + shifts, 0);                        // Bits [7:0]   of MS0_P2 are always 0
+    if (outdivider == 4 and clk == 0) {
+        si5351ai2cWrite(44, 12 | R);       // Special settings for R = 4 (see datasheet)
+        si5351ai2cWrite(45, 0);                    // Bits [15:8]  of MSx_P1 must be 0
+        si5351ai2cWrite(46, 0);                    // Bits [7:0]  of MSx_P1 must be 0
     }
     
     // PLL reset
     if (clk == 0) {
-        // This resets PLL A
+        // This soft-resets PLL A & and enable it's output
         si5351ai2cWrite(177, 32);
-        si5351aEnableCLK(0);
+        si5351ai2cWrite(16, 79);
     } else {
-        // This resets PLL B
+        // This soft-resets PLL B & and enable it's output
         si5351ai2cWrite(177, 128);
-        si5351aEnableCLK(1);
+        si5351ai2cWrite(17, 111);
     }
 }
 
