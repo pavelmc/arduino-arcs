@@ -13,4 +13,5 @@ This work is based on the previous work of these people (without their work this
  * [SQ9NJE](http://sq9nje.pl) for the example codes and it's sketchs.
  * [AK2B](http://ak2b.blogspot.com) for his multifeatured VFO in which this code is based.
  * [WJ6C](www.frcuba.com) for the idea and support, this OM is the motor of this project.
- * Many other hams elsewhere with critics, opinions and ideas.
+ * [QRP Labs](http://qrp-labs.com) explanation and examples of libraries for the Si5351 with MCU (size) focus.
+ * Many other hams elsewhere with critics, opinions, public code on the Internet and ideas.
