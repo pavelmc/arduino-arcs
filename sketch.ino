@@ -92,13 +92,12 @@
     #endif  // smeter
 #endif  // nolcd
 
+
 #ifdef ABUT
     // define the max count for analog buttons in the BMux library
     #define BUTTONS_COUNT 4
 #endif
 
-// Enable weak pullups in the rotary lib before inclusion
-#define ENABLE_PULLUPS
 
 // now the main include block
 #include <EEPROM.h>         // default
@@ -106,15 +105,22 @@
 #ifndef NOLCD
     #include <LiquidCrystal.h>  // default
 #endif  // nolcd
+
+
 #ifdef ROTARY
+    // Enable weak pullups in the rotary lib before inclusion
+    #define ENABLE_PULLUPS
+    
     #include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
     #include <Bounce2.h>        // https://github.com/thomasfredericks/Bounce2/
 #endif  // rotary
+
 
 // optional features libraries
 #ifdef CAT_CONTROL
     #include <ft857d.h>         // https://github.com/pavelmc/ft857d/
 #endif // cat_control
+
 
 #ifdef ABUT
     #define BMUX_SAMPLING 10    // 10 samples per second
@@ -149,6 +155,7 @@
 #define PTT     13              // PTT actuator, this will put the radio on TX
                                 // this match the led on pin 13 with the PTT
 
+
 #ifdef ROTARY
     // encoder pins
     #define ENC_A    3              // Encoder pin A
@@ -172,6 +179,7 @@
     Bounce dbPTT = Bounce();
 #endif  // rotary
 
+
 #ifdef ABUT
     // analog buttons library declaration (BMux)
     // define the analog pin to handle the buttons
@@ -191,6 +199,7 @@
     // the CAT radio lib
     ft857d cat = ft857d();
 #endif
+
 
 #ifndef NOLCD
     // lcd pins assuming a 1602 (16x2) at 4 bits
@@ -212,6 +221,7 @@
         #define LCD_D7      9    // 15
     #endif // colab
 #endif // nolcd
+
 
 #ifndef NOLCD
     // lcd library setup
@@ -281,6 +291,7 @@
     #endif  // smeter
 #endif  // nolcd
 
+
 // run mode constants
 #define MODE_LSB 0
 #define MODE_USB 1
@@ -331,7 +342,7 @@ byte step = 2;                    // default steps position index:
                                   // calculated to avoid to use a big array
                                   // see getStep() function
 boolean update = true;            // lcd update flag in normal mode
-byte encoderState = DIR_NONE;     // encoder state
+byte encoderState = 0;            // encoder state (DIR_NONE)
 byte config = 0;                  // holds the configuration item selected
 boolean inSetup = false;          // the setup mode, just looking or modifying
 #define STEP_SHOW_TIME  6         // the time the step must be shown in 1/4 secs
