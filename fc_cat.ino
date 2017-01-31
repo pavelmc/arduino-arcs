@@ -129,4 +129,4 @@
             m = millis();
         }
     }
-#endif
+#endif  // cat

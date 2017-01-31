@@ -53,7 +53,8 @@
 * For example: one user requested a "headless" mode: no lcd, no buttons, just
 * cat control via serial/usb from the PC. for that we have the headless mode.
 *
-* Uncomment the line that define the HEADLESS macro an you a re done.
+* Uncomment the line that define the HEADLESS macro an you are done.
+* (uncomment it is just to remove the two slashes before it)
 *******************************************************************************/
 #define CAT_CONTROL True
 #define ABUT True
@@ -96,7 +97,7 @@
 // The eeprom & sketch version; if the eeprom version is lower than the one on
 // the sketch we force an update (init) to make a consistent work on upgrades
 #define EEP_VER     4
-#define FMW_VER     11
+#define FMW_VER     12
 
 // The index in the eeprom where to store the info
 #define ECPP 0  // conf store up to 36 bytes so far.
@@ -166,7 +167,7 @@
     
     // instantiate it
     ft857d cat = ft857d();
-#endif
+#endif  // cat
 
 
 #ifndef NOLCD
