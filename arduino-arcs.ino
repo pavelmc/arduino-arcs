@@ -154,21 +154,14 @@
 // PTT OUT pin
 #define PTT     13              // PTT actuator, this will put the radio on TX
                                 // this match the led on pin 13 with the PTT
+#define inPTT   12              // PTT/CW KEY Line with pullup
 
 
 #ifdef ROTARY
     // encoder pins
     #define ENC_A    3              // Encoder pin A
     #define ENC_B    2              // Encoder pin B
-    #define inPTT   12              // PTT/CW KEY Line with pullup
-
-    #ifdef COLAB
-        // Any of the COLAB shields
-        #define btnPush  11             // Encoder Button
-    #else
-        // Pavel's hardware
-        #define btnPush  4              // Encoder Button
-    #endif // colab
+    #define btnPush 11              // Encoder Button
 
     // rotary encoder library setup
     Rotary encoder = Rotary(ENC_A, ENC_B);
@@ -203,23 +196,13 @@
 
 #ifndef NOLCD
     // lcd pins assuming a 1602 (16x2) at 4 bits
-    #ifdef COLAB
-        // COLAB shield + Arduino Mini/UNO Board
-        #define LCD_RS      5
-        #define LCD_E       6
-        #define LCD_D4      7
-        #define LCD_D5      8
-        #define LCD_D6      9
-        #define LCD_D7      10
-    #else
-        // Pavel's hardware
-        #define LCD_RS      8    // 14 < Real pins in a 28PDIP
-        #define LCD_E       7    // 13
-        #define LCD_D4      6    // 12
-        #define LCD_D5      5    // 11
-        #define LCD_D6      10   // 16
-        #define LCD_D7      9    // 15
-    #endif // colab
+    // COLAB shield + Arduino Mini/UNO Board
+    #define LCD_RS      5
+    #define LCD_E       6
+    #define LCD_D4      7
+    #define LCD_D5      8
+    #define LCD_D6      9
+    #define LCD_D7      10
 #endif // nolcd
 
 
