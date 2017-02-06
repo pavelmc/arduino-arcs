@@ -56,16 +56,22 @@
 * Uncomment the line that define the HEADLESS macro an you are done.
 * (uncomment it is just to remove the two slashes before it)
 *******************************************************************************/
-#define CAT_CONTROL True
+
+// You like to have CAT control (PC control) of the sketch via Serie?
+#define CAT_CONTROL
+
+// Analog button support?
 #define ABUT True
+
+// rotary and push control?
 #define ROTARY True
 
-// if you want a headless control unit just uncomment this line below and 
-// you will get no LCD / buttons / rotary; only cat control
+// if you want a headless control unit just uncomment this line below and
+// you will get no LCD / buttons / rotary; only CAT control
 //#define HEADLESS True
 
 #ifdef HEADLESS
-    // no LCD 
+    // no LCD
     #define NOLCD True
 
     // no Analog Buttons
@@ -120,7 +126,7 @@
     // include the libs
     #include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
     #include <Bounce2.h>        // https://github.com/thomasfredericks/Bounce2/
-    
+
     // define encoder pins
     #define ENC_A    3              // Encoder pin A
     #define ENC_B    2              // Encoder pin B
@@ -139,13 +145,13 @@
 #ifdef ABUT
     // define the max count for analog buttons in the BMux library
     #define BUTTONS_COUNT 4
-    
+
     // define the sampling rate used
     #define BMUX_SAMPLING 10    // 10 samples per second
-    
+
     // include the lib
     #include <BMux.h>           //  https://github.com/pavelmc/BMux/
-    
+
     // define the analog pin to handle the buttons
     #define KEYS_PIN  2
 
@@ -153,7 +159,7 @@
     BMux abm;
 
     // Creating the analog buttons for the BMux lib; see the BMux doc for details
-    // you may have to tweak this values a little for your hardware case
+    // you may have to tweak this values a little for your particular hardware
     Button bvfoab   = Button(510, &btnVFOABClick);      // 10k
     Button bmode    = Button(316, &btnModeClick);       // 4.7k
     Button brit     = Button(178, &btnRITClick);        // 2.2k
@@ -164,7 +170,7 @@
 #ifdef CAT_CONTROL
     // library include
     #include <ft857d.h>         // https://github.com/pavelmc/ft857d/
-    
+
     // instantiate it
     ft857d cat = ft857d();
 #endif  // cat
@@ -185,6 +191,15 @@
 
     // lcd library instantiate
     LiquidCrystal lcd(LCD_RS, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+
+    // how many samples we take in the smeter, we use a 2/3 trick to get some
+    // inertia and improve the look of the bar
+    #define BARGRAPH_SAMPLES    6
+    word pep[BARGRAPH_SAMPLES] = {};
+                                        // s-meter readings storage
+    boolean smeterOk = false;           // it's ok to show the bar graph
+    word sMeter = 0;                    // hold the value of the Smeter readings
+                                        // in both RX and TX modes
 #endif // nolcd
 
 
@@ -203,72 +218,64 @@
 #define CONFIG_USB      4
 #define CONFIG_CW       5
 #define CONFIG_PPM      6
-// --
-#define CONFIG_MAX 6               // the amount of configure options
+// the amount of configure options
+#define CONFIG_MAX 6
 
 // Tick interval for the timed actions like the SMeter and the autosave
-#define TICK_INTERVAL  250
+#define TICK_INTERVAL  250      // milli seconds
 
-// EERPOM saving interval (if some parameter has changed) in 1/4 seconds; var i
-// word so max is 65535 in 1/4 secs is ~ 16383 sec ~ 273 min ~ 4h 33 min
-#define SAVE_INTERVAL 2400      // 10 minutes = 60 sec * 10 * 4 ticks
+// EERPOM saving interval (if some parameter has changed) in TICK_INTERVAL
+// var is word so max is 65535 in 1/4 secs is ~ 16383 sec ~ 273 min ~ 4h 33 min
+#define SAVE_INTERVAL 2400      // 10 minutes = 60 sec * 10 * 4 ticks/sec
 
 // hardware pre configured values
-// Pre configured values for a Single conversion radio using the FT-747GX
+// pre-configured values for a single conversion radio using the FT-747GX filter
 long lsb =          -1450;
-long usb =           1450;
+long usb =           1450;  // both equal so ifreq = filter center.
 long cw =            0;
-long ifreq =         10000000; // 8212980
+long ifreq =         8212980;
 
 // This value is not the real PPM value is just the freq correction for your
 // particular xtal from the 27.00000 Mhz one, if you can measure it put it here
-long si5351_ppm = 2256;
+long si5351_ppm = 2256;     // in Hz, mine is 2.256 Khz up
 
 // Si5351a Xtal
-#define XTAL   27000000;          // default FREQ of the XTAL for the Si5351a
+#define XTAL   27000000;            // default FREQ of the XTAL for the Si5351a
 
 // the variables
-long XTAL_C = XTAL;               // corrected xtal with the ppm
-long vfoa = 7110000;              // default starting VFO A freq
-long vfob = 7125000;              // default starting VFO B freq
-long tvfo = 0;                    // temporal VFO storage for RIT usage
-long txSplitVfo = 0;              // temporal VFO storage for RIT usage when TX
-byte step = 2;                    // default steps position index:
-                                  // as 1*10E2 = 100 = 100hz; step position is
-                                  // calculated to avoid to use a big array
-                                  // see getStep() function
-boolean update = true;            // lcd update flag in normal mode
-byte encoderState = 0;            // encoder state (DIR_NONE)
-byte config = 0;                  // holds the configuration item selected
-boolean inSetup = false;          // the setup mode, just looking or modifying
-#define STEP_SHOW_TIME  6         // the time the step must be shown in 1/4 secs
-                                  // aprox 1.5 secs
-byte showStepCounter = 0;         // the step timer counter
-boolean runMode =      true;      // true: normal, false: setup
-boolean activeVFO =    true;      // true: A, False: B
+long XTAL_C = XTAL;                 // corrected xtal with the ppm
+long vfoa = 7110000;                // default starting VFO A freq
+long vfob = 7125000;                // default starting VFO B freq
+long tvfo = 0;                      // temporal VFO storage for RIT usage
+long txSplitVfo = 0;                // temporal VFO storage for SPPLIT
+byte step = 2;                      // default steps position index:
+                                    // as 1*10E2 = 100 = 100hz; step position is
+                                    // calculated to avoid to use a big array
+                                    // see getStep() function
+boolean update = true;              // lcd update flag in normal mode
+byte encoderState = 0;              // encoder state (DIR_NONE)
+byte config = 0;                    // holds the configuration item selected
+boolean inSetup = false;            // the setup mode
+                                    // false is just looking, true is modifying
+#define STEP_SHOW_TIME  6           // the time the step must be shown in
+                                    // in 1/4 secs aka: aprox 1.5 secs
+byte showStepCounter = 0;           // the step timer counter
+boolean runMode =      true;        // true: normal, false: setup
+boolean activeVFO =    true;        // true: A, False: B
 byte VFOAMode =        MODE_LSB;
 byte VFOBMode =        MODE_LSB;
-boolean ritActive =    false;     // true: rit active, false: rit disabled
-boolean tx =           false;     // whether we are on TX mode or not
-#ifndef NOLCD
-    #define BARGRAPH_SAMPLES    6
-    word pep[BARGRAPH_SAMPLES] = {};
-                                        // s-meter readings storage
-    boolean smeterOk = false;           // it's ok to show the bar graph
-    word sMeter = 0;                    // hold the value of the Smeter readings
-                                        // in both RX and TX modes
-#endif
+boolean ritActive =    false;       // true: rit active, false: rit disabled
+boolean tx =           false;       // whether we are on TX mode or not
+unsigned long lastMilis = 0;        // to track the last sampled time
+boolean barReDraw =    true;        // bar needs to be redrawn from zero
+boolean split =        false;       // this holds th split state
+boolean catTX =        false;       // CAT command to go to PTT
+word qcounter =        0;           // Timer to be incremented each 1/4 second
+                                    // approximately, to trigger a EEPROM update
+                                    // if needed
 
-unsigned long lastMilis = 0;       // to track the last sampled time
-boolean barReDraw =    true;       // bar needs to be redrawn from zero
-boolean split =        false;      // this holds th split state
-boolean catTX =        false;      // CAT command to go to PTT
-word qcounter =        0;          // Timer to be incremented each 1/4 second
-                                   // approximately, to trigger a EEPROM update
-                                   // if needed
-
-// temp vars (used in the loop function)
-boolean tbool   = false;
+// temp boolean var (used in the loop function)
+boolean tbool = false;
 
 // structured data: Main Configuration Parameters
 struct mConf {
@@ -410,16 +417,15 @@ void swapVFO(byte force = 2) {
 
 /*****************************************************************************
  *
- *                          Where the other functions go?
+ *                      Where did the other functions go?
  *
- * This sketch use the split in files feature of the Arduino IDE, look for tabs
- * in you editor.
+ * This sketch use the "split in files" feature of the Arduino IDE, look for
+ * tabs in you editor.
  *
  * Tabs are organized by group of functions preceded with the letters "fx-"
- * where "x" is a sequence to preserve order in the files up on load
+ * where "x" is a sequence to preserve order in the files upon load
  *
  * The "setup" and "loop" are placed in the file "z-end" to get placed at the
  * end when the compiler does it's magic.
  *
  * ***************************************************************************/
-
