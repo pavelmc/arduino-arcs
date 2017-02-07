@@ -4,9 +4,9 @@
  *      https://github.com/pavelmc/arduino-arcs
  *
  * Copyright (C) 2016 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
- * 
+ *
  * This program is free software under the GNU GPL v3.0
- * 
+ *
  * ***************************************************************************/
 
 
@@ -47,6 +47,11 @@ void setup() {
         abm.add(bmode);
         abm.add(brit);
         abm.add(bsplit);
+
+        // how many memories his chip supports
+        #ifdef MEMORIES
+            memCount = (EEPROM.length() - MEMSTART) / sizeof(mmem);
+        #endif
     #endif
 
     #ifdef ROTARY
@@ -83,9 +88,14 @@ void setup() {
             lcd.setCursor(0, 1);
             lcd.print(F("Please wait...  "));
         #endif  // nolcd
-        
+
+        // init eeprom.
         saveEEPROM();
-        
+
+        #ifdef MEMORIES
+            wipeMEM();
+        #endif
+
         #ifdef CAT_CONTROL
             delayCat(); // 2 secs
         #else
@@ -129,7 +139,7 @@ void setup() {
     #endif
 
     #ifndef NOLCD
-        lcd.clear(); 
+        lcd.clear();
     #endif  // nolcd
 
     #ifdef ROTRAY
@@ -279,4 +289,3 @@ void loop() {
         abm.check();
     #endif
 }
-

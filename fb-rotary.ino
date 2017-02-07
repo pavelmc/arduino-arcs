@@ -4,15 +4,34 @@
  *      https://github.com/pavelmc/arduino-arcs
  *
  * Copyright (C) 2016 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
- * 
+ *
  * This program is free software under the GNU GPL v3.0
- * 
+ *
  * ***************************************************************************/
 
 
 #ifdef ROTARY
     // the encoder has moved
     void encoderMoved(int dir) {
+        // check if in memory
+        #ifdef MEMORIES
+            if (vfoMode == false) {
+                // we are in mem mode, move it
+                int tmem = mem;
+                tmem += dir;
+
+                // limits check
+                if (tmem < 0) tmem = memCount;
+                if (tmem > memCount) tmem = 0;
+
+                mem = word(tmem);
+
+                // update flag and return
+                update = true;
+                return;
+            }
+        #endif
+
         // check the run mode
         if (runMode) {
             // update freq
@@ -52,4 +71,3 @@
         setFreqVFO();
     }
 #endif  // rotary
-

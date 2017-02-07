@@ -4,9 +4,9 @@
  *      https://github.com/pavelmc/arduino-arcs
  *
  * Copyright (C) 2016 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
- * 
+ *
  * This program is free software under the GNU GPL v3.0
- * 
+ *
  * ***************************************************************************/
 
 
@@ -310,19 +310,51 @@
     }
 
 
-    // lcd update in normal mode
+    // main update Lcd procedure
     void updateLcd() {
-        // this is the designed normal mode LCD
+        // need to check if memories are available
+        #ifdef MEMORIES
+            // VFO or memory
+            if (true) {
+                // VFO mode, normal LCD
+                vfoUpdateLcd();
+            } else {
+                memUpdateLcd();
+            }
+        #else
+            vfoUpdateLcd();
+        #endif // memories
+
+    }
+
+
+    #ifdef MEMORIES
+        // lcd update in mem mode
+        void memUpdateLcd() {
+            /******************************************************
+             *   0123456789abcdef
+             *  ------------------
+             *  |01 14.280.25 lsb|
+             *
+             ******************************************************/
+
+            // channel name
+            lcd.print(mem);
+            lcd.print(" ");
+
+            lcdRefresh();
+        }
+    #endif // memories
+
+
+    // lcd update in normal mode
+    void vfoUpdateLcd() {
         /******************************************************
          *   0123456789abcdef
          *  ------------------
-         *  |A 14.280.25 lsb |
-         *  |RX 0000000000000|
+         *  |A* 14.280.25 lsb|      normal
          *
-         *  |RX +9.99 Khz    |
-         *
-         *  |RX 100hz        |
-         *  ------------------
+         *  |A  14.280.25 lsb|      split
          ******************************************************/
 
         // first line
@@ -337,11 +369,20 @@
         // split?
         if (split) {
             // ok, show the split status as a * sign
-            lcd.print("*");
+            lcd.print("* ");
         } else {
             // print a separator.
-            spaces(1);
+            spaces(2);
         }
+
+
+        // main lcd routine
+        lcdRefresh();
+    }
+
+
+    // refresh the lcd routine
+    void lcdRefresh() {
 
         // show VFO and mode
         formatFreq(*ptrVFO);
@@ -359,7 +400,6 @@
         // if we have a RIT or steps we manage it here and the bar will hold
         if (ritActive) showRit();
     }
-
 
     // show rit in LCD
     void showRit() {
@@ -557,5 +597,5 @@
             smeterCount += 1;
         }
     }
-    
+
 #endif  // nolcd

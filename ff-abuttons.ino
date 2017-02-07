@@ -4,9 +4,9 @@
  *      https://github.com/pavelmc/arduino-arcs
  *
  * Copyright (C) 2016 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
- * 
+ *
  * This program is free software under the GNU GPL v3.0
- * 
+ *
  * ***************************************************************************/
 
 
@@ -143,5 +143,60 @@
             barReDraw = true;
         }
     }
-    
+
+
+    #ifdef MEMORIES
+        // VFO/MEM mode change
+        void btnVFOMEM() {
+            // toggle the flag
+            vfoMode = !vfoMode;
+
+            // rise the update flag
+            update = true;
+        }
+
+        // mem > vfo | vfo > mem, taking into account in what mode we are
+        void btnVFOsMEM() {
+            // detect in which mode I'm, to decide what to do
+            if (vfoMode == true) {
+                // VFO > MEM
+                saveMEM(mem, true);
+            } else {
+                // MEM > VFO
+                loadMEM(mem);
+            }
+        }
+
+        // erase the actual mem position
+        void btnEraseMEM() {
+            // erase the actual mem position
+            saveMEM(mem, false);
+
+            // if in vfo mode no problem, but...
+            if (vfoMode == false) {
+                // if in MEM mode jump to the NEXT valid mem.
+                // but if we cycle trough the full mem we need to stop
+                // at the next zero index
+                boolean stop = false;
+                word oldmem = mem;
+                mem += 1;
+
+                while (loadMEM(mem) == false) {
+                    // if we reach the start point, that's a empty mem space.
+                    // just stop and jump to ZERO
+                    if (mem == oldmem) {
+                        mem = 0;
+                        return;
+                    }
+
+                    // next !
+                    mem += 1;
+
+                    // limit check
+                    if (mem > memCount) mem == 0;
+                }
+            }
+        }
+    #endif
+
 #endif

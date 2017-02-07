@@ -66,6 +66,9 @@
 // rotary and push control?
 #define ROTARY True
 
+// memories?
+#define MEMORIES True
+
 // if you want a headless control unit just uncomment this line below and
 // you will get no LCD / buttons / rotary; only CAT control
 //#define HEADLESS True
@@ -77,17 +80,22 @@
     // no Analog Buttons
     #ifdef ABUT
         #undef ABUT
-    #endif // ABUT
+    #endif // abut
 
     // no rotary ot push buttons
     #ifdef ROTARY
         #undef ROTARY
-    #endif // ROTARY
+    #endif // rotary
+
+    // no memories
+    #ifdef MEMORIES
+        #undef MEMORIES
+    #endif // memories
 
     // YES CAT_CONTROL
     #ifndef CAT_CONTROL
         #define CAT_CONTROL True
-    #endif  // CAT_CONTROL
+    #endif  // cat control
 #endif  // headless
 
 // default (non optional) libraries loading
@@ -107,6 +115,9 @@
 
 // The index in the eeprom where to store the info
 #define ECPP 0  // conf store up to 36 bytes so far.
+
+// The start byte in the eeprom where we put mem[0]
+#define MEMSTART 36
 
 // the limits of the VFO, for now just 40m for now; you can tweak it with the
 // limits of your particular hardware, again this are LCD diplay frequencies.
@@ -160,10 +171,49 @@
 
     // Creating the analog buttons for the BMux lib; see the BMux doc for details
     // you may have to tweak this values a little for your particular hardware
-    Button bvfoab   = Button(510, &btnVFOABClick);      // 10k
-    Button bmode    = Button(316, &btnModeClick);       // 4.7k
-    Button brit     = Button(178, &btnRITClick);        // 2.2k
-    Button bsplit   = Button(697, &btnSPLITClick);      // 22k
+    //
+    // define the adc levels of for the buttons
+    #define b1 510  // 10k
+    #define b2 316  // 4k7
+    #define b3 178  // 2k2
+    #define b4 697  // 22k
+
+    #ifdef MEMORIES
+        // buttons has a second action related to memories
+        Button bvfoab   = Button(b1, &btnVFOABClick, &btnVFOMEM);
+        Button bmode    = Button(b2, &btnModeClick, &btnVFOsMEM);
+        Button brit     = Button(b3, &btnRITClick, &btnEraseMEM);
+        Button bsplit   = Button(b4, &btnSPLITClick);
+    #else
+        // buttons with single functions
+        Button bvfoab   = Button(b1, &btnVFOABClick);
+        Button bmode    = Button(b2, &btnModeClick);
+        Button brit     = Button(b3, &btnRITClick);
+        Button bsplit   = Button(b4, &btnSPLITClick);
+    #endif
+
+
+    // memory or VFO only has meaning when you has buttons.
+    #ifdef MEMORIES
+        boolean vfoMode = true;
+        word mem = 0;               // actual memory channel
+        word memCount = 0;          // how many mems this chip support
+                                    // it's calculated in the setup process
+
+        // memory type
+        struct mmem {
+            boolean configured;
+            long vfoa;
+            byte vfoaMode;
+            long vfob;
+            byte vfobMode;
+            boolean split;
+        };
+
+        // declaring the main configuration variable for mem storage
+        struct mmem memo;
+
+    #endif // memories
 #endif  //abut
 
 

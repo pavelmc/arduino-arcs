@@ -4,10 +4,24 @@
  *      https://github.com/pavelmc/arduino-arcs
  *
  * Copyright (C) 2016 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
- * 
+ *
  * This program is free software under the GNU GPL v3.0
- * 
+ *
  * ***************************************************************************/
+
+/*
+EEPROM amount vary from board to board, a simple list here:
+
+Larger AVR processors have larger EEPROM sizes, E.g:
+- Arduno Duemilanove: 512b EEPROM storage. (ATMega 168)
+- Arduino Uno:        1kb EEPROM storage. (ATMega 328)
+- Arduino Mega:       4kb EEPROM storage. (ATMega 2560)
+
+Rather than hard-coding the length, you should use the pre-provided length
+function. This will make your code portable to all AVR processors.
+
+EEPROM.length()
+*/
 
 
 // check if the EEPROM is initialized
@@ -24,6 +38,12 @@ boolean checkInitEEPROM() {
         // if it reach this point is because it's the same
         return true;
     }
+
+    #ifdef MEMORIES
+        // so far int's a new eeprom version, we need to wipe the MEM area to avoid
+        // problems with the users
+        wipeMEM();
+    #endif // memories
 
     // return false: default
     return false;
@@ -67,3 +87,58 @@ void loadEEPROMConfig() {
     cw          = conf.cw;
     XTAL_C = XTAL + conf.ppm;
 }
+
+
+#ifdef MEMORIES
+    // save memory location
+    void saveMEM(word memItem, boolean configured) {
+        // real of empty
+        if (configured == true) {
+            // default values
+            memo.configured = false;
+            memo.vfoa       = 7110000;
+            memo.vfoaMode   = MODE_LSB;
+            memo.vfob       = 7125000;
+            memo.vfobMode   = MODE_LSB;
+            memo.split      = 0;
+        } else {
+            // ok, real ones, set the values
+            memo.configured = true;
+            memo.vfoa       = vfoa;
+            memo.vfoaMode   = VFOAMode;
+            memo.vfob       = vfob;
+            memo.vfobMode   = VFOBMode;
+            memo.split      = split;
+        }
+
+        // write it
+        EEPROM.put(MEMSTART + (sizeof(mmem) * memItem), memo);
+    }
+
+
+    // load memory location
+    boolean loadMEM(word memItem) {
+        // get the values
+        EEPROM.get(MEMSTART + (sizeof(mmem) * memItem), memo);
+
+        // is the mem valid?
+        if (memo.configured == false) return false;
+
+        // load it
+        vfoa        = memo.vfoa;
+        VFOAMode    = memo.vfoaMode;
+        vfob        = memo.vfob;
+        VFOBMode    = memo.vfobMode;
+        split       = memo.split;
+
+        // return true
+        return true;
+    }
+
+
+    // wipe mem, this is loaded in the init process of the eeprom.
+    void wipeMEM() {
+        // run for the entire mem area writing the defaults to it, with no-go flag
+        for (word i = 0; i <= memCount; i++ ) saveMEM(i, 0);
+    }
+#endif // memories
