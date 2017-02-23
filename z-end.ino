@@ -229,19 +229,24 @@ void loop() {
                 if ((!ritActive and showStepCounter == 0) and smeterOk)
                     showBarGraph();
             #endif
-        } else {
-            // setup mode
-
-            // Push button is step in Config mode
-            if (tbool) {
-                // change the step and show it on the LCD
-                changeStep();
-                #ifndef NOLCD
-                    showStep();
-                #endif     // nolcd
-            }
-
         }
+
+
+        #ifdef ABUT     // no setup mode if no analog buttons to change it
+            if (!runMode) {
+                // setup mode
+
+                // Push button is step in Config mode
+                if (tbool) {
+                    // change the step and show it on the LCD
+                    changeStep();
+                    #ifndef NOLCD
+                        showStep();
+                    #endif     // nolcd
+                }
+
+            }
+        #endif // abut
     #endif  // rotary
 
     // timed actions, it ticks every 1/4 second (250 msecs)

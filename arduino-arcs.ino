@@ -4,7 +4,7 @@
  *           -----------------------------------------------
  * A full QRP/Hombrew transceiver control with RF generation, the Cuban way.
  *
- * Copyright (C) 2016 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
+ * Copyright (C) 2016-2017 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
  *
  * This work is based on the previous work of these great people:
  *  * NT7S (http://nt7s.com)
@@ -52,26 +52,25 @@
 *
 * For example: one user requested a "headless" mode: no lcd, no buttons, just
 * cat control via serial/usb from the PC. for that we have the headless mode.
-*
-* Uncomment the line that define the HEADLESS macro an you are done.
-* (uncomment it is just to remove the two slashes before it)
 *******************************************************************************/
 
-// You like to have CAT control (PC control) of the sketch via Serie?
+// You like to have CAT control (PC control) of the sketch via Serial link?
 #define CAT_CONTROL
 
 // Analog button support?
 #define ABUT True
 
-// rotary and push control?
+// Rotary and push control?
 #define ROTARY True
 
-// memories?
+// Memories?
 #define MEMORIES True
 
+
 // if you want a headless control unit just uncomment this line below and
-// you will get no LCD / buttons / rotary; only CAT control
+// you will get no LCD / buttons / rotary / memory; only CAT control
 //#define HEADLESS True
+
 
 #ifdef HEADLESS
     // no LCD
@@ -98,6 +97,17 @@
     #endif  // cat control
 #endif  // headless
 
+
+// Safety check: if we don't have analog buttons or rotary functions
+// then we don't need memories
+#ifndef ABUT
+    #undef MEMORIES
+#endif // abut
+#ifndef ROTARY
+    #undef MEMORIES
+#endif // rotary
+
+
 // default (non optional) libraries loading
 #include <EEPROM.h>         // default
 #include <Wire.h>           // default
@@ -108,18 +118,22 @@
 // work on this project, so be it: 2016 June 1st
 #define EEPROMfingerprint "20160601"
 
+
 // The eeprom & sketch version; if the eeprom version is lower than the one on
 // the sketch we force an update (init) to make a consistent work on upgrades
-#define EEP_VER     4
-#define FMW_VER     12
+#define EEP_VER     5
+#define FMW_VER     13
+
 
 // The index in the eeprom where to store the info
 #define ECPP 0  // conf store up to 36 bytes so far.
 
+
 // The start byte in the eeprom where we put mem[0]
 #define MEMSTART 36
 
-// the limits of the VFO, for now just 40m for now; you can tweak it with the
+
+// the limits of the VFO, just 40m for now; you can tweak it with the
 // limits of your particular hardware, again this are LCD diplay frequencies.
 #define F_MIN      6500000     // 6.500.000
 #define F_MAX      7500000     // 7.500.000
@@ -180,25 +194,17 @@
 
     #ifdef MEMORIES
         // buttons has a second action related to memories
+        // only if we have memories set
         Button bvfoab   = Button(b1, &btnVFOABClick, &btnVFOMEM);
         Button bmode    = Button(b2, &btnModeClick, &btnVFOsMEM);
         Button brit     = Button(b3, &btnRITClick, &btnEraseMEM);
         Button bsplit   = Button(b4, &btnSPLITClick);
-    #else
-        // buttons with single functions
-        Button bvfoab   = Button(b1, &btnVFOABClick);
-        Button bmode    = Button(b2, &btnModeClick);
-        Button brit     = Button(b3, &btnRITClick);
-        Button bsplit   = Button(b4, &btnSPLITClick);
-    #endif
 
-
-    // memory or VFO only has meaning when you has buttons.
-    #ifdef MEMORIES
+        // memory object definition
         boolean vfoMode = true;
         word mem = 0;               // actual memory channel
         word memCount = 0;          // how many mems this chip support
-                                    // it's calculated in the setup process
+                                    // (it's calculated in the setup process)
 
         // memory type
         struct mmem {
@@ -213,7 +219,13 @@
         // declaring the main configuration variable for mem storage
         struct mmem memo;
 
-    #endif // memories
+    #else
+        // buttons with single functions
+        Button bvfoab   = Button(b1, &btnVFOABClick);
+        Button bmode    = Button(b2, &btnModeClick);
+        Button brit     = Button(b3, &btnRITClick);
+        Button bsplit   = Button(b4, &btnSPLITClick);
+    #endif
 #endif  //abut
 
 
@@ -243,7 +255,7 @@
     LiquidCrystal lcd(LCD_RS, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
     // how many samples we take in the smeter, we use a 2/3 trick to get some
-    // inertia and improve the look of the bar
+    // inertia and improve the look & feel of the bar
     #define BARGRAPH_SAMPLES    6
     word pep[BARGRAPH_SAMPLES] = {};
                                         // s-meter readings storage
@@ -269,14 +281,14 @@
 #define CONFIG_CW       5
 #define CONFIG_PPM      6
 // the amount of configure options
-#define CONFIG_MAX 6
+#define CONFIG_MAX      6
 
 // Tick interval for the timed actions like the SMeter and the autosave
-#define TICK_INTERVAL  250      // milli seconds
+#define TICK_INTERVAL  250      // milli seconds, 4 ticks per second
 
 // EERPOM saving interval (if some parameter has changed) in TICK_INTERVAL
 // var is word so max is 65535 in 1/4 secs is ~ 16383 sec ~ 273 min ~ 4h 33 min
-#define SAVE_INTERVAL 2400      // 10 minutes = 60 sec * 10 * 4 ticks/sec
+#define SAVE_INTERVAL 2400      // 10 minutes = 60 sec * 4 ticks/sec * 10 min
 
 // hardware pre configured values
 // pre-configured values for a single conversion radio using the FT-747GX filter
@@ -350,7 +362,16 @@ long *ptrVFO;       // will hold the value of the selected VFO
 byte *ptrMode;      // idem but for the mode of the *ptrVFO
 
 
-/*********** MISCELLANEOUS FUNCTIONS RELATED TO CORE PROCEDURES *************/
+/******** MISCELLANEOUS FUNCTIONS RELATED TO SEVERAL PROCEDURES ***********/
+
+
+// return the right step size to move
+long getStep() {
+    // we get the step from the global step var
+    long ret = 1;
+    for (byte i=0; i < step; i++, ret *= 10);
+    return ret/10;
+}
 
 
 // split check
@@ -373,35 +394,6 @@ void changeMode() {
 
     // Apply the changes
     updateAllFreq();
-}
-
-
-// change the steps
-void changeStep() {
-    // calculating the next step
-    if (step < 7) {
-        // simply increment
-        step += 1;
-    } else {
-        // default start mode is 2 (100Hz)
-        step = 2;
-        // in setup mode and just specific modes it's allowed to go to 1 hz
-        boolean am = false;
-        am = am or (config == CONFIG_LSB) or (config == CONFIG_USB);
-        am = am or (config == CONFIG_PPM);
-        if (!runMode and am) step = 1;
-    }
-
-    // if in normal mode reset the counter to show the change in the LCD
-    if (runMode) showStepCounter = STEP_SHOW_TIME;
-}
-
-// return the right step size to move
-long getStep () {
-    // we get the step from the global step var
-    long ret = 1;
-    for (byte i=0; i < step; i++, ret *= 10);
-    return ret/10;
 }
 
 
@@ -466,7 +458,6 @@ void swapVFO(byte force = 2) {
 
 
 /*****************************************************************************
- *
  *                      Where did the other functions go?
  *
  * This sketch use the "split in files" feature of the Arduino IDE, look for

@@ -37,14 +37,38 @@
             // update freq
             updateFreq(dir);
             update = true;
-        } else {
-            #ifndef NOLCD   // no meaning if no lcd
-                // update the values in the setup mode
-                updateSetupValues(dir);
-            #endif  // nolcd
         }
+
+        #ifndef NOLCD   // no meaning if no lcd
+            #ifdef ABUT    // no meaning if no Analog buttons
+                if (!runMode) {
+                    // update the values in the setup mode
+                    updateSetupValues(dir);
+                }
+            #endif   // abut
+        #endif  // nolcd
     }
 
+
+    // change the steps
+    void changeStep() {
+        // calculating the next step
+        if (step < 7) {
+            // simply increment
+            step += 1;
+        } else {
+            // default start mode is 2 (100Hz)
+            step = 2;
+            // in setup mode and just specific modes it's allowed to go to 1 hz
+            boolean am = false;
+            am = am or (config == CONFIG_LSB) or (config == CONFIG_USB);
+            am = am or (config == CONFIG_PPM);
+            if (!runMode and am) step = 1;
+        }
+
+        // if in normal mode reset the counter to show the change in the LCD
+        if (runMode) showStepCounter = STEP_SHOW_TIME;
+    }
 
 
     // update freq procedure

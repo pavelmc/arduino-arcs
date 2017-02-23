@@ -73,146 +73,187 @@
     };
 
 
-    // check some values don't go below zero
-    void belowZero(long *value) {
-        // some values are not meant to be below zero, this check and fix that
-        if (*value < 0) *value = 0;
-    }
+    #ifdef ABUT|ROTARY
+        // check some values don't go below zero
+        void belowZero(long *value) {
+            // some values are not meant to be below zero, this check and fix that
+            if (*value < 0) *value = 0;
+        }
 
 
-    // update the setup values
-    void updateSetupValues(int dir) {
-        // we are in setup mode, showing or modifying?
-        if (!inSetup) {
-            // just showing, show the config on the LCD
-            updateShowConfig(dir);
-        } else {
-            // change the VFO to A by default
-            swapVFO(1);
-            // I'm modifying, switch on the config item
+        // update the setup values
+        void updateSetupValues(int dir) {
+            // we are in setup mode, showing or modifying?
+            if (!inSetup) {
+                // just showing, show the config on the LCD
+                updateShowConfig(dir);
+            } else {
+                // change the VFO to A by default
+                swapVFO(1);
+                // I'm modifying, switch on the config item
+                switch (config) {
+                    case CONFIG_IF:
+                        // change the IF value
+                        ifreq += getStep() * dir;
+                        belowZero(&ifreq);
+                        break;
+                    case CONFIG_VFO_A:
+                        // change VFOa
+                        *ptrVFO += getStep() * dir;
+                        belowZero(ptrVFO);
+                        break;
+                    case CONFIG_MODE_A:
+                        // hot swap it
+                        changeMode();
+                        // set the default mode in the VFO A
+                        showModeSetup(VFOAMode);
+                        break;
+                    case CONFIG_USB:
+                        // change the mode to USB
+                        *ptrMode = MODE_USB;
+                        // change the USB BFO
+                        usb += getStep() * dir;
+                        break;
+                    case CONFIG_LSB:
+                        // change the mode to LSB
+                        *ptrMode = MODE_LSB;
+                        // change the LSB BFO
+                        lsb += getStep() * dir;
+                        break;
+                    case CONFIG_CW:
+                        // change the mode to CW
+                        *ptrMode = MODE_CW;
+                        // change the CW BFO
+                        cw += getStep() * dir;
+                        break;
+                    case CONFIG_PPM:
+                        // change the Si5351 PPM
+                        si5351_ppm += getStep() * dir;
+                        // instruct the lib to use the new ppm value
+                        XTAL_C = XTAL + si5351_ppm;
+                        break;
+                }
+
+                // for all cases update the freqs
+                updateAllFreq();
+
+                // update el LCD
+                showModConfig();
+            }
+        }
+
+
+        // update the configuration item before selecting it
+        void updateShowConfig(int dir) {
+            // move the config item, it's a byte, so we use a temp var here
+            int tconfig = config;
+            tconfig += dir;
+
+            if (tconfig > CONFIG_MAX) tconfig = 0;
+            if (tconfig < 0) tconfig = CONFIG_MAX;
+            config = tconfig;
+
+            // update the LCD
+            showConfig();
+        }
+
+
+        // show the labels of the config
+        void showConfigLabels() {
             switch (config) {
                 case CONFIG_IF:
-                    // change the IF value
-                    ifreq += getStep() * dir;
-                    belowZero(&ifreq);
+                    lcd.print(F("  IF frequency  "));
                     break;
                 case CONFIG_VFO_A:
-                    // change VFOa
-                    *ptrVFO += getStep() * dir;
-                    belowZero(ptrVFO);
+                    lcd.print(F("   VFO A freq   "));
                     break;
                 case CONFIG_MODE_A:
-                    // hot swap it
-                    changeMode();
-                    // set the default mode in the VFO A
-                    showModeSetup(VFOAMode);
+                    lcd.print(F("   VFO A mode   "));
                     break;
                 case CONFIG_USB:
-                    // change the mode to USB
-                    *ptrMode = MODE_USB;
-                    // change the USB BFO
-                    usb += getStep() * dir;
+                    lcd.print(F(" BFO freq. USB  "));
                     break;
                 case CONFIG_LSB:
-                    // change the mode to LSB
-                    *ptrMode = MODE_LSB;
-                    // change the LSB BFO
-                    lsb += getStep() * dir;
+                    lcd.print(F(" BFO freq. LSB  "));
                     break;
                 case CONFIG_CW:
-                    // change the mode to CW
-                    *ptrMode = MODE_CW;
-                    // change the CW BFO
-                    cw += getStep() * dir;
+                    lcd.print(F(" BFO freq. CW   "));
                     break;
                 case CONFIG_PPM:
-                    // change the Si5351 PPM
-                    si5351_ppm += getStep() * dir;
-                    // instruct the lib to use the new ppm value
-                    XTAL_C = XTAL + si5351_ppm;
+                    lcd.print(F("Si5351 PPM error"));
                     break;
             }
-
-            // for all cases update the freqs
-            updateAllFreq();
-
-            // update el LCD
-            showModConfig();
         }
-    }
 
 
-    // update the configuration item before selecting it
-    void updateShowConfig(int dir) {
-        // move the config item, it's a byte, so we use a temp var here
-        int tconfig = config;
-        tconfig += dir;
-
-        if (tconfig > CONFIG_MAX) tconfig = 0;
-        if (tconfig < 0) tconfig = CONFIG_MAX;
-        config = tconfig;
-
-        // update the LCD
-        showConfig();
-    }
-
-
-    // show the mode for the passed mode in setup mode
-    void showModeSetup(byte mode) {
-        // now I have to print it out
-        lcd.setCursor(0, 1);
-        spaces(11);
-        showModeLcd(mode); // this one has a implicit extra space after it
-    }
-
-
-    // print a string of spaces, to save some flash/eeprom "space"
-    void spaces(byte m) {
-        // print m spaces in the LCD
-        while (m) {
-            lcd.print(" ");
-            m--;
+        // show the setup main menu
+        void showConfig() {
+            // we have update the whole LCD screen
+            lcd.setCursor(0, 0);
+            lcd.print(F("#> SETUP MENU <#"));
+            lcd.setCursor(0, 1);
+            // show the specific item label
+            showConfigLabels();
         }
-    }
 
-
-    // show the labels of the config
-    void showConfigLabels() {
-        switch (config) {
-            case CONFIG_IF:
-                lcd.print(F("  IF frequency  "));
-                break;
-            case CONFIG_VFO_A:
-                lcd.print(F("   VFO A freq   "));
-                break;
-            case CONFIG_MODE_A:
-                lcd.print(F("   VFO A mode   "));
-                break;
-            case CONFIG_USB:
-                lcd.print(F(" BFO freq. USB  "));
-                break;
-            case CONFIG_LSB:
-                lcd.print(F(" BFO freq. LSB  "));
-                break;
-            case CONFIG_CW:
-                lcd.print(F(" BFO freq. CW   "));
-                break;
-            case CONFIG_PPM:
-                lcd.print(F("Si5351 PPM error"));
-                break;
+        // show the mode for the passed mode in setup mode
+        void showModeSetup(byte mode) {
+            // now I have to print it out
+            lcd.setCursor(0, 1);
+            spaces(11);
+            showModeLcd(mode); // this one has a implicit extra space after it
         }
-    }
 
 
-    // show the setup main menu
-    void showConfig() {
-        // we have update the whole LCD screen
-        lcd.setCursor(0, 0);
-        lcd.print(F("#> SETUP MENU <#"));
-        lcd.setCursor(0, 1);
-        // show the specific item label
-        showConfigLabels();
-    }
+        // show the ppm as a signed long
+        void showConfigValue(long val) {
+            lcd.print(F("Val:"));
+
+            // Show the sign only on config and not VFO & IF
+            boolean t;
+            t = config == CONFIG_VFO_A or config == CONFIG_IF;
+            if (!runMode and !t) showSign(val);
+
+            // print it
+            formatFreq(abs(val));
+
+            // if on normal mode we show in 10 Hz
+            if (runMode) lcd.print("0");
+            lcd.print(F("hz"));
+        }
+
+
+        // update the specific setup item
+        void showModConfig() {
+            lcd.setCursor(0, 0);
+            showConfigLabels();
+
+            // show the specific values
+            lcd.setCursor(0, 1);
+            switch (config) {
+                case CONFIG_IF:
+                    showConfigValue(ifreq);
+                    break;
+                case CONFIG_VFO_A:
+                    showConfigValue(vfoa);
+                    break;
+                case CONFIG_MODE_A:
+                    showModeSetup(VFOAMode);
+                case CONFIG_USB:
+                    showConfigValue(usb);
+                    break;
+                case CONFIG_LSB:
+                    showConfigValue(lsb);
+                    break;
+                case CONFIG_CW:
+                    showConfigValue(cw);
+                    break;
+                case CONFIG_PPM:
+                    showConfigValue(si5351_ppm);
+                    break;
+            }
+        }
+    #endif // abut|rotary
 
 
     // print the sign of a passed parameter
@@ -224,52 +265,12 @@
     }
 
 
-    // show the ppm as a signed long
-    void showConfigValue(long val) {
-        lcd.print(F("Val:"));
-
-        // Show the sign only on config and not VFO & IF
-        boolean t;
-        t = config == CONFIG_VFO_A or config == CONFIG_IF;
-        if (!runMode and !t) showSign(val);
-
-        // print it
-        formatFreq(abs(val));
-
-        // if on normal mode we show in 10 Hz
-        if (runMode) lcd.print("0");
-        lcd.print(F("hz"));
-    }
-
-
-    // update the specific setup item
-    void showModConfig() {
-        lcd.setCursor(0, 0);
-        showConfigLabels();
-
-        // show the specific values
-        lcd.setCursor(0, 1);
-        switch (config) {
-            case CONFIG_IF:
-                showConfigValue(ifreq);
-                break;
-            case CONFIG_VFO_A:
-                showConfigValue(vfoa);
-                break;
-            case CONFIG_MODE_A:
-                showModeSetup(VFOAMode);
-            case CONFIG_USB:
-                showConfigValue(usb);
-                break;
-            case CONFIG_LSB:
-                showConfigValue(lsb);
-                break;
-            case CONFIG_CW:
-                showConfigValue(cw);
-                break;
-            case CONFIG_PPM:
-                showConfigValue(si5351_ppm);
-                break;
+    // print a string of spaces, to save some flash/eeprom "space"
+    void spaces(byte m) {
+        // print m spaces in the LCD
+        while (m) {
+            lcd.print(" ");
+            m--;
         }
     }
 

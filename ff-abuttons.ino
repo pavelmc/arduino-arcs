@@ -197,6 +197,5 @@
                 }
             }
         }
-    #endif
-
+    #endif // memories
 #endif
