@@ -55,7 +55,7 @@
 *******************************************************************************/
 
 // You like to have CAT control (PC control) of the sketch via Serial link?
-#define CAT_CONTROL
+#define CAT_CONTROL True
 
 // Analog button support?
 #define ABUT True
@@ -64,8 +64,7 @@
 #define ROTARY True
 
 // Memories?
-#define MEMORIES True
-
+#define MEMORIES True   // 82 Mems for the ATMega32 & 40 for the ATMega168
 
 // if you want a headless control unit just uncomment this line below and
 // you will get no LCD / buttons / rotary / memory; only CAT control
@@ -103,6 +102,7 @@
 #ifndef ABUT
     #undef MEMORIES
 #endif // abut
+
 #ifndef ROTARY
     #undef MEMORIES
 #endif // rotary
@@ -130,7 +130,7 @@
 
 
 // The start byte in the eeprom where we put mem[0]
-#define MEMSTART 36
+#define MEMSTART 33 // for EEP_VER 5 (the config reside in the lower 32 bytes)
 
 
 // the limits of the VFO, just 40m for now; you can tweak it with the
@@ -187,10 +187,10 @@
     // you may have to tweak this values a little for your particular hardware
     //
     // define the adc levels of for the buttons
-    #define b1 510  // 10k
-    #define b2 316  // 4k7
-    #define b3 178  // 2k2
-    #define b4 697  // 22k
+    #define b1 207  // 1k2
+    #define b2 370  // 2k7
+    #define b3 512  // 4k7
+    #define b4 697  // 10k
 
     #ifdef MEMORIES
         // buttons has a second action related to memories

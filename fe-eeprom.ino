@@ -93,7 +93,7 @@ void loadEEPROMConfig() {
     // save memory location
     void saveMEM(word memItem, boolean configured) {
         // real of empty
-        if (configured == true) {
+        if (!configured) {
             // default values
             memo.configured = false;
             memo.vfoa       = 7110000;
@@ -122,7 +122,7 @@ void loadEEPROMConfig() {
         EEPROM.get(MEMSTART + (sizeof(mmem) * memItem), memo);
 
         // is the mem valid?
-        if (memo.configured == false) return false;
+        if (!memo.configured) return false;
 
         // load it
         vfoa        = memo.vfoa;

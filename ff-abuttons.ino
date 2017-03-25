@@ -173,15 +173,14 @@
             saveMEM(mem, false);
 
             // if in vfo mode no problem, but...
-            if (vfoMode == false) {
+            if (!vfoMode) {
                 // if in MEM mode jump to the NEXT valid mem.
                 // but if we cycle trough the full mem we need to stop
                 // at the next zero index
-                boolean stop = false;
                 word oldmem = mem;
                 mem += 1;
 
-                while (loadMEM(mem) == false) {
+                while (!loadMEM(mem)) {
                     // if we reach the start point, that's a empty mem space.
                     // just stop and jump to ZERO
                     if (mem == oldmem) {

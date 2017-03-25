@@ -34,7 +34,7 @@
 
     // set freq from CAT
     void catSetFreq(long f) {
-        // we use 1/10 hz so scale it
+        // we use 1 hz resolution, so scale it
         f *= 10;
 
         // check for the freq boundaries

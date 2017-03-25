@@ -174,6 +174,10 @@ void setup() {
 
     // start the VFOa and it's mode
     updateAllFreq();
+
+    // test 
+    //~ Serial.print(" Bytes for the config in the EEPROM: ");
+    //~ Serial.println(sizeof(conf));
 }
 
 

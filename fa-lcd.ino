@@ -316,7 +316,7 @@
         // need to check if memories are available
         #ifdef MEMORIES
             // VFO or memory
-            if (true) {
+            if (vfoMode) {
                 // VFO mode, normal LCD
                 vfoUpdateLcd();
             } else {
@@ -339,7 +339,11 @@
              *
              ******************************************************/
 
-            // channel name
+            // first line
+            lcd.setCursor(0, 0);
+            
+            // channel number with provision for the leading space below 10
+            if (mem < 10) lcd.print("0");
             lcd.print(mem);
             lcd.print(" ");
 
@@ -450,14 +454,14 @@
         // print it
         switch (mode) {
             case MODE_USB:
-              lcd.print(F("USB "));
-              break;
+                lcd.print(F("USB "));
+                break;
             case MODE_LSB:
-              lcd.print(F("LSB "));
-              break;
+                lcd.print(F("LSB "));
+                break;
             case MODE_CW:
-              lcd.print(F("CW  "));
-              break;
+                lcd.print(F("CW  "));
+                break;
         }
     }
 
@@ -474,13 +478,29 @@
         }
 
         // show it
-        if (step == 1) lcd.print(F("  1Hz"));
-        if (step == 2) lcd.print(F(" 10Hz"));
-        if (step == 3) lcd.print(F("100Hz"));
-        if (step == 4) lcd.print(F(" 1kHz"));
-        if (step == 5) lcd.print(F("10kHz"));
-        if (step == 6) lcd.print(F(" 100k"));
-        if (step == 7) lcd.print(F(" 1MHz"));
+        switch (step) {
+            case 1:
+                lcd.print(F("  1Hz"));
+                break;
+            case 2:
+                lcd.print(F(" 10Hz"));
+                break;
+            case 3:
+                lcd.print(F("100Hz"));
+                break;
+            case 4:
+                lcd.print(F(" 1kHz"));
+                break;
+            case 5:
+                lcd.print(F("10kHz"));
+                break;
+            case 6:
+                lcd.print(F(" 100k"));
+                break;
+            case 7:
+                lcd.print(F(" 1MHz"));
+                break;
+        }
         spaces(11);
     }
 
@@ -546,12 +566,8 @@
 
         // shrinking bar: erase the old ones print spaces to erase just the diff
         if (barMax > local) {
-            i = barMax;
-            while (i > local) {
-                lcd.setCursor(3 + i, 1);
-                lcd.print(" ");
-                i--;
-            }
+            lcd.setCursor(3 + barMax, 1);
+            spaces(barMax - local);
         }
 
         // put the var for the next iteration
@@ -565,12 +581,12 @@
     void takeSample() {
         // reference is 5v
         word val;
+        byte adcPin = 1;
 
-        if (!tx) {
-            val = analogRead(1);
-        } else {
-            val = analogRead(0);
-        }
+        // check if TX
+        if (tx) adcPin = 0;
+        // take sample
+        val = analogRead(adcPin);
 
         // push it in the array
         for (byte i = 0; i < BARGRAPH_SAMPLES - 1; i++) pep[i] = pep[i + 1];

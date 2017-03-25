@@ -15,7 +15,7 @@
     void encoderMoved(int dir) {
         // check if in memory
         #ifdef MEMORIES
-            if (vfoMode == false) {
+            if (!vfoMode) {
                 // we are in mem mode, move it
                 int tmem = mem;
                 tmem += dir;
@@ -24,7 +24,10 @@
                 if (tmem < 0) tmem = memCount;
                 if (tmem > memCount) tmem = 0;
 
+                // update the mem setting
                 mem = word(tmem);
+                loadMEM(mem); // < ------------ eestrategia de saltar a la proxima configurada, ver ff-buttons:167
+                updateAllFreq();
 
                 // update flag and return
                 update = true;
@@ -33,7 +36,7 @@
         #endif
 
         // check the run mode
-        if (runMode) {
+        if (runMode and vfoMode) {
             // update freq
             updateFreq(dir);
             update = true;
