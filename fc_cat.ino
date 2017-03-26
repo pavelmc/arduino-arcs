@@ -67,7 +67,7 @@
     // get freq from CAT
     long catGetFreq() {
         // get the active VFO freq and pass it
-        return *ptrVFO / 10;
+        return *ptrVFO;
     }
 
 
