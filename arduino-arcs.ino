@@ -107,6 +107,11 @@
     #undef MEMORIES
 #endif // rotary
 
+// Safety check; if we have LCD the show the S-Meter, also you can disable it
+// by commenting the following code
+#ifndef NOLCD
+    #define SMETER True
+#endif 
 
 // default (non optional) libraries loading
 #include <EEPROM.h>         // default
@@ -456,6 +461,14 @@ void swapVFO(byte force = 2) {
     }
 }
 
+// beep function
+#ifdef ROTARY|ABUT
+    // beep function a 1.2Khz tone for 50 msecs
+    void beep() {
+        tone(4, 1200, 50);
+        delay(50);
+    }
+#endif
 
 /*****************************************************************************
  *                      Where did the other functions go?

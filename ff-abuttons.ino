@@ -11,12 +11,6 @@
 
 
 #ifdef ABUT
-    // beep function a 1.2Khz tone for 50 msecs
-    void beep() {
-        tone(4, 1200, 50);
-        delay(50);
-    }
-
     // VFO A/B button click >>>> (OK/SAVE click)
     void btnVFOABClick() {
         // beep

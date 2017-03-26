@@ -204,7 +204,7 @@ void loop() {
     #ifdef ROTARY
         // check Hardware PTT and make the RX/TX changes
         if (dbPTT.update()) {
-            // state changed, if shorted to GND going to TX
+            // state changed
             if (dbPTT.fell()) {
                 // line asserted (PTT Closed) going to TX
                 going2TX();
@@ -226,6 +226,9 @@ void loop() {
 
             // step (push button)
             if (tbool) {
+                // beep
+                beep();
+                
                 // VFO step change
                 changeStep();
                 update = true;
