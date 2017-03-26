@@ -57,8 +57,6 @@ void saveEEPROM() {
     // load the parameters in the environment
     conf.vfoa       = vfoa;
     conf.vfoaMode   = VFOAMode;
-    conf.vfob       = vfob;
-    conf.vfobMode   = VFOBMode;
     conf.ifreq      = ifreq;
     conf.lsb        = lsb;
     conf.usb        = usb;
@@ -80,8 +78,7 @@ void loadEEPROMConfig() {
     // load the parameters to the environment
     vfoa        = conf.vfoa;
     VFOAMode    = conf.vfoaMode;
-    vfob        = conf.vfob;
-    VFOBMode    = conf.vfobMode;
+    ifreq       = conf.ifreq;
     lsb         = conf.lsb;
     usb         = conf.usb;
     cw          = conf.cw;

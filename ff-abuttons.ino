@@ -150,8 +150,6 @@
             split = !split;
             update = true;
         }
-
-        // no function in SETUP yet.
     }
 
 
@@ -217,6 +215,15 @@
             // erase the actual mem position
             saveMEM(mem, false);
 
+            // now force an update of the LCD
+            update = true;
+        }
+
+        // erase the whole mem space
+        void btnEraseWholeMem() {
+            // sure?
+            wipeMEM();
+            
             // now force an update of the LCD
             update = true;
         }

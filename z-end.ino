@@ -75,9 +75,6 @@ void setup() {
     // I2C init
     Wire.begin();
 
-    // disable all the possible outputs (set freq enable it by default)
-    for (byte i=0; i < 8; i++) si5351aDisableCLK(i);
-
     // check the EEPROM to know if I need to initialize it
     if (checkInitEEPROM()) {
         // just if it's already ok

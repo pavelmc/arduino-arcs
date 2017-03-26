@@ -207,7 +207,7 @@
 
         // show the ppm as a signed long
         void showConfigValue(long val) {
-            lcd.print(F("Val:"));
+            spaces(3);
 
             // Show the sign only on config and not VFO & IF
             boolean t;
@@ -219,7 +219,7 @@
 
             // if on normal mode we show in 10 Hz
             if (runMode) lcd.print("0");
-            lcd.print(F("hz"));
+            lcd.print(F("Hz"));
         }
 
 

@@ -10,12 +10,6 @@
  * ***************************************************************************/
 
 
-// Disable any output (0-7)
-void si5351aDisableCLK(byte clk) {
-    si5351ai2cWrite(16 + clk, 0x80);
-}
-
-
 // Frequency in Hz; must be within [7,810 kHz to ~220 MHz]
 void si5351aSetFrequency(byte clk, unsigned long frequency) { 
     #define c 1048574;
@@ -71,9 +65,6 @@ void si5351aSetFrequency(byte clk, unsigned long frequency) {
     MSNx_P2 = 128 * b - MSNx_P2 * c; 
     MSNx_P3 = c;
 
-    // select the clk to write and disable it's output
-    si5351aDisableCLK(clk);
-
     if (clk > 0 ) shifts = 8;
 
     // plls
@@ -106,17 +97,6 @@ void si5351aSetFrequency(byte clk, unsigned long frequency) {
         si5351ai2cWrite(44, 12 | R);       // Special settings for R = 4 (see datasheet)
         si5351ai2cWrite(45, 0);                    // Bits [15:8]  of MSx_P1 must be 0
         si5351ai2cWrite(46, 0);                    // Bits [7:0]  of MSx_P1 must be 0
-    }
-    
-    // PLL reset
-    if (clk == 0) {
-        // This soft-resets PLL A & and enable it's output
-        si5351ai2cWrite(177, 32);
-        si5351ai2cWrite(16, 79);
-    } else {
-        // This soft-resets PLL B & and enable it's output
-        si5351ai2cWrite(177, 128);
-        si5351ai2cWrite(17, 111);
     }
 }
 
@@ -159,7 +139,7 @@ void updateAllFreq() {
     // deactivate it if zero
     if (freq == 0) {
         // deactivate it
-        si5351aDisableCLK(1);
+        si5351aSetFrequency(1, 0);
     } else {
         // output it
         si5351aSetFrequency(1, freq);

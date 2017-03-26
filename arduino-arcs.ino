@@ -136,8 +136,6 @@ struct mConf {
     long ifreq;
     long vfoa;
     byte vfoaMode;
-    long vfob;
-    byte vfobMode;
     int lsb;
     int usb;
     int cw;
@@ -216,7 +214,7 @@ struct mConf conf;
         Button bvfoab   = Button(b1, &btnVFOABClick, &btnVFOMEM);
         Button bmode    = Button(b2, &btnModeClick, &btnVFOsMEM);
         Button brit     = Button(b3, &btnRITClick, &btnEraseMEM);
-        Button bsplit   = Button(b4, &btnSPLITClick);
+        Button bsplit   = Button(b4, &btnSPLITClick, &btnEraseWholeMem);
 
         // memory object definition
         boolean vfoMode = true;
@@ -307,10 +305,10 @@ struct mConf conf;
 
 // hardware pre configured values
 // pre-configured values for a single conversion radio using the FT-747GX filter
-long lsb =          -2000;
-long usb =           2000;  // both equal so ifreq = filter center.
-long cw =            0;
-long ifreq =         1000000;
+long lsb =        -1600;
+long usb =         1600;
+long cw =             0;
+long ifreq =    8213950;
 
 // This value is not the real PPM value is just the freq correction for your
 // particular xtal from the 27.00000 Mhz one, if you can measure it put it here
