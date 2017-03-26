@@ -11,8 +11,17 @@
 
 
 #ifdef ABUT
+    // beep function a 1.2Khz tone for 50 msecs
+    void beep() {
+        tone(4, 1200, 50);
+        delay(50);
+    }
+
     // VFO A/B button click >>>> (OK/SAVE click)
     void btnVFOABClick() {
+        // beep
+        beep();
+        
         // normal mode
         if (runMode) {
             #ifdef MEMORIES
@@ -72,6 +81,9 @@
 
     // MODE button click >>>> (CANCEL click)
     void btnModeClick() {
+        // beep
+        beep();
+        
         // normal mode
         if (runMode) {
             changeMode();
@@ -95,6 +107,9 @@
 
     // RIT button click >>>> (RESET values click)
     void btnRITClick() {
+        // beep
+        beep();
+        
         // normal mode
         if (runMode) {
             toggleRit();
@@ -123,6 +138,9 @@
 
     // SPLIT button click  >>>> (Nothing yet)
     void btnSPLITClick() {
+        // beep
+        beep();
+        
         // normal mode
         if (runMode) {
             #ifdef MEMORIES
@@ -156,6 +174,9 @@
     #ifdef MEMORIES
         // VFO/MEM mode change
         void btnVFOMEM() {
+            // beep
+            beep();
+        
             // toggle the flag
             vfoMode = !vfoMode;
 
@@ -165,6 +186,9 @@
 
         // mem > vfo | vfo > mem, taking into account in what mode we are
         void btnVFOsMEM() {
+            // beep
+            beep();
+        
             // detect in which mode I'm, to decide what to do
             if (vfoMode == true) {
                 // VFO > MEM
@@ -177,6 +201,9 @@
 
         // erase the actual mem position
         void btnEraseMEM() {
+            // beep
+            beep();
+        
             // erase the actual mem position
             saveMEM(mem, false);
 
