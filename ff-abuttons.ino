@@ -22,6 +22,7 @@
                 // if we are in mem mode VFO A/B switch has no sense
                 if (!vfoMode) return;
             #endif
+            
             // we force to deactivate the RIT on VFO change, as it will confuse
             // the users and have a non logical use, only if activated and
             // BEFORE we change the active VFO
@@ -106,6 +107,11 @@
         
         // normal mode
         if (runMode) {
+            #ifdef MEMORIES
+                // if we are in mem mode RIT has no sense
+                if (!vfoMode) return;
+            #endif
+            
             toggleRit();
             update = true;
         } else if (inSetup) {
