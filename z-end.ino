@@ -51,6 +51,8 @@ void setup() {
         // how many memories his chip supports
         #ifdef MEMORIES
             memCount = (EEPROM.length() - MEMSTART) / sizeof(mmem);
+            // self limiting the mem amount to 100 (0-99)
+            if (memCount > 99) memCount = 99;
         #endif
     #endif
 
@@ -177,10 +179,6 @@ void setup() {
 
     // set no tone operation on the beep pin
     noTone(4);
-
-    // test 
-    //~ Serial.print(" Bytes for the config in the EEPROM: ");
-    //~ Serial.println(sizeof(conf));
 }
 
 

@@ -129,13 +129,30 @@
 #define EEP_VER     5
 #define FMW_VER     13
 
+// structured data: Main Configuration Parameters
+struct mConf {
+    char finger[9] =  EEPROMfingerprint;  // nine, all strings ends with a null
+    byte version = EEP_VER;
+    long ifreq;
+    long vfoa;
+    byte vfoaMode;
+    long vfob;
+    byte vfobMode;
+    int lsb;
+    int usb;
+    int cw;
+    int ppm;
+};
+
+// declaring the main configuration variable for mem storage
+struct mConf conf;
 
 // The index in the eeprom where to store the info
-#define ECPP 0  // conf store up to 36 bytes so far.
+#define ECPP 0
 
 
 // The start byte in the eeprom where we put mem[0]
-#define MEMSTART 33 // for EEP_VER 5 (the config reside in the lower 32 bytes)
+#define MEMSTART ECPP + sizeof(conf)
 
 
 // the limits of the VFO, just 40m for now; you can tweak it with the
@@ -214,11 +231,8 @@
         // memory type
         struct mmem {
             boolean configured;
-            long vfoa;
-            byte vfoaMode;
-            long vfob;
-            byte vfobMode;
-            boolean split;
+            long vfo;
+            byte vfoMode;
         };
 
         // declaring the main configuration variable for mem storage
@@ -297,10 +311,10 @@
 
 // hardware pre configured values
 // pre-configured values for a single conversion radio using the FT-747GX filter
-long lsb =          -1450;
-long usb =           1450;  // both equal so ifreq = filter center.
+long lsb =          -2000;
+long usb =           2000;  // both equal so ifreq = filter center.
 long cw =            0;
-long ifreq =         8212980;
+long ifreq =         1000000;
 
 // This value is not the real PPM value is just the freq correction for your
 // particular xtal from the 27.00000 Mhz one, if you can measure it put it here
@@ -343,24 +357,6 @@ word qcounter =        0;           // Timer to be incremented each 1/4 second
 
 // temp boolean var (used in the loop function)
 boolean tbool = false;
-
-// structured data: Main Configuration Parameters
-struct mConf {
-    char finger[9] =  EEPROMfingerprint;  // nine, all strings ends with a null
-    byte version = EEP_VER;
-    long ifreq;
-    long vfoa;
-    byte vfoaMode;
-    long vfob;
-    byte vfobMode;
-    int lsb;
-    int usb;
-    int cw;
-    int ppm;
-};
-
-// declaring the main configuration variable for mem storage
-struct mConf conf;
 
 // pointers to the actual values
 long *ptrVFO;       // will hold the value of the selected VFO

@@ -92,23 +92,17 @@ void loadEEPROMConfig() {
 #ifdef MEMORIES
     // save memory location
     void saveMEM(word memItem, boolean configured) {
-        // real of empty
+        // real or empty
         if (!configured) {
             // default values
             memo.configured = false;
-            memo.vfoa       = 7110000;
-            memo.vfoaMode   = MODE_LSB;
-            memo.vfob       = 7125000;
-            memo.vfobMode   = MODE_LSB;
-            memo.split      = 0;
+            memo.vfo       = 7110000;
+            memo.vfoMode   = MODE_LSB;
         } else {
             // ok, real ones, set the values
             memo.configured = true;
-            memo.vfoa       = vfoa;
-            memo.vfoaMode   = VFOAMode;
-            memo.vfob       = vfob;
-            memo.vfobMode   = VFOBMode;
-            memo.split      = split;
+            memo.vfo        = *ptrVFO;
+            memo.vfoMode    = *ptrMode;
         }
 
         // write it
@@ -125,12 +119,9 @@ void loadEEPROMConfig() {
         if (!memo.configured) return false;
 
         // load it
-        vfoa        = memo.vfoa;
-        VFOAMode    = memo.vfoaMode;
-        vfob        = memo.vfob;
-        VFOBMode    = memo.vfobMode;
-        split       = memo.split;
-
+        *ptrVFO     = memo.vfo;
+        *ptrMode    = memo.vfoMode;
+        
         // return true
         return true;
     }

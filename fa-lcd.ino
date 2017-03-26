@@ -389,10 +389,25 @@
     // refresh the lcd routine
     void lcdRefresh() {
 
-        // show VFO and mode
-        formatFreq(*ptrVFO);
-        spaces(1);
-        showModeLcd(*ptrMode);
+        #ifdef MEMORIES
+            if (!vfoMode and !memo.configured) {
+                // memory not configured, so not showing the freq
+                lcd.print(F("--.---.-- ---"));
+            } else {
+                // show VFO and mode
+                formatFreq(*ptrVFO);
+                // space and mode
+                spaces(1);
+                showModeLcd(*ptrMode);
+            }
+
+            
+        #else
+            // show VFO and mode
+            formatFreq(*ptrVFO);
+            spaces(1);
+            showModeLcd(*ptrMode);
+        #endif
 
         // second line
         lcd.setCursor(0, 1);

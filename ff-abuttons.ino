@@ -190,7 +190,7 @@
             beep();
         
             // detect in which mode I'm, to decide what to do
-            if (vfoMode == true) {
+            if (vfoMode) {
                 // VFO > MEM
                 saveMEM(mem, true);
             } else {
@@ -207,29 +207,8 @@
             // erase the actual mem position
             saveMEM(mem, false);
 
-            // if in vfo mode no problem, but...
-            if (!vfoMode) {
-                // if in MEM mode jump to the NEXT valid mem.
-                // but if we cycle trough the full mem we need to stop
-                // at the next zero index
-                word oldmem = mem;
-                mem += 1;
-
-                while (!loadMEM(mem)) {
-                    // if we reach the start point, that's a empty mem space.
-                    // just stop and jump to ZERO
-                    if (mem == oldmem) {
-                        mem = 0;
-                        return;
-                    }
-
-                    // next !
-                    mem += 1;
-
-                    // limit check
-                    if (mem > memCount) mem == 0;
-                }
-            }
+            // now force an update of the LCD
+            update = true;
         }
     #endif // memories
 #endif

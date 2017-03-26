@@ -44,7 +44,7 @@ You can see the schematic diagram (designed for an Arduino Uno R3 in mind) in th
 - **Hot tunning of the parameters** when in configuration mode for ease the adjust.
 - **Basic CAT control** (like a Yaesu FT-857D) using my GPL 3.0 [ft857d library](https://github.com/pavelmc/ft857d) _(See Note 2 below)_
 - The sketch is coded with **feature segmentation in mind**, you can rule out the CAT support if you don't need it, disable the ugly S-meter or rule out all other HID and just compile with CAT to get a slim CAT radio solution that fits in a tiny ATMega8 core _(I'm no kidding, it do fit in that chip!)_
-- **Memories** (using the internal EEPROM) the amount of them will be proportional to the size of the EEPROM in the arduino board you use. Memories preserve all attributes including splits & modes. (you will get 82 mems for the ATMega328, 40 for the ATMega168...)
+- **Memories** (using the internal EEPROM) Limited to 100 (0-99) if your board is capable of more than 100, due to display layout issues; depending in the size of your chip EEPROM, it can have less also.
 
 _**Note 1:** The firmware save the VFO info on every VFO A/B button press or a 10 minutes interval, which one came first._
 
@@ -56,7 +56,7 @@ _**Note 2:** If you use a regular Arduino board and upload the code via serial p
 
 _This is because the CAT setup process in your software will reset the Arduino board (and hence the "radio")
 
-Then the bootloader will introduce a short delay before our firmware kicks in and the PC may complain about "radio not answering to commands". The fix is in the previous paragraph. If you have no bootloader and upload the code via ICP you must not see this problems._
+Then the bootloader will introduce a short delay before our firmware kicks in and the PC may complain about "radio not answering to commands". The fix is in the previous paragraph. If you have no bootloader and upload the code via ICP you must not see this problems._ 
 
 ## Features in the TODO list ##
 

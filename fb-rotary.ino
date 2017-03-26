@@ -26,7 +26,7 @@
 
                 // update the mem setting
                 mem = word(tmem);
-                loadMEM(mem); // < ------------ eestrategia de saltar a la proxima configurada, ver ff-buttons:167
+                loadMEM(mem);
                 updateAllFreq();
 
                 // update flag and return
