@@ -315,10 +315,10 @@ long ifreq =    8213950;
 long si5351_ppm = 2256;     // in Hz, mine is 2.256 Khz up
 
 // Si5351a Xtal
-#define XTAL   27000000;            // default FREQ of the XTAL for the Si5351a
+long XTAL = 27000000;            // default FREQ of the XTAL for the Si5351a
 
 // the variables
-long XTAL_C = XTAL;                 // corrected xtal with the ppm
+long XTAL_C = XTAL + si5351_ppm;    // corrected xtal with the ppm
 long vfoa = 7110000;                // default starting VFO A freq
 long vfob = 7125000;                // default starting VFO B freq
 long tvfo = 0;                      // temporal VFO storage for RIT usage

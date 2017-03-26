@@ -131,6 +131,8 @@
                         si5351_ppm += getStep() * dir;
                         // instruct the lib to use the new ppm value
                         XTAL_C = XTAL + si5351_ppm;
+                        // reset the Si5351 
+                        Si5351_resets();
                         break;
                 }
 

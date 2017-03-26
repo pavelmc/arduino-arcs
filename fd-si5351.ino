@@ -100,11 +100,24 @@ void si5351aSetFrequency(byte clk, unsigned long frequency) {
     }
 }
 
+
+void Si5351_resets() {
+    // PLL & synths reset
+
+    // This soft-resets PLL A & and enable it's output
+    si5351ai2cWrite(177, 32);
+    si5351ai2cWrite(16, 79);
+
+    // This soft-resets PLL B & and enable it's output
+    si5351ai2cWrite(177, 128);
+    si5351ai2cWrite(17, 111);
+}
+
 void si5351ai2cWrite(byte regist, byte value){
-  Wire.beginTransmission(96);
-  Wire.write(regist);
-  Wire.write(value);
-  Wire.endTransmission();
+    Wire.beginTransmission(96);
+    Wire.write(regist);
+    Wire.write(value);
+    Wire.endTransmission();
 }
 
 
