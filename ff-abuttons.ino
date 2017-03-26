@@ -15,6 +15,9 @@
     void btnVFOABClick() {
         // normal mode
         if (runMode) {
+            #ifdef MEMORIES
+                if (!vfoMode) return;
+            #endif
             // we force to deactivate the RIT on VFO change, as it will confuse
             // the users and have a non logical use, only if activated and
             // BEFORE we change the active VFO
