@@ -16,6 +16,7 @@
         // normal mode
         if (runMode) {
             #ifdef MEMORIES
+                // if we are in mem mode VFO A/B switch has no sense
                 if (!vfoMode) return;
             #endif
             // we force to deactivate the RIT on VFO change, as it will confuse
@@ -124,6 +125,10 @@
     void btnSPLITClick() {
         // normal mode
         if (runMode) {
+            #ifdef MEMORIES
+                // if we are in mem mode split has no sense
+                if (!vfoMode) return;
+            #endif
             split = !split;
             update = true;
         }
