@@ -144,9 +144,16 @@ void setup() {
         lcd.clear();
     #endif  // nolcd
 
-    #ifdef ROTRAY
+    #ifdef ROTARY
         // Check for setup mode
         if (digitalRead(btnPush) == LOW) {
+            // rise the flag of setup mode for every body to see it.
+            runMode = false;
+            
+            // beep signal to the user
+            tone(4, 800, 250);
+            delay(250);
+            
             #ifdef CAT_CONTROL
                 // CAT is disabled in SETUP mode
                 cat.enabled = false;
@@ -163,9 +170,6 @@ void setup() {
                 // show setup mode
                 showConfig();
             #endif  // nolcd
-
-            // rise the flag of setup mode for every body to see it.
-            runMode = false;
         }
     #endif  // rotary
 
@@ -176,9 +180,6 @@ void setup() {
 
     // start the VFOa and it's mode
     updateAllFreq();
-
-    // set no tone operation on the beep pin
-    noTone(4);
 }
 
 

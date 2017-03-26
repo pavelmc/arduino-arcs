@@ -27,7 +27,7 @@ EEPROM.length()
 // check if the EEPROM is initialized
 boolean checkInitEEPROM() {
     // read the eeprom config data
-    EEPROM.get(ECPP, conf);
+    EEPROM.get(0, conf);
 
     // check for the initializer and version
     if (conf.version == EEP_VER) {
@@ -68,14 +68,14 @@ void saveEEPROM() {
     strcpy(conf.finger, EEPROMfingerprint);
 
     // write it
-    EEPROM.put(ECPP, conf);
+    EEPROM.put(0, conf);
 }
 
 
 // load the eprom contents
 void loadEEPROMConfig() {
     // write it
-    EEPROM.get(ECPP, conf);
+    EEPROM.get(0, conf);
 
     // load the parameters to the environment
     vfoa        = conf.vfoa;

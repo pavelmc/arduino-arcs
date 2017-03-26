@@ -36,7 +36,7 @@
         #endif
 
         // check the run mode
-        if (runMode and vfoMode) {
+        if (runMode) {
             // update freq
             updateFreq(dir);
             update = true;

@@ -180,6 +180,9 @@
             // toggle the flag
             vfoMode = !vfoMode;
 
+            // force the update of the mem
+            if (!vfoMode) loadMEM(mem);
+
             // rise the update flag
             update = true;
         }
@@ -193,10 +196,17 @@
             if (vfoMode) {
                 // VFO > MEM
                 saveMEM(mem, true);
+                // swap to mem mode
+                vfoMode = false;
             } else {
                 // MEM > VFO
                 loadMEM(mem);
+                // swap to the VFO mode
+                vfoMode = true;
             }
+
+            // update flag for the LCD
+            update = true;
         }
 
         // erase the actual mem position

@@ -126,8 +126,8 @@
 
 // The eeprom & sketch version; if the eeprom version is lower than the one on
 // the sketch we force an update (init) to make a consistent work on upgrades
-#define EEP_VER     5
-#define FMW_VER     13
+#define EEP_VER     6
+#define FMW_VER     14
 
 // structured data: Main Configuration Parameters
 struct mConf {
@@ -147,12 +147,8 @@ struct mConf {
 // declaring the main configuration variable for mem storage
 struct mConf conf;
 
-// The index in the eeprom where to store the info
-#define ECPP 0
-
-
 // The start byte in the eeprom where we put mem[0]
-#define MEMSTART ECPP + sizeof(conf)
+#define MEMSTART sizeof(conf)
 
 
 // the limits of the VFO, just 40m for now; you can tweak it with the
