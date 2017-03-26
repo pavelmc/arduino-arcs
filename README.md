@@ -42,7 +42,7 @@ You can see the schematic diagram (designed for an Arduino Uno R3 in mind) in th
 - Initially mono-band in 40m, but **adaptable to any band**
 - **Full user customization** of the IF and BFO modes (side bands) via configuration menus. (The VFO is assumed always above the RF and side bands are adjusted, se notes on Si5351 noise)
 - **Hot tunning of the parameters** when in configuration mode for ease the adjust.
-- **Basic CAT control** (like a Yaesu FT-857D) using my GPL 3.0 [ft857d library](https://github.com/pavelmc/ft857d); please take into account that the default serial parameters are 57600 baud @ 8 bits, 1 stop bit and parity none; and that is far from the default radio parameters. _(Also see Note 2 below)_
+- **Basic CAT control** (like a Yaesu FT-857D) using my GPL 3.0 [ft857d library](https://github.com/pavelmc/ft857d) _(See Note 2 below)_
 - The sketch is coded with **feature segmentation in mind**, you can rule out the CAT support if you don't need it, disable the ugly S-meter or rule out all other HID and just compile with CAT to get a slim CAT radio solution that fits in a tiny ATMega8 core _(I'm no kidding, it do fit in that chip!)_
 - **Memories** (using the internal EEPROM) the amount of them will be proportional to the size of the EEPROM in the arduino board you use. Memories preserve all attributes including splits & modes. (you will get 82 mems for the ATMega328, 40 for the ATMega168...)
 

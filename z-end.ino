@@ -22,7 +22,7 @@ void setup() {
         cat.addCATSMeter(catGetSMeter);
         cat.addCATTXStatus(catGetTXStatus);
         // now we activate the library
-        cat.begin(57600, SERIAL_8N1);
+        cat.begin(38400, SERIAL_8N2);
     #endif
 
     #ifndef NOLCD
