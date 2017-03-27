@@ -323,7 +323,7 @@ long vfoa = 7110000;                // default starting VFO A freq
 long vfob = 7125000;                // default starting VFO B freq
 long tvfo = 0;                      // temporal VFO storage for RIT usage
 long txSplitVfo = 0;                // temporal VFO storage for SPPLIT
-byte step = 2;                      // default steps position index:
+byte step = 3;                      // default steps position index:
                                     // as 1*10E2 = 100 = 100hz; step position is
                                     // calculated to avoid to use a big array
                                     // see getStep() function

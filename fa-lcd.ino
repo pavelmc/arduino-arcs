@@ -345,8 +345,8 @@
             lcd.setCursor(0, 0);
             
             // channel number with provision for the leading space below 10
-            if (mem < 10) lcd.print("0");
-            lcd.print(mem);
+            if (mem < 16) lcd.print("0");
+            lcd.print(mem, HEX);
             lcd.print(" ");
 
             lcdRefresh();

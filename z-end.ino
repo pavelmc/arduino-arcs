@@ -51,8 +51,9 @@ void setup() {
         // how many memories his chip supports
         #ifdef MEMORIES
             memCount = (EEPROM.length() - MEMSTART) / sizeof(mmem);
-            // self limiting the mem amount to 100 (0-99)
-            if (memCount > 99) memCount = 99;
+            // self limiting the mem amount to 256 (0-256)
+            // we use Hex notation to only use two chars on the lcd
+            if (memCount > 255) memCount = 255;
         #endif
     #endif
 
