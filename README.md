@@ -23,7 +23,7 @@ We are using the ubiquitous Arduino boards for the main brain, a list of the nee
 
 - Arduino as the brain; developed for the Arduino Uno R3 as base, but it's adaptable to other boards, we are using mainly the Mini & Mini Pro now (Yes it's less than 16 kb at the end)
 - LCD 16 columns and 2 lines as display (LiquidCrystal default Arduino lib)
-- Si5351 as VFO and BFO, any of the breakout board out there will work, we choose to use a embedded code for the Si5351 control. Our code is a modified version of one of the examples in the [QRP Labs site](http://qrp-labs.com) (with my mods to allow two outputs instead of only one)
+- Si5351 as VFO and BFO, any of the breakout board out there will work, we choose to use a embedded code for the Si5351 control. Our code is a modified version of one of the examples in the [QRP Labs site](http://qrp-labs.com) (with my mods to allow two outputs instead of only one) and trick learned from [DK7IH](https://radiotransmitter.wordpress.com/category/si5351a/) to eliminate the unpleasant clicks when tunning.
 - For the human interface part we use a bunch of [analog push buttons with dual functions](https://github.com/pavelmc/BMUx/) and a [rotary encoder](https://github.com/mathertel/RotaryEncoder) + [push button](https://github.com/thomasfredericks/Bounce2/).
 - Since September of 2016 the sketch has CAT support, if you are using an Arduino R3 or others with a USB port you are done; if not you need any of the [cheap ebay USB to RS-232/TTL converters](http://www.google.com/q=cp-2021+USB+serial+ttl+converter) just watch out for the correct drivers if you use any Windows OS.
 
@@ -34,7 +34,7 @@ You can see the schematic diagram (designed for an Arduino Uno R3 in mind) in th
 - **Usual features** of normal commercial transceivers.
     - Two VFO (A/B)
     - RIT with +/- 9.99 Khz
-    - Variable VFO speed in steps of 10hz, 100hz, 1khz, 10khz, 100khz, 1Mhz (just push of the encoder)
+    - Variable VFO speed in steps of 10hz, 100hz (Default), 1khz, 10khz, 100khz, 1Mhz (just push of the encoder)
     - Split for contest/pileups
     - VFOs A & B are preserved in the EEPROM across power cycle. _(See Note 1 below)_
 - **S-Meter in the LCD** _(Vref is 5.0V)_
@@ -44,19 +44,19 @@ You can see the schematic diagram (designed for an Arduino Uno R3 in mind) in th
 - **Hot tunning of the parameters** when in configuration mode for ease the adjust.
 - **Basic CAT control** (like a Yaesu FT-857D) using my GPL 3.0 [ft857d library](https://github.com/pavelmc/ft857d) _(See Note 2 below)_
 - The sketch is coded with **feature segmentation in mind**, you can rule out the CAT support if you don't need it, disable the ugly S-meter or rule out all other HID and just compile with CAT to get a slim CAT radio solution that fits in a tiny ATMega8 core _(I'm no kidding, it do fit in that chip!)_
-- **Memories** (using the internal EEPROM) Limited to 100 (0-99) if your board is capable of more than 100, due to display layout issues; depending in the size of your chip EEPROM, it can have less also.
+- **Memories** Using the internal EEPROM and limited to 256 (0-255), the channel number is displayed in Hex mode to save one char in the LCD. You will get what your Chip has to offer: around 166 channels in a Arduino Uno with an ATMega328, roughly half with a ATMega168 and so on.
 
-_**Note 1:** The firmware save the VFO info on every VFO A/B button press or a 10 minutes interval, which one came first._
+_**Note 1:** The firmware save the VFO info in a 10 minutes interval._
 
-_I was once concerned with the EERPOM wear out, but not anymore: The auto-save every 10 minutes or at the VFO switch button press **with a heavy use** of the transceiver can lead to about 3 years of life for the internal EEPROM under datasheet conditions. But you can expect at least x2 of that amount as the real world data shows (that's at least 6 years with heavy use or more than 10 years with little use)_
+_I was once concerned with the EERPOM wear out, but not anymore: The auto-save every 10 minutes **with a heavy use** of the transceiver can lead to about 3 years of life for the internal EEPROM _under datasheet conditions_. But you can expect at least x2 of that amount as the real world data shows (that's at least 6 years with heavy use or more than 10 years with little use)_
 
 _Since October 2016 we are now using the new EEPROM.h library (since Arduino IDE 1.6.9 and later); that lib do a trick to preserve the internal EEPROM life against the wear out, so the real life of the EEPROM must be more than 6 years minimum, that for a **heavy daily use**._
 
-_**Note 2:** If you use a regular Arduino board and upload the code via serial port you do have a bootloader in place. In this case when you setup your CAT program (in your PC) you will have to set the "retries" parameter to 3 or more and the "timeout" parameter to 300 msec or more to get the CAT working. (you will have to play with it a bit to get it working)_
+_**Note 2:** If you use a regular Arduino board and upload the code via serial port you do have a bootloader in place. In this case when you setup your CAT program (in your PC) you will have to set the "retries" parameter to 3 or more and the "timeout" parameter to 500 msec or more to get the CAT working. (you will have to play with it a bit to get it working)_
 
-_This is because the CAT setup process in your software will reset the Arduino board (and hence the "radio")
+_This is because the CAT setup process in your PC/software will reset the Arduino board (and hence the "radio")_
 
-Then the bootloader will introduce a short delay before our firmware kicks in and the PC may complain about "radio not answering to commands". The fix is in the previous paragraph. If you have no bootloader and upload the code via ICP you must not see this problems._ 
+_Then the bootloader will introduce a short delay before our firmware kicks in and the PC may complain about "radio not answering to commands". The fix is in the previous paragraph. If you have no bootloader and upload the code via ICP you must not see this problems._
 
 ## Features in the TODO list ##
 
