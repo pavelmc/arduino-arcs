@@ -82,7 +82,11 @@ void loadEEPROMConfig() {
     lsb         = conf.lsb;
     usb         = conf.usb;
     cw          = conf.cw;
-    XTAL_C = XTAL + conf.ppm;
+    si5351_ppm  = conf.ppm;
+
+    // force to operation
+    XTAL_C = XTAL + si5351_ppm;
+    updateAllFreq();
 }
 
 
