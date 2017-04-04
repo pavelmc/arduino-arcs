@@ -188,7 +188,7 @@
         // mem > vfo | vfo > mem, taking into account in what mode we are
         void btnVFOsMEM() {
             // beep
-            beep();
+            beop();
         
             // detect in which mode I'm, to decide what to do
             if (vfoMode) {
@@ -210,7 +210,7 @@
         // erase the actual mem position
         void btnEraseMEM() {
             // beep
-            beep();
+            beop();
         
             // erase the actual mem position
             saveMEM(mem, false);
@@ -221,6 +221,11 @@
 
         // erase the whole mem space
         void btnEraseWholeMem() {
+            // sound signal
+            beep();
+            delay(50);
+            beop();
+            
             // sure?
             wipeMEM();
             

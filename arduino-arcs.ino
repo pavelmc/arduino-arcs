@@ -458,6 +458,17 @@ void swapVFO(byte force = 2) {
         tone(4, 1200, 50);
         delay(50);
     }
+
+    // beep-boop
+    // a 1.2Khz tone for 50 msecs
+    // a 0.6Khz tone for 25 msecs
+    void beop() {
+        tone(4, 1200, 50);
+        delay(50);
+
+        tone(4, 600, 25);
+        delay(25);
+    }
 #endif
 
 /*****************************************************************************

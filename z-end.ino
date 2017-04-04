@@ -145,6 +145,11 @@ void setup() {
     #ifdef ROTARY
         // Check for setup mode
         if (digitalRead(btnPush) == LOW) {
+            // sound signal 
+            beep();
+            delay(50);
+            beop();
+            
             // rise the flag of setup mode for every body to see it.
             runMode = false;
             
