@@ -124,7 +124,14 @@ void si5351ai2cWrite(byte regist, byte value){
 // set the calculated freq to the VFO
 void setFreqVFO() {
     // temp var to hold the calculated value
-    long freq = *ptrVFO + ifreq;
+    long freq = *ptrVFO;
+
+    // macro about XFO 
+    #ifdef XFO
+        freq += XFO;
+    #else
+        freq += ifreq;
+    #endif
 
     // apply the ssb factor
     if (*ptrMode == MODE_USB) freq += usb;

@@ -39,7 +39,7 @@
  *  * CLK0 use PLLA & CLK1 use PLLB
  *  * CLK0 is employed as VFO (to mix with the RF from/to the antenna)
  *  * CLK1 is employed as BFO (to mix with the IF to mod/demodulate the audio)
- *  * We use the full power in all outputs (8mA ~0dB)
+ *  * We use the full power in all outputs (8mA ~0dB?)
  *
  *  * Please have in mind that this IC has a SQUARE wave output and you need to
  *    apply some kind of low-pass/band-pass filtering to smooth it and get rid
@@ -303,16 +303,40 @@ struct mConf conf;
 // var is word so max is 65535 in 1/4 secs is ~ 16383 sec ~ 273 min ~ 4h 33 min
 #define SAVE_INTERVAL 2400      // 10 minutes = 60 sec * 4 ticks/sec * 10 min
 
-// hardware pre configured values
+// This value is not the real PPM value is just the freq correction for your
+// particular xtal from the 27.00000 Mhz one, if you can measure it put it here
+long si5351_ppm = 2256;     // in Hz, mine is 2.256 Khz up
+
+/******************************************************************************
+ * The use of an XFO... some users are requesting the use of an XFO in the
+ * calculations.
+ *
+ * Some users with double conversion radios has 1st & 2nd IF, so this radios
+ * usually has a XTAL oscillator to mix 1st & 2nd IF back and forward, this is
+ * called an XFO.
+ *
+ * WARNING!: we are not generating that XFO frequency, just taking it into
+ * account in the calculations; so, put your soldering iron down and keep the
+ * XTAL oscillator running please.
+ *
+ * If you have this scenario just uncomment the below line and put in there
+ * your XFO frequency in Hz (9.6MHz = 9 600 000, spaces are added now to clarify)
+ *
+ * This will trigger a few macros ahead and will calculate the correct VFO
+ * frequencies for you in normal and SETUP mode.
+ *
+ * Now, be aware that if you triggers this from now own any reference to "IF"
+ * will be about the *second* IF (the lower one, the one that get's modulated
+ * and demodulated)
+ *****************************************************************************/
+//#define XFO 5300000       // 5.3 Mhz as an example
+
+// hardware pre-configured values
 // pre-configured values for a single conversion radio using the FT-747GX filter
 long lsb =        -1600;
 long usb =         1600;
 long cw =             0;
 long ifreq =    8213950;
-
-// This value is not the real PPM value is just the freq correction for your
-// particular xtal from the 27.00000 Mhz one, if you can measure it put it here
-long si5351_ppm = 2256;     // in Hz, mine is 2.256 Khz up
 
 // Si5351a Xtal
 long XTAL = 27000000;            // default FREQ of the XTAL for the Si5351a
