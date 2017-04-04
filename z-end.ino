@@ -48,12 +48,12 @@ void setup() {
         abm.add(brit);
         abm.add(bsplit);
 
-        // how many memories his chip supports
+        // how many memories this chip supports
         #ifdef MEMORIES
             memCount = (EEPROM.length() - MEMSTART) / sizeof(mmem);
-            // self limiting the mem amount to 256 (0-256)
-            // we use Hex notation to only use two chars on the lcd
-            if (memCount > 255) memCount = 255;
+            // self limiting the mem amount to 100 (0-99)
+            // we have only two chars on the LCD and 100 mems are a lot
+            if (memCount > 99) memCount = 99;
         #endif
     #endif
 
