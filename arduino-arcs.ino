@@ -64,7 +64,8 @@
 #define ROTARY True
 
 // Memories?
-#define MEMORIES True   // 82 Mems for the ATMega32 & 40 for the ATMega168
+#define MEMORIES True   // limited to 100 mems
+                        // in some arduino boards can be less.
 
 // if you want a headless control unit just uncomment this line below and
 // you will get no LCD / buttons / rotary / memory; only CAT control
@@ -111,7 +112,7 @@
 // by commenting the following code
 #ifndef NOLCD
     #define SMETER True
-#endif 
+#endif
 
 // default (non optional) libraries loading
 #include <EEPROM.h>         // default
