@@ -17,8 +17,7 @@
         #ifdef MEMORIES
             if (!vfoMode) {
                 // we are in mem mode, move it
-                int tmem = mem;
-                tmem += dir;
+                int tmem = mem + dir;
 
                 // limits check
                 if (tmem < 0) tmem = memCount;
