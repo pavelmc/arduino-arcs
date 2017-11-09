@@ -116,7 +116,7 @@
 
 // default (non optional) libraries loading
 #include <EEPROM.h>         // default
-#include <Wire.h>           // default
+#include <Wire.h>           // Wire (I2C)
 
 
 // the fingerprint to know the EEPROM is initialized, we need to stamp something
@@ -127,12 +127,13 @@
 
 // The eeprom & sketch version; if the eeprom version is lower than the one on
 // the sketch we force an update (init) to make a consistent work on upgrades
-#define EEP_VER     6
-#define FMW_VER     14
+#define EEP_VER     7
+#define FMW_VER     15
 
 // structured data: Main Configuration Parameters
+// nine, all strings ends with a null
 struct mConf {
-    char finger[9] =  EEPROMfingerprint;  // nine, all strings ends with a null
+    char finger[9] =  EEPROMfingerprint;
     byte version = EEP_VER;
     long ifreq;
     long vfoa;
