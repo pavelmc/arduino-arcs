@@ -68,7 +68,7 @@ This are the wish list so far, with no particular order.
 - Better S-Meter graphics
 - Support for various LCDs, for example the Nokia 5110, some of the TFTs and some OLEDs.
 
-## Ino then Arturo now Amake ##
+## Ino, then Arturo, now Amake ##
 
 Old users of this sketch may notice that it's now full Arduino IDE compatible _(since January/2017 with the release of the Arduino IDE version 1.8.0)_ and you don't need to make any more changes to the name of the file.
 
