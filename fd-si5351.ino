@@ -4,15 +4,15 @@
  *      https://github.com/pavelmc/arduino-arcs
  *
  * Copyright (C) 2016 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
- * 
+ *
  * This program is free software under the GNU GPL v3.0
- * 
+ *
  * ***************************************************************************/
 
 
 // Frequency in Hz; must be within [7,810 kHz to ~220 MHz]
-void si5351aSetFrequency(byte clk, unsigned long frequency) { 
-    #define c 1048574;
+void si5351aSetFrequency(byte clk, unsigned long frequency) {
+    #define c 1048575;
     unsigned long fvco;
     unsigned long outdivider;
     byte R = 1;
@@ -62,42 +62,44 @@ void si5351aSetFrequency(byte clk, unsigned long frequency) {
     f = 128 * b / c;
     MSNx_P1 = 128 * a + f - 512;
     MSNx_P2 = f;
-    MSNx_P2 = 128 * b - MSNx_P2 * c; 
+    MSNx_P2 = 128 * b - MSNx_P2 * c;
     MSNx_P3 = c;
 
+    // PLLs and CLK# registers are allocated with a shift, we handle that with
+    // the shifts var to make code smaller
     if (clk > 0 ) shifts = 8;
 
-    // plls
+    // plls, A & B registers separated by 8 bytes
     si5351ai2cWrite(26 + shifts, (MSNx_P3 & 65280) >> 8);   // Bits [15:8] of MSNx_P3 in register 26
-    if (clk == 0) {
-        si5351ai2cWrite(27, MSNx_P3 & 255);
-        si5351ai2cWrite(28, (MSNx_P1 & 196608) >> 16);
-    } else {
-        si5351ai2cWrite(35, MSNx_P1 & 255);
-        si5351ai2cWrite(36, (MSNx_P2 & 0x00030000) >> 10);
-    }
+    si5351ai2cWrite(27 + shifts, MSNx_P3 & 255);
+    si5351ai2cWrite(28 + shifts, (MSNx_P1 & 196608) >> 16);
     si5351ai2cWrite(29 + shifts, (MSNx_P1 & 65280) >> 8);   // Bits [15:8]  of MSNx_P1 in register 29
     si5351ai2cWrite(30 + shifts, MSNx_P1 & 255);            // Bits [7:0]  of MSNx_P1 in register 30
     si5351ai2cWrite(31 + shifts, ((MSNx_P3 & 983040) >> 12) | ((MSNx_P2 & 983040) >> 16)); // Parts of MSNx_P3 and MSNx_P1
     si5351ai2cWrite(32 + shifts, (MSNx_P2 & 65280) >> 8);   // Bits [15:8]  of MSNx_P2 in register 32
     si5351ai2cWrite(33 + shifts, MSNx_P2 & 255);            // Bits [7:0]  of MSNx_P2 in register 33
 
+    // CLK# registers are exactly 8 * clk bytes shifted from a base register.
     shifts = clk * 8;
 
     // multisynths
-    si5351ai2cWrite(42 + shifts, 0);                        // Bits [15:8] of MS0_P3 (always 0) in register 42
-    si5351ai2cWrite(43 + shifts, 1);                        // Bits [7:0]  of MS0_P3 (always 1) in register 43
-    si5351ai2cWrite(44 + shifts, ((MSx_P1 & 196608) >> 16) | R);  // Bits [17:16] of MSx_P1 in bits [1:0] and R in [7:4]
-    si5351ai2cWrite(45 + shifts, (MSx_P1 & 65280) >> 8);    // Bits [15:8]  of MSx_P1 in register 45
-    si5351ai2cWrite(46 + shifts, MSx_P1 & 255);             // Bits [7:0]  of MSx_P1 in register 46
+    si5351ai2cWrite(42 + shifts, 0);                // Bits [15:8] of MS0_P3 (always 0) in register 42
+    si5351ai2cWrite(43 + shifts, 1);                // Bits [7:0]  of MS0_P3 (always 1) in register 43
+    // See datasheet, special trick when R=4
+    if (outdivider == 4) {
+        si5351ai2cWrite(44 + shifts, 12 | R);
+        si5351ai2cWrite(45 + shifts, 0);            // Bits [15:8] of MSx_P1 must be 0
+        si5351ai2cWrite(46 + shifts, 0);            // Bits [7:0] of MSx_P1 must be 0
+    } else {
+        si5351ai2cWrite(44 + shifts, ((MSx_P1 & 196608) >> 16) | R);  // Bits [17:16] of MSx_P1 in bits [1:0] and R in [7:4]
+        si5351ai2cWrite(45 + shifts, (MSx_P1 & 65280) >> 8);    // Bits [15:8]  of MSx_P1 in register 45
+        si5351ai2cWrite(46 + shifts, MSx_P1 & 255);             // Bits [7:0]  of MSx_P1 in register 46
+    }
     si5351ai2cWrite(47 + shifts, 0);                        // Bits [19:16] of MS0_P2 and MS0_P3 are always 0
     si5351ai2cWrite(48 + shifts, 0);                        // Bits [15:8]  of MS0_P2 are always 0
     si5351ai2cWrite(49 + shifts, 0);                        // Bits [7:0]   of MS0_P2 are always 0
-    if (outdivider == 4 and clk == 0) {
-        si5351ai2cWrite(44, 12 | R);       // Special settings for R = 4 (see datasheet)
-        si5351ai2cWrite(45, 0);                    // Bits [15:8]  of MSx_P1 must be 0
-        si5351ai2cWrite(46, 0);                    // Bits [7:0]  of MSx_P1 must be 0
-    }
+
+    // no pll reset as it makes noise, click noise, just reset one time on the setup
 }
 
 
@@ -126,7 +128,7 @@ void setFreqVFO() {
     // temp var to hold the calculated value
     long freq = *ptrVFO;
 
-    // macro about XFO 
+    // macro about XFO
     #ifdef XFO
         freq += XFO;
     #else
