@@ -10,7 +10,7 @@ This article will grow with experience notes about the problems and our experien
 * Furuno FS1000 _(IF 9 Mhz, **CO7YB**)_
 * Homebrew 500Khz singe conversion SSB radio _(Using a SSB filter from a USSR/CCCP "KARAT" transceiver, **CM7MTL**)_
 
-Please note that almost all of this radios are actually kind of sons of Frankenstein, as they preserve the main RF/IF chain from the mentioned radios, but can have another final stage (homebrewed or borrowed for a commercial unit) as well as chassis/front panels, etc.
+Please note that almost all of this radios are actually kind of Frankenstein's cousins, as they preserve the main RF/IF chain from the mentioned radios, but can have another final stage (homebrewed or borrowed for a commercial unit) as well as chassis/front panels, etc.
 
 ## Crosstalk ##
 
@@ -24,7 +24,7 @@ With proper measures in design and other tricks (Bandstop/bandpass filters) you 
 
 ### Experience from our side ###
 
-From a technician point of view with laboratory grade equipment, you are gonna find the crosstalk, it's there. From a normal homebrewer with COTS equipment it's not a big deal and it has a no-noticeable impact on your transmission even with 150W in one of our local setups.
+From a technician point of view with laboratory grade equipment, you are gonna find the crosstalk, it's there. From a normal homebrewer with COTS (Cost Off The Shelf) equipment it's not a big deal on reception and it has a no-noticeable impact on your transmission even with 150W in one of our local setups.
 
 ## Square wave output ##
 
@@ -32,17 +32,23 @@ Thanks to Mr. Fourier we know that square waves are a pure sine wave of the fund
 
 That's why we designed the sketch to always use a final VFO frequency **above** the fundamental RF frequency and all the outputs of the chips will be followed with a matched low pass or a band pass filter to get rid of the most of the harmonics to minimize this problem.
 
+Reception is affected in a different manner even when the VFO is over the RF; if you had to generate a BFO or a VFO signal below 2Mhz you will get more and more spurious spikes across the spectrum. Eventually at a BFO of 455/500 kHz you will need some filtering in place for a proper operation.
+
+A trick from one of our builders CO7LX: he has a 1rst IF of 1.6 MHz then a second IF of 455 kHz. The reception with the BFO at 455 kHz coupled directly (just a dc blocking capacitor) was really poor. After inspection wit and SDR we noted a lot of spurious spikes and an unusual high noise floor.
+
+As this signal is fixed and if needed just moved a couple of kHz we make a simple filter with two TOKO IF cans coupled back to back to form a crude and yet simple band pass filter and we managed to push down the noise floor and the numerous spurious signals to a very pleasant level.
+
 ### Experience from our side ###
 
 The simple fix is to put a low pass filter for the used frequency range, or even better, a band pass filter you will be safe and this will do the job, believe us, this is a "must" not an "if".
 
-In one of our setups one radio has a BFO at ~455 KHz, and the reception was very noisy in deed, the user omitted a low pass filter on the signal for the BFO, a improvised BPF with two TOKO IF cans (back-to-back) was enough to clean the 455 Khz signal an get a decent reception.
-
-## Jitter ##
+## Jitter & phase noise ##
 
 There are some sources talking about the jitter in the output frequencies, but this author can't find any technical info on the web about how bad is it.
 
 For SSB communications we (humans) can tolerate a jitter of about 2-5 hz without noticing it, and free running LC oscillators can have more than that and we can deal with that, so I think this will not defeat the purpose of this Chip as a frequency generator in the cheap ham market.
+
+The code for managing the Si5351 uses a integer division always, with that we get sure you get as low jitter and phase noise as possible.
 
 ## Birdies and Background Noise ##
 
@@ -60,11 +66,9 @@ Later investigations revealed that the MCU (Arduino) to LCD communications and t
 
 To deal with that this sketch minimizes the writes to the LCD to the least possible and the results are very good compared to the initials with the all time refreshing LCD.
 
-A user on a mailing list commented recently that keeping the Arduino + LCD + Si5351 module in a shielded compartment away from the sensitive RF components can eliminate this "artificially (high) background noise".
+A user on a mailing list commented recently that keeping the Arduino + LCD + Si5351 module in a shielded compartment away from the sensitive RF components can eliminate this "artificially (high) background noise". Local testing made by Soris CO7YV proved that this is a great help to make the radio even quieter.
 
-We are finishing a setup like that now, comments to follow.
-
-## Datasheet tells three outputs, but in practive it's a gamble of 2+?##
+## Datasheet tells three outputs, but in practive it's a gamble of 2+? ##
 
 The internals of the Si5351 are described in depth in the datasheet and further publications, long story short: the Chip has an external crystal as a reference for two (2) independent PLL VCOs in the VHF to UHF range, then you select a chain of divisors to process that VCOs outputs to get your desired frequency.
 
@@ -79,6 +83,8 @@ Strange things happened when we start to tune the frequencies out in the radio: 
 In this configuration we found that with a 28.0 Mhz and a another less than 1 Mhz output, sharing the same VCO inside the Si5351 we face accuracy problems on the < 1 Mhz output.
 
 So we sacrificed the XFO and go back to use the original crystal XFO inside the radio, taking that into account in the sketch: for the RFT SEG-15 the XFO is taken into account and used on the calculations but not activated in any way.
+
+That lead to the desision of using just two of the 3 outputs of the Chip, almost all radio manufacturers use a real crystal for the fixed conversion from the 1rst to the 2nd IF; please do use it.
 
 ## Resume ##
 
