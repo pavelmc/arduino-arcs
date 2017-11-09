@@ -145,18 +145,18 @@ void setup() {
     #ifdef ROTARY
         // Check for setup mode
         if (digitalRead(btnPush) == LOW) {
-            // sound signal 
+            // sound signal
             beep();
             delay(50);
             beop();
-            
+
             // rise the flag of setup mode for every body to see it.
             runMode = false;
-            
+
             // beep signal to the user
             tone(4, 800, 250);
             delay(250);
-            
+
             #ifdef CAT_CONTROL
                 // CAT is disabled in SETUP mode
                 cat.enabled = false;
@@ -180,6 +180,9 @@ void setup() {
     activeVFO = true;
     ptrVFO = &vfoa;
     ptrMode = &VFOAMode;
+
+    // init the wire lib
+    Wire.begin();
 
     // start the VFOa and it's mode
     updateAllFreq();
@@ -230,7 +233,7 @@ void loop() {
             if (tbool) {
                 // beep
                 beep();
-                
+
                 // VFO step change
                 changeStep();
                 update = true;
