@@ -118,12 +118,10 @@
 #include <EEPROM.h>         // default
 #include <Wire.h>           // Wire (I2C)
 
-
 // the fingerprint to know the EEPROM is initialized, we need to stamp something
 // on it, as the 5th birthday anniversary of my daughter was the date I begin to
 // work on this project, so be it: 2016 June 1st
 #define EEPROMfingerprint "20160601"
-
 
 // The eeprom & sketch version; if the eeprom version is lower than the one on
 // the sketch we force an update (init) to make a consistent work on upgrades
@@ -132,24 +130,25 @@
 
 // structured data: Main Configuration Parameters
 // nine, all strings ends with a null
-struct mConf {
+struct userData {
     char finger[9] =  EEPROMfingerprint;
     byte version = EEP_VER;
-    long ifreq;
-    long vfoa;
-    byte vfoaMode;
-    int lsb;
+    long ifreq;     // last or unique IF
+    long xtal;      // difference between the 1st IF and 2nd IF (always positive)
+    long a;         // VFO a
+    byte aMode;
+    long b;         // VFO b
+    byte bMode;
     int usb;
     int cw;
     int ppm;
 };
 
 // declaring the main configuration variable for mem storage
-struct mConf conf;
+struct userData u;
 
 // The start byte in the eeprom where we put mem[0]
-#define MEMSTART sizeof(conf)
-
+#define MEMSTART sizeof(u)
 
 // the limits of the VFO, just 40m for now; you can tweak it with the
 // limits of your particular hardware, again this are LCD diplay frequencies.
@@ -241,7 +240,7 @@ struct mConf conf;
         Button brit     = Button(b3, &btnRITClick);
         Button bsplit   = Button(b4, &btnSPLITClick);
     #endif
-#endif  //abut
+#endif  // abut
 
 
 #ifdef CAT_CONTROL
@@ -291,12 +290,13 @@ struct mConf conf;
 #define CONFIG_IF       0
 #define CONFIG_VFO_A    1
 #define CONFIG_MODE_A   2
-#define CONFIG_LSB      3
-#define CONFIG_USB      4
-#define CONFIG_CW       5
-#define CONFIG_PPM      6
+#define CONFIG_VFO_B    3
+#define CONFIG_MODE_B   4
+#define CONFIG_USB      5
+#define CONFIG_CW       6
+#define CONFIG_PPM      7
 // the amount of configure options
-#define CONFIG_MAX      6
+#define CONFIG_MAX      7
 
 // Tick interval for the timed actions like the SMeter and the autosave
 #define TICK_INTERVAL  250      // milli seconds, 4 ticks per second
@@ -305,9 +305,11 @@ struct mConf conf;
 // var is word so max is 65535 in 1/4 secs is ~ 16383 sec ~ 273 min ~ 4h 33 min
 #define SAVE_INTERVAL 2400      // 10 minutes = 60 sec * 4 ticks/sec * 10 min
 
-// This value is not the real PPM value is just the freq correction for your
-// particular xtal from the 27.00000 Mhz one, if you can measure it put it here
-long si5351_ppm = 2256;     // in Hz, mine is 2.256 Khz up
+// Si5351a Xtal
+long XTAL = 27000000;       // default FREQ of the XTAL for the Si5351a
+
+// the variables
+long XTAL_C = XTAL + u.ppm;    // corrected xtal with the ppm
 
 /******************************************************************************
  * The use of an XFO... some users are requesting the use of an XFO in the
@@ -321,32 +323,49 @@ long si5351_ppm = 2256;     // in Hz, mine is 2.256 Khz up
  * account in the calculations; so, put your soldering iron down and keep the
  * XTAL oscillator running please.
  *
- * If you have this scenario just uncomment the below line and put in there
- * your XFO frequency in Hz (9.6MHz = 9 600 000, spaces are added now to clarify)
+ * If you have this scenario just set the u.xtal value to the the xtal value
+ * for example you have a 1st IF of 74.055 MHz and 2nd IF of 8.215 MHz, then
+ * your xtal value is 74.055 - 8.215 = 65.84 Mhz (65 840 000, spaces for clarity)
+ *
+ * If youuse just one IF set this value to zero.
  *
  * This will trigger a few macros ahead and will calculate the correct VFO
  * frequencies for you in normal and SETUP mode.
- *
- * Now, be aware that if you triggers this from now own any reference to "IF"
- * will be about the *second* IF (the lower one, the one that get's modulated
- * and demodulated)
  *****************************************************************************/
-//#define XFO 5300000       // 5.3 Mhz as an example
 
-// hardware pre-configured values
-// pre-configured values for a single conversion radio using the FT-747GX filter
-long lsb =        -1600;
-long usb =         1600;
-long cw =             0;
-long ifreq =    8213950;
 
-// Si5351a Xtal
-long XTAL = 27000000;            // default FREQ of the XTAL for the Si5351a
+/******  hardware pre-configured values ******/
+void setDefaultVals() {
+    // 1st IF xtal, if you have just one IF this is ZERO
+    // this is the (positive) difference between the high and low IFs in Hz
+    u.xtal =           0;    // Zero if no second IF
 
-// the variables
-long XTAL_C = XTAL + si5351_ppm;    // corrected xtal with the ppm
-long vfoa = 7110000;                // default starting VFO A freq
-long vfob = 7125000;                // default starting VFO B freq
+    // 2nd of unique IF, this is the one you beat to get the audio
+    u.ifreq =   10700000;    // 10.7 MHz
+
+    // USB shift
+    u.usb =         2400;    // typical value
+
+    // CW shift
+    u.cw =           600;    // typical value
+
+    // VFO A default value
+    u.a =     7110000;       // 7.110 kHz
+
+    // VFO A default mode
+    u.aMode =   MODE_LSB;    // LSB
+
+    // VFO B default value
+    u.a =     7125000;       // 7.125 kHz
+
+    // VFO B default mode
+    u.aMode =   MODE_LSB;    // LSB
+
+    // This value is not the real PPM value is just the freq correction for your
+    // particular xtal from the 27.00000 Mhz one, if you can measure it put it here
+    u.ppm = 2256;     // in Hz, mine is 2.256 Khz up
+}
+
 long tvfo = 0;                      // temporal VFO storage for RIT usage
 long txSplitVfo = 0;                // temporal VFO storage for SPPLIT
 byte step = 3;                      // default steps position index:
@@ -363,8 +382,6 @@ boolean inSetup = false;            // the setup mode
 byte showStepCounter = 0;           // the step timer counter
 boolean runMode =      true;        // true: normal, false: setup
 boolean activeVFO =    true;        // true: A, False: B
-byte VFOAMode =        MODE_LSB;
-byte VFOBMode =        MODE_LSB;
 boolean ritActive =    false;       // true: rit active, false: rit disabled
 boolean tx =           false;       // whether we are on TX mode or not
 unsigned long lastMilis = 0;        // to track the last sampled time
@@ -469,16 +486,18 @@ void swapVFO(byte force = 2) {
 
     // setting the VFO/mode pointers
     if (activeVFO) {
-        ptrVFO = &vfoa;
-        ptrMode = &VFOAMode;
+        ptrVFO = &u.a;
+        ptrMode = &u.aMode;
     } else {
-        ptrVFO = &vfob;
-        ptrMode = &VFOBMode;
+        ptrVFO = &u.b;
+        ptrMode = &u.bMode;
     }
 }
 
+
 // beep function
-#ifdef ROTARY|ABUT
+#ifdef ROTARY
+#ifdef ABUT
     // beep function a 1.2Khz tone for 50 msecs
     void beep() {
         tone(4, 1200, 50);
@@ -496,6 +515,8 @@ void swapVFO(byte force = 2) {
         delay(25);
     }
 #endif
+#endif
+
 
 /*****************************************************************************
  *                      Where did the other functions go?

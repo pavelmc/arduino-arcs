@@ -73,7 +73,8 @@
     };
 
 
-    #ifdef ABUT|ROTARY
+    #ifdef ABUT
+    #ifdef ROTARY
         // check some values don't go below zero
         void belowZero(long *value) {
             // some values are not meant to be below zero, this check and fix that
@@ -94,44 +95,46 @@
                 switch (config) {
                     case CONFIG_IF:
                         // change the IF value
-                        ifreq += getStep() * dir;
-                        belowZero(&ifreq);
+                        u.ifreq += getStep() * dir;
+                        belowZero(&u.ifreq);
                         break;
                     case CONFIG_VFO_A:
                         // change VFOa
+                        swapVFO(0); // set a
                         *ptrVFO += getStep() * dir;
                         belowZero(ptrVFO);
                         break;
-                    case CONFIG_MODE_A:
+                    case CONFIG_VFO_B:
+                        // change VFOb
+                        swapVFO(1); // set b
+                        *ptrVFO += getStep() * dir;
+                        belowZero(ptrVFO);
+                        break;
+                    case CONFIG_MODE_A:   // whichever VFO
+                    case CONFIG_MODE_B:
                         // hot swap it
                         changeMode();
                         // set the default mode in the VFO A
-                        showModeSetup(VFOAMode);
+                        showModeSetup(*ptrMode);
                         break;
                     case CONFIG_USB:
                         // change the mode to USB
                         *ptrMode = MODE_USB;
                         // change the USB BFO
-                        usb += getStep() * dir;
-                        break;
-                    case CONFIG_LSB:
-                        // change the mode to LSB
-                        *ptrMode = MODE_LSB;
-                        // change the LSB BFO
-                        lsb += getStep() * dir;
+                        u.usb += getStep() * dir;
                         break;
                     case CONFIG_CW:
                         // change the mode to CW
                         *ptrMode = MODE_CW;
                         // change the CW BFO
-                        cw += getStep() * dir;
+                        u.cw += getStep() * dir;
                         break;
                     case CONFIG_PPM:
                         // change the Si5351 PPM
-                        si5351_ppm += getStep() * dir;
+                        u.ppm += getStep() * dir;
                         // instruct the lib to use the new ppm value
-                        XTAL_C = XTAL + si5351_ppm;
-                        // reset the Si5351 
+                        XTAL_C = XTAL + u.ppm;
+                        // reset the Si5351
                         Si5351_resets();
                         break;
                 }
@@ -169,14 +172,17 @@
                 case CONFIG_VFO_A:
                     lcd.print(F("   VFO A freq   "));
                     break;
+                case CONFIG_VFO_B:
+                    lcd.print(F("   VFO B freq   "));
+                    break;
                 case CONFIG_MODE_A:
                     lcd.print(F("   VFO A mode   "));
                     break;
+                case CONFIG_MODE_B:
+                    lcd.print(F("   VFO B mode   "));
+                    break;
                 case CONFIG_USB:
                     lcd.print(F(" BFO freq. USB  "));
-                    break;
-                case CONFIG_LSB:
-                    lcd.print(F(" BFO freq. LSB  "));
                     break;
                 case CONFIG_CW:
                     lcd.print(F(" BFO freq. CW   "));
@@ -197,6 +203,7 @@
             // show the specific item label
             showConfigLabels();
         }
+
 
         // show the mode for the passed mode in setup mode
         void showModeSetup(byte mode) {
@@ -234,29 +241,33 @@
             lcd.setCursor(0, 1);
             switch (config) {
                 case CONFIG_IF:
-                    showConfigValue(ifreq);
+                    showConfigValue(u.ifreq);
                     break;
                 case CONFIG_VFO_A:
-                    showConfigValue(vfoa);
+                    showConfigValue(u.a);
+                    break;
+                case CONFIG_VFO_B:
+                    showConfigValue(u.b);
                     break;
                 case CONFIG_MODE_A:
-                    showModeSetup(VFOAMode);
-                case CONFIG_USB:
-                    showConfigValue(usb);
+                    showModeSetup(u.aMode);
                     break;
-                case CONFIG_LSB:
-                    showConfigValue(lsb);
+                case CONFIG_MODE_B:
+                    showModeSetup(u.bMode);
+                    break;
+                case CONFIG_USB:
+                    showConfigValue(u.usb);
                     break;
                 case CONFIG_CW:
-                    showConfigValue(cw);
+                    showConfigValue(u.cw);
                     break;
                 case CONFIG_PPM:
-                    showConfigValue(si5351_ppm);
+                    showConfigValue(u.ppm);
                     break;
             }
         }
-    #endif // abut|rotary
-
+    #endif // abut
+    #endif // rotary
 
     // print the sign of a passed parameter
     void showSign(long val) {
@@ -343,7 +354,7 @@
 
             // first line
             lcd.setCursor(0, 0);
-            
+
             // channel number with provision for the leading space below 10
             if (mem < 10) lcd.print("0");
             lcd.print(mem);
@@ -403,7 +414,7 @@
                 showModeLcd(*ptrMode);
             }
 
-            
+
         #else
             // show VFO and mode
             formatFreq(*ptrVFO);
@@ -422,6 +433,7 @@
         // if we have a RIT or steps we manage it here and the bar will hold
         if (ritActive) showRit();
     }
+
 
     // show rit in LCD
     void showRit() {
@@ -470,11 +482,11 @@
     void showModeLcd(byte mode) {
         // print it
         switch (mode) {
-            case MODE_USB:
-                lcd.print(F("USB "));
-                break;
             case MODE_LSB:
                 lcd.print(F("LSB "));
+                break;
+            case MODE_USB:
+                lcd.print(F("USB "));
                 break;
             case MODE_CW:
                 lcd.print(F("CW  "));
@@ -520,6 +532,7 @@
         }
         spaces(11);
     }
+
 
     // show the bar graph for the RX or TX modes
     void showBarGraph() {

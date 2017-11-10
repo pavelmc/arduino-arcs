@@ -15,14 +15,14 @@
     void btnVFOABClick() {
         // beep
         beep();
-        
+
         // normal mode
         if (runMode) {
             #ifdef MEMORIES
                 // if we are in mem mode VFO A/B switch has no sense
                 if (!vfoMode) return;
             #endif
-            
+
             // we force to deactivate the RIT on VFO change, as it will confuse
             // the users and have a non logical use, only if activated and
             // BEFORE we change the active VFO
@@ -43,8 +43,9 @@
                 inSetup = true;
 
                 // change the mode to follow VFO A
-                if (config == CONFIG_USB) VFOAMode = MODE_USB;
-                if (config == CONFIG_LSB) VFOAMode = MODE_LSB;
+                if (config == CONFIG_USB) u.aMode = MODE_USB;
+                else if (config == CONFIG_CW) u.aMode = MODE_CW;
+                else u.aMode = MODE_LSB;
 
                 #ifndef NOLCD
                     // config update on the LCD
@@ -78,7 +79,7 @@
     void btnModeClick() {
         // beep
         beep();
-        
+
         // normal mode
         if (runMode) {
             changeMode();
@@ -104,28 +105,24 @@
     void btnRITClick() {
         // beep
         beep();
-        
+
         // normal mode
         if (runMode) {
             #ifdef MEMORIES
                 // if we are in mem mode RIT has no sense
                 if (!vfoMode) return;
             #endif
-            
+
             toggleRit();
             update = true;
         } else if (inSetup) {
             // SETUP mode just inside a value edit.
 
             // where we are to know what to reset?
-            if (config == CONFIG_LSB) lsb   = 0;
-            if (config == CONFIG_USB) usb   = 0;
-            if (config == CONFIG_CW)  cw    = 0;
-            if (config == CONFIG_IF)  ifreq = 0;
-            if (config == CONFIG_PPM) {
-                // reset, ppm
-                si5351_ppm = 0;
-            }
+            if (config == CONFIG_USB) u.usb   = 2400;
+            if (config == CONFIG_CW)  u.cw    = 600;
+            if (config == CONFIG_IF)  u.ifreq = 0;
+            if (config == CONFIG_PPM) u.ppm   = 0;
 
             // update the freqs for
             updateAllFreq();
@@ -140,7 +137,7 @@
     void btnSPLITClick() {
         // beep
         beep();
-        
+
         // normal mode
         if (runMode) {
             #ifdef MEMORIES
@@ -174,7 +171,7 @@
         void btnVFOMEM() {
             // beep
             beep();
-        
+
             // toggle the flag
             vfoMode = !vfoMode;
 
@@ -185,11 +182,12 @@
             update = true;
         }
 
+
         // mem > vfo | vfo > mem, taking into account in what mode we are
         void btnVFOsMEM() {
             // beep
             beop();
-        
+
             // detect in which mode I'm, to decide what to do
             if (vfoMode) {
                 // VFO > MEM
@@ -207,11 +205,12 @@
             update = true;
         }
 
+
         // erase the actual mem position
         void btnEraseMEM() {
             // beep
             beop();
-        
+
             // erase the actual mem position
             saveMEM(mem, false);
 
@@ -219,18 +218,21 @@
             update = true;
         }
 
+
         // erase the whole mem space
         void btnEraseWholeMem() {
             // sound signal
             beep();
             delay(50);
             beop();
-            
+
             // sure?
             wipeMEM();
-            
+
             // now force an update of the LCD
             update = true;
         }
+
     #endif // memories
+
 #endif

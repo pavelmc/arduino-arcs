@@ -9,7 +9,7 @@
  *
  * ***************************************************************************/
 
-
+// set a freq to a clk
 // Frequency in Hz; must be within [7,810 kHz to ~220 MHz]
 void si5351aSetFrequency(byte clk, unsigned long frequency) {
     #define c 1048575;
@@ -103,6 +103,7 @@ void si5351aSetFrequency(byte clk, unsigned long frequency) {
 }
 
 
+// reset the PLL this will produce a click noise
 void Si5351_resets() {
     // PLL & synths reset
 
@@ -115,6 +116,8 @@ void Si5351_resets() {
     si5351ai2cWrite(17, 111);
 }
 
+
+// write a byte value to a resgister on the Si5351
 void si5351ai2cWrite(byte regist, byte value){
     Wire.beginTransmission(96);
     Wire.write(regist);
@@ -128,17 +131,18 @@ void setFreqVFO() {
     // temp var to hold the calculated value
     long freq = *ptrVFO;
 
-    // macro about XFO
-    #ifdef XFO
-        freq += XFO;
-    #else
-        freq += ifreq;
-    #endif
+    //setting about xtal in the mix of the 1st to 2nd IF
+    if (u.xtal != 0) {
+        // add the xtal to the mix to get the VFO on the correct freq
+        freq += u.xtal;
+    } else {
+        // add just the unique IF
+        freq += u.ifreq;
+    }
 
-    // apply the ssb factor
-    if (*ptrMode == MODE_USB) freq += usb;
-    if (*ptrMode == MODE_LSB) freq += lsb;
-    if (*ptrMode == MODE_CW)  freq += cw;
+    // apply the ssb/cw correction factor
+    if (*ptrMode == MODE_USB) freq += u.usb;
+    if (*ptrMode == MODE_CW)  freq += u.cw;
 
     // set the Si5351 up with the change
     si5351aSetFrequency(0, freq);
@@ -151,18 +155,17 @@ void updateAllFreq() {
     setFreqVFO();
 
     // BFO update
-    long freq = ifreq;
-
-    // mod it by mode
-    if (*ptrMode == MODE_USB) freq += usb;
-    if (*ptrMode == MODE_LSB) freq += lsb;
-    if (*ptrMode == MODE_CW)  freq += cw;
+    long freq = u.ifreq;
 
     // deactivate it if zero
     if (freq == 0) {
         // deactivate it
         si5351aSetFrequency(1, 0);
     } else {
+        // mod it by mode
+        if (*ptrMode == MODE_USB) freq += u.usb;
+        if (*ptrMode == MODE_CW)  freq += u.cw;
+
         // output it
         si5351aSetFrequency(1, freq);
     }

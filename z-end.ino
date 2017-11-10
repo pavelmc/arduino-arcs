@@ -9,8 +9,11 @@
  *
  * ***************************************************************************/
 
-
+// main setup function
 void setup() {
+    // set the defult values, before restoring theEEPROM ones
+    setDefaultVals();
+
     #ifdef CAT_CONTROL
         // CAT Library setup
         cat.addCATPtt(catGoPtt);
@@ -96,11 +99,8 @@ void setup() {
             wipeMEM();
         #endif
 
-        #ifdef CAT_CONTROL
-            delayCat(); // 2 secs
-        #else
-            delay(2000);
-        #endif
+        // make a smart delay
+        smartDelay();
 
         #ifndef NOLCD
             lcd.clear();
@@ -116,27 +116,22 @@ void setup() {
         lcd.print(FMW_VER);
         lcd.print(F("  Mfv: "));
         lcd.print(EEP_VER);
-    #endif  / nolcd
+    #endif  // nolcd
 
     // A software controlling the CAT via USB will reset the sketch upon
     // connection, so we need turn the cat.check() when running the welcome
     // banners (use case: Fldigi)
-    #ifdef CAT_CONTROL
-        delayCat(); // 2 secs
-    #else
-        delay(2000);
-    #endif
+
+    // make a smart delay
+    smartDelay();
 
     #ifndef NOLCD
         lcd.setCursor(0, 0);
         lcd.print(F(" by Pavel CO7WT "));
     #endif  // nolcd
 
-    #ifdef CAT_CONTROL
-        delayCat(1000); // 1 sec
-    #else
-        delay(1000);
-    #endif
+    // make a smart delay
+    smartDelay();
 
     #ifndef NOLCD
         lcd.clear();
@@ -178,17 +173,21 @@ void setup() {
 
     // setting up VFO A as principal.
     activeVFO = true;
-    ptrVFO = &vfoa;
-    ptrMode = &VFOAMode;
+    ptrVFO = &u.a;
+    ptrMode = &u.aMode;
 
     // init the wire lib
     Wire.begin();
 
     // start the VFOa and it's mode
     updateAllFreq();
+
+    // reset the Si5351 for the forst time
+    Si5351_resets();
 }
 
 
+// forever loop
 void loop() {
     #ifdef ROTARY
         // encoder check

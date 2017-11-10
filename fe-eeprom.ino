@@ -27,13 +27,13 @@ EEPROM.length()
 // check if the EEPROM is initialized
 boolean checkInitEEPROM() {
     // read the eeprom config data
-    EEPROM.get(0, conf);
+    EEPROM.get(0, u);
 
     // check for the initializer and version
-    if (conf.version == EEP_VER) {
+    if (u.version == EEP_VER) {
         // so far version is the same, but the fingerprint has a different trick
-        for (int i=0; i<sizeof(conf.finger); i++) {
-            if (conf.finger[i] != EEPROMfingerprint[i]) return false;
+        for (word i=0; i<sizeof(u.finger); i++) {
+            if (u.finger[i] != EEPROMfingerprint[i]) return false;
         }
         // if it reach this point is because it's the same
         return true;
@@ -54,39 +54,22 @@ boolean checkInitEEPROM() {
 // this procedure has a protection for the EEPROM life using update semantics
 // it actually only write a cell if it has changed
 void saveEEPROM() {
-    // load the parameters in the environment
-    conf.vfoa       = vfoa;
-    conf.vfoaMode   = VFOAMode;
-    conf.ifreq      = ifreq;
-    conf.lsb        = lsb;
-    conf.usb        = usb;
-    conf.cw         = cw;
-    conf.ppm        = si5351_ppm;
-    conf.version    = EEP_VER;
-    strcpy(conf.finger, EEPROMfingerprint);
-
     // write it
-    EEPROM.put(0, conf);
+    EEPROM.put(0, u);
 }
 
 
 // load the eprom contents
 void loadEEPROMConfig() {
-    // write it
-    EEPROM.get(0, conf);
-
-    // load the parameters to the environment
-    vfoa        = conf.vfoa;
-    VFOAMode    = conf.vfoaMode;
-    ifreq       = conf.ifreq;
-    lsb         = conf.lsb;
-    usb         = conf.usb;
-    cw          = conf.cw;
-    si5351_ppm  = conf.ppm;
+    // get it
+    EEPROM.get(0, u);
 
     // force to operation
-    XTAL_C = XTAL + si5351_ppm;
+    XTAL_C = XTAL + u.ppm;
     updateAllFreq();
+
+    // force a reset
+    Si5351_resets();
 }
 
 
@@ -122,7 +105,7 @@ void loadEEPROMConfig() {
         // load it
         *ptrVFO     = memo.vfo;
         *ptrMode    = memo.vfoMode;
-        
+
         // return true
         return true;
     }
@@ -133,4 +116,5 @@ void loadEEPROMConfig() {
         // run for the entire mem area writing the defaults to it, with no-go flag
         for (word i = 0; i <= memCount; i++ ) saveMEM(i, 0);
     }
+
 #endif // memories

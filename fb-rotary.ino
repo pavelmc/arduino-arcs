@@ -21,7 +21,7 @@
 
                 // limits check
                 if (tmem < 0) tmem = memCount;
-                if (tmem > memCount) tmem = 0;
+                if (tmem > (int)memCount) tmem = 0;
 
                 // update the mem setting
                 mem = word(tmem);
@@ -63,8 +63,7 @@
             step = 2;
             // in setup mode and just specific modes it's allowed to go to 1 hz
             boolean am = false;
-            am = am or (config == CONFIG_LSB) or (config == CONFIG_USB);
-            am = am or (config == CONFIG_PPM);
+            am = am or (config == CONFIG_USB) or (config == CONFIG_PPM);
             if (!runMode and am) step = 1;
         }
 
@@ -96,4 +95,5 @@
         // update the output freq
         setFreqVFO();
     }
+
 #endif  // rotary

@@ -4,9 +4,9 @@
  *      https://github.com/pavelmc/arduino-arcs
  *
  * Copyright (C) 2016 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
- * 
+ *
  * This program is free software under the GNU GPL v3.0
- * 
+ *
  * ***************************************************************************/
 
 #ifdef CAT_CONTROL
@@ -109,9 +109,9 @@
 
         // build the byte to return
         #ifdef SMETER
-            return tx<<7 + split<<5 + sMeter;
+            return (tx<<7) + (split<<5) + sMeter;
         #else
-            return tx<<7 + split<<5;
+            return (tx<<7) + (split<<5);
         #endif
     }
 
@@ -129,4 +129,15 @@
             m = millis();
         }
     }
+
 #endif  // cat
+
+
+// smart Delay trick, normal when no cat and non-blocking when cat
+void smartDelay() {
+    #ifdef CAT_CONTROL
+        delayCat(); // 2 secs
+    #else
+        delay(2000);
+    #endif
+}
