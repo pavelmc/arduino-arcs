@@ -126,13 +126,6 @@
     #endif // memories
 #endif // abut
 
-// Safety check; if we have LCD the show the S-Meter
-// disable it otherwise;  also you can disable it by a explicit command
-// by commenting the following inner code
-#ifdef LCD
-    #define SMETER True
-#endif
-
 // default (non optional) libraries loading
 #include <EEPROM.h>         // default
 #include <Wire.h>           // Wire (I2C)
@@ -152,8 +145,8 @@
 struct userData {
     char finger[9] =  EEPROMfingerprint;
     byte version = EEP_VER;
-    long ifreq;     // last or unique IF
-    long xtal;      // difference between the 1st IF and 2nd IF (always positive)
+    long ifreq;     // first or unique IF
+    long if2;       // second IF, usually higher than the ifreq
     long a;         // VFO a
     byte aMode;
     long b;         // VFO b
@@ -221,9 +214,8 @@ struct userData u;
     // Creating the analog buttons for the BMux lib; see the BMux doc for details
     // you may have to tweak this values a little for your particular hardware
     //
-    // define the adc levels of for the buttons
-    // value for the top resistor to Vcc
-    //                 4k7  2k2  10k
+    // define the adc levels of for the buttons values
+    // top resistor    4k7  2k2  10k
     #define b1 207  // 1k2  470  2k2
     #define b2 370  // 2k7  1k   4k7
     #define b3 512  // 4k7  2k2  10k
@@ -308,15 +300,16 @@ struct userData u;
 
 // config constants
 #define CONFIG_IF       0
-#define CONFIG_VFO_A    1
-#define CONFIG_MODE_A   2
-#define CONFIG_VFO_B    3
-#define CONFIG_MODE_B   4
-#define CONFIG_USB      5
-#define CONFIG_CW       6
-#define CONFIG_PPM      7
+#define CONFIG_IF2      1
+#define CONFIG_VFO_A    2
+#define CONFIG_MODE_A   3
+#define CONFIG_VFO_B    4
+#define CONFIG_MODE_B   5
+#define CONFIG_USB      6
+#define CONFIG_CW       7
+#define CONFIG_PPM      8
 // the amount of configure options
-#define CONFIG_MAX      7
+#define CONFIG_MAX      8
 
 // Tick interval for the timed actions like the SMeter and the autosave
 #define TICK_INTERVAL  250      // milli seconds, 4 ticks per second
@@ -343,11 +336,11 @@ long XTAL_C = XTAL + u.ppm;    // corrected xtal with the ppm
  * account in the calculations; so, put your soldering iron down and keep the
  * XTAL oscillator running please.
  *
- * If you have this scenario just set the u.xtal value to the the xtal value
- * for example you have a 1st IF of 74.055 MHz and 2nd IF of 8.215 MHz, then
- * your xtal value is 74.055 - 8.215 = 65.84 Mhz (65 840 000, spaces for clarity)
+ * If you have this scenario just set the u.if2 value to the the 2nd IF value
+ * for example you have a high IF of 74.055 MHz and lower IF of 8.215 MHz, then
+ * your u.if2 = 74.055 MHz & u.ifreq = 8.215 MHz
  *
- * If youuse just one IF set this value to zero.
+ * If you use just one IF set the u.if2 value to zero.
  *
  * This will trigger a few macros ahead and will calculate the correct VFO
  * frequencies for you in normal and SETUP mode.
@@ -358,7 +351,7 @@ long XTAL_C = XTAL + u.ppm;    // corrected xtal with the ppm
 void setDefaultVals() {
     // 1st IF xtal, if you have just one IF this is ZERO
     // this is the (positive) difference between the high and low IFs in Hz
-    u.xtal =           0;    // Zero if no second IF
+    u.if2 =           0;    // Zero if no second IF
 
     // 2nd of unique IF, this is the one you beat to get the audio
     u.ifreq =   10700000;    // 10.7 MHz
