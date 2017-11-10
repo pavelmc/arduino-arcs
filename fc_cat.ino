@@ -81,8 +81,7 @@
 
     // get the s meter status to CAT
     byte catGetSMeter() {
-        // returns a byte in wich the s-meter is scaled to 4 bits (15)
-        // it's scaled already this our code
+        // returns a byte in wich the s-meter is scaled to 4 bits (1023 > 15)
         #ifdef SMETER
             return sMeter >> 6 ;
         #else
