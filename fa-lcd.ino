@@ -10,7 +10,7 @@
  * ***************************************************************************/
 
 
-#ifndef NOLCD
+#ifdef LCD
     // defining the chars for the Smeter
     byte bar[8] = {
       B11111,
@@ -74,7 +74,6 @@
 
 
     #ifdef ABUT
-    #ifdef ROTARY
         // check some values don't go below zero
         void belowZero(long *value) {
             // some values are not meant to be below zero, this check and fix that
@@ -266,8 +265,8 @@
                     break;
             }
         }
-    #endif // abut
-    #endif // rotary
+    #endif // abut|rotary
+
 
     // print the sign of a passed parameter
     void showSign(long val) {
@@ -645,4 +644,4 @@
         }
     }
 
-#endif  // nolcd
+#endif  // lcd

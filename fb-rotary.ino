@@ -41,7 +41,7 @@
             update = true;
         }
 
-        #ifndef NOLCD   // no meaning if no lcd
+        #ifdef LCD   // no meaning if no lcd
             #ifdef ABUT    // no meaning if no Analog buttons
                 if (!runMode) {
                     // update the values in the setup mode

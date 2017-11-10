@@ -57,24 +57,33 @@
 // You like to have CAT control (PC control) of the sketch via Serial link?
 #define CAT_CONTROL True
 
-// Analog button support?
-#define ABUT True
-
 // Rotary and push control?
 #define ROTARY True
+
+// Analog button support?
+// please note that if no rotary then abut is disabled
+#define ABUT True
 
 // Memories?
 #define MEMORIES True   // limited to 100 mems
                         // in some arduino boards can be less.
 
-// if you want a headless control unit just uncomment this line below and
-// you will get no LCD / buttons / rotary / memory; only CAT control
-//#define HEADLESS True
+// Smeter on the LCD?
+#define SMETER True
 
+// do you have an LCD?
+#define LCD True
 
-#ifdef HEADLESS
-    // no LCD
-    #define NOLCD True
+// if you want a headless control unit just comment the line above to
+// effectively disable the LCD, when you have no LCD then there is no
+// meaning for buttons, memories, rotary encoder, etc.
+// You will get just CAT control
+
+#ifndef LCD
+    // no smeter
+    #ifdef SMETER
+        #undef SMETER
+    #endif
 
     // no Analog Buttons
     #ifdef ABUT
@@ -97,20 +106,30 @@
     #endif  // cat control
 #endif  // headless
 
-
-// Safety check: if we don't have analog buttons or rotary functions
-// then we don't need memories
-#ifndef ABUT
-    #undef MEMORIES
-#endif // abut
-
+// safety check for no rotary
 #ifndef ROTARY
-    #undef MEMORIES
+    // no need for Analog Buttons
+    #ifdef ABUT
+        #undef ABUT
+    #endif // abut
+
+    // no memories, beacause no abut
+    #ifdef MEMORIES
+        #undef MEMORIES
+    #endif // memories
 #endif // rotary
 
-// Safety check; if we have LCD the show the S-Meter, also you can disable it
-// by commenting the following code
-#ifndef NOLCD
+// safety check for no analog buttons & memories
+#ifndef ABUT
+    #ifdef MEMORIES
+        #undef MEMORIES
+    #endif // memories
+#endif // abut
+
+// Safety check; if we have LCD the show the S-Meter
+// disable it otherwise;  also you can disable it by a explicit command
+// by commenting the following inner code
+#ifdef LCD
     #define SMETER True
 #endif
 
@@ -125,8 +144,8 @@
 
 // The eeprom & sketch version; if the eeprom version is lower than the one on
 // the sketch we force an update (init) to make a consistent work on upgrades
-#define EEP_VER     7
-#define FMW_VER     15
+#define EEP_VER     8
+#define FMW_VER     16
 
 // structured data: Main Configuration Parameters
 // nine, all strings ends with a null
@@ -150,16 +169,15 @@ struct userData u;
 // The start byte in the eeprom where we put mem[0]
 #define MEMSTART sizeof(u)
 
-// the limits of the VFO, just 40m for now; you can tweak it with the
+// the limits of the VFOs: full HF; you can tweak it with the
 // limits of your particular hardware, again this are LCD diplay frequencies.
-#define F_MIN      6500000     // 6.500.000
-#define F_MAX      7500000     // 7.500.000
+#define F_MIN       500000     // 500 kHz
+#define F_MAX     30000000     // 30.0 MHz
 
 // PTT IN/OUT pin
 #define PTT     13              // PTT actuator, this will put the radio on TX
                                 // this match the led on pin 13 with the PTT
 #define inPTT   12              // PTT/CW KEY Line with pullup
-
 
 #ifdef ROTARY
     // Enable weak pullups in the rotary lib before inclusion
@@ -252,7 +270,7 @@ struct userData u;
 #endif  // cat
 
 
-#ifndef NOLCD
+#ifdef LCD
     // lib include
     #include <LiquidCrystal.h>  // default
 
@@ -497,7 +515,6 @@ void swapVFO(byte force = 2) {
 
 // beep function
 #ifdef ROTARY
-#ifdef ABUT
     // beep function a 1.2Khz tone for 50 msecs
     void beep() {
         tone(4, 1200, 50);
@@ -514,7 +531,6 @@ void swapVFO(byte force = 2) {
         tone(4, 600, 25);
         delay(25);
     }
-#endif
 #endif
 
 

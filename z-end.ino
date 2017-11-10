@@ -9,6 +9,7 @@
  *
  * ***************************************************************************/
 
+
 // main setup function
 void setup() {
     // set the defult values, before restoring theEEPROM ones
@@ -28,7 +29,7 @@ void setup() {
         cat.begin(38400, SERIAL_8N2);
     #endif
 
-    #ifndef NOLCD
+    #ifdef LCD
         #ifdef SMETER
             // LCD init, create the custom chars first
             lcd.createChar(0, bar);
@@ -84,7 +85,7 @@ void setup() {
         // just if it's already ok
         loadEEPROMConfig();
     } else {
-        #ifndef NOLCD
+        #ifdef LCD
             // full init, LCD banner by 1 second
             lcd.setCursor(0, 0);
             lcd.print(F("Init EEPROM...  "));
@@ -102,12 +103,12 @@ void setup() {
         // make a smart delay
         smartDelay();
 
-        #ifndef NOLCD
+        #ifdef LCD
             lcd.clear();
         #endif  // nolcd
     }
 
-    #ifndef NOLCD
+    #ifdef LCD
         // Welcome screen
         lcd.clear();
         lcd.print(F("  Aduino Arcs  "));
@@ -125,7 +126,7 @@ void setup() {
     // make a smart delay
     smartDelay();
 
-    #ifndef NOLCD
+    #ifdef LCD
         lcd.setCursor(0, 0);
         lcd.print(F(" by Pavel CO7WT "));
     #endif  // nolcd
@@ -133,42 +134,46 @@ void setup() {
     // make a smart delay
     smartDelay();
 
-    #ifndef NOLCD
+    #ifdef LCD
         lcd.clear();
     #endif  // nolcd
 
-    #ifdef ROTARY
-        // Check for setup mode
-        if (digitalRead(btnPush) == LOW) {
-            // sound signal
-            beep();
-            delay(50);
-            beop();
+    #ifdef ROTARY   // check for SETUP mode
+        // if you have no analog buttons then
+        // there is no meaning for the setup mode
+        #ifdef ABUT
+            // Check for setup mode
+            if (digitalRead(btnPush) == LOW) {
+                // sound signal
+                beep();
+                delay(50);
+                beop();
 
-            // rise the flag of setup mode for every body to see it.
-            runMode = false;
+                // rise the flag of setup mode for every body to see it.
+                runMode = false;
 
-            // beep signal to the user
-            tone(4, 800, 250);
-            delay(250);
+                // beep signal to the user
+                tone(4, 800, 250);
+                delay(250);
 
-            #ifdef CAT_CONTROL
-                // CAT is disabled in SETUP mode
-                cat.enabled = false;
-            #endif
+                #ifdef CAT_CONTROL
+                    // CAT is disabled in SETUP mode
+                    cat.enabled = false;
+                #endif
 
-            #ifndef NOLCD
-                // we are in the setup mode
-                lcd.setCursor(0, 0);
-                lcd.print(F(" You are in the "));
-                lcd.setCursor(0, 1);
-                lcd.print(F("   SETUP MODE   "));
-                delay(2000);
-                lcd.clear();
-                // show setup mode
-                showConfig();
-            #endif  // nolcd
-        }
+                #ifdef LCD
+                    // we are in the setup mode
+                    lcd.setCursor(0, 0);
+                    lcd.print(F(" You are in the "));
+                    lcd.setCursor(0, 1);
+                    lcd.print(F("   SETUP MODE   "));
+                    delay(2000);
+                    lcd.clear();
+                    // show setup mode
+                    showConfig();
+                #endif  // lcd
+            }
+        #endif // abut
     #endif  // rotary
 
     // setting up VFO A as principal.
@@ -198,7 +203,7 @@ void loop() {
 
     // LCD update check in normal mode
     if (update and runMode) {
-        #ifndef NOLCD
+        #ifdef LCD
             // update and reset the flag
             updateLcd();
         #endif  // nolcd
@@ -254,7 +259,7 @@ void loop() {
                 if (tbool) {
                     // change the step and show it on the LCD
                     changeStep();
-                    #ifndef NOLCD
+                    #ifdef LCD
                         showStep();
                     #endif     // nolcd
                 }
@@ -285,7 +290,7 @@ void loop() {
 
         // step show time show the first time
         if (showStepCounter >= STEP_SHOW_TIME) {
-            #ifndef NOLCD
+            #ifdef LCD
                 showStep();
             #endif  // nolcd
         }

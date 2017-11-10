@@ -9,6 +9,7 @@
  *
  * ***************************************************************************/
 
+
 #ifdef CAT_CONTROL
     // instruct the sketch that must go in/out of TX
     void catGoPtt(boolean tx) {

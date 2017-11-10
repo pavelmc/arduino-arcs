@@ -47,7 +47,7 @@
                 else if (config == CONFIG_CW) u.aMode = MODE_CW;
                 else u.aMode = MODE_LSB;
 
-                #ifndef NOLCD
+                #ifdef LCD
                     // config update on the LCD
                     showModConfig();
                 #endif  // nolcd
@@ -58,7 +58,7 @@
                 // save to the eeprom
                 saveEEPROM();
 
-                #ifndef NOLCD
+                #ifdef LCD
                     // lcd delay to show it properly (user feedback)
                     lcd.setCursor(0, 0);
                     lcd.print(F("##   SAVED    ##"));
@@ -88,7 +88,7 @@
             // setup mode, just inside a value edit, then get out of here
             inSetup = false;
 
-            #ifndef NOLCD
+            #ifdef LCD
                 // user feedback
                 lcd.setCursor(0, 0);
                 lcd.print(F(" #  Canceled  # "));
@@ -126,7 +126,7 @@
 
             // update the freqs for
             updateAllFreq();
-            #ifndef NOLCD
+            #ifdef LCD
                 showModConfig();
             #endif  // nolcd
         }
