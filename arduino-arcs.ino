@@ -222,10 +222,12 @@ struct userData u;
     // you may have to tweak this values a little for your particular hardware
     //
     // define the adc levels of for the buttons
-    #define b1 207  // 1k2
-    #define b2 370  // 2k7
-    #define b3 512  // 4k7
-    #define b4 697  // 10k
+    // value for the top resistor to Vcc
+    //                 4k7  2k2  10k
+    #define b1 207  // 1k2  470  2k2
+    #define b2 370  // 2k7  1k   4k7
+    #define b3 512  // 4k7  2k2  10k
+    #define b4 697  // 10k  4k7  22k
 
     #ifdef MEMORIES
         // buttons has a second action related to memories
