@@ -43,13 +43,13 @@ void si5351aSetFrequency(byte clk, unsigned long frequency) {
 
     // Convert the Output Divider to the bit-setting required in register 44
     switch (R) {
-        case 1: R = 0; break;
-        case 2: R = 16; break;
-        case 4: R = 32; break;
-        case 8: R = 48; break;
-        case 16: R = 64; break;
-        case 32: R = 80; break;
-        case 64: R = 96; break;
+        case 1:   R = 0;   break;
+        case 2:   R = 16;  break;
+        case 4:   R = 32;  break;
+        case 8:   R = 48;  break;
+        case 16:  R = 64;  break;
+        case 32:  R = 80;  break;
+        case 64:  R = 96;  break;
         case 128: R = 112; break;
     }
 
@@ -132,10 +132,10 @@ void setFreqVFO() {
     // temp var to hold the calculated value
     long freq = *ptrVFO;
 
-    //setting about xtal in the mix of the 1st to 2nd IF
-    if (u.xtal != 0) {
-        // add the xtal to the mix to get the VFO on the correct freq
-        freq += u.xtal;
+    //setting about higher IF
+    if (u.if2 != 0) {
+        // add the High IF to VFO
+        freq += u.if2;
     } else {
         // add just the unique IF
         freq += u.ifreq;

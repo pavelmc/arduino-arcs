@@ -97,6 +97,11 @@
                         u.ifreq += getStep() * dir;
                         belowZero(&u.ifreq);
                         break;
+                    case CONFIG_IF2:
+                        // change the high IF value
+                        u.if2 += getStep() * dir;
+                        belowZero(&u.if2);
+                        break;
                     case CONFIG_VFO_A:
                         // change VFOa
                         swapVFO(0); // set a
@@ -167,6 +172,9 @@
             switch (config) {
                 case CONFIG_IF:
                     lcd.print(F("  IF frequency  "));
+                    break;
+                case CONFIG_IF2:
+                    lcd.print(F(" High IF (opt)  "));
                     break;
                 case CONFIG_VFO_A:
                     lcd.print(F("   VFO A freq   "));
@@ -241,6 +249,9 @@
             switch (config) {
                 case CONFIG_IF:
                     showConfigValue(u.ifreq);
+                    break;
+                case CONFIG_IF2:
+                    showConfigValue(u.if2);
                     break;
                 case CONFIG_VFO_A:
                     showConfigValue(u.a);
@@ -533,115 +544,118 @@
     }
 
 
-    // show the bar graph for the RX or TX modes
-    void showBarGraph() {
-        // we are working on a 2x16 and we have 13 bars to show (0-12)
-        unsigned long ave = 0, i;
-        volatile static byte barMax = 0;
+    // do you have SMETER
+    #ifdef SMETER
+        // show the bar graph for the RX or TX modes
+        void showBarGraph() {
+            // we are working on a 2x16 and we have 13 bars to show (0-12)
+            unsigned long ave = 0, i;
+            volatile static byte barMax = 0;
 
-        // find the average
-        for (i=0; i<BARGRAPH_SAMPLES; i++) ave += pep[i];
-        ave /= BARGRAPH_SAMPLES;
+            // find the average
+            for (i=0; i<BARGRAPH_SAMPLES; i++) ave += pep[i];
+            ave /= BARGRAPH_SAMPLES;
 
-        // set the smeter reading on the global scope for CAT readings
-        sMeter = ave;
+            // set the smeter reading on the global scope for CAT readings
+            sMeter = ave;
 
-        // scale it down to 0-12 from word
-        byte local = map(ave, 0, 1023, 0, 12);
+            // scale it down to 0-12 from word
+            byte local = map(ave, 0, 1023, 0, 12);
 
-        // printing only the needed part of the bar, if growing or shrinking
-        // if the same no action is required, remember we have to minimize the
-        // writes to the LCD to minimize QRM
+            // printing only the needed part of the bar, if growing or shrinking
+            // if the same no action is required, remember we have to minimize the
+            // writes to the LCD to minimize QRM
 
-        // if we get a barReDraw = true; then reset to redrawn the entire bar
-        if (barReDraw) {
-            barMax = 0;
-            // forcing the write of one line
-            if (local == 0) local = 1;
-        }
-
-        // growing bar: print the difference
-        if (local > barMax) {
-            // LCD position & print the bars
-            lcd.setCursor(3 + barMax, 1);
-
-            // write it
-            for (i = barMax; i <= local; i++) {
-                switch (i) {
-                    case 0:
-                        lcd.write(byte(1));
-                        break;
-                    case 2:
-                        lcd.write(byte(2));
-                        break;
-                    case 4:
-                        lcd.write(byte(3));
-                        break;
-                    case 6:
-                        lcd.write(byte(4));
-                        break;
-                    case 8:
-                        lcd.write(byte(5));
-                        break;
-                    default:
-                        lcd.write(byte(0));
-                        break;
-                }
+            // if we get a barReDraw = true; then reset to redrawn the entire bar
+            if (barReDraw) {
+                barMax = 0;
+                // forcing the write of one line
+                if (local == 0) local = 1;
             }
 
-            // second part of the erase, preparing for the blanking
-            if (barReDraw) barMax = 12;
+            // growing bar: print the difference
+            if (local > barMax) {
+                // LCD position & print the bars
+                lcd.setCursor(3 + barMax, 1);
+
+                // write it
+                for (i = barMax; i <= local; i++) {
+                    switch (i) {
+                        case 0:
+                            lcd.write(byte(1));
+                            break;
+                        case 2:
+                            lcd.write(byte(2));
+                            break;
+                        case 4:
+                            lcd.write(byte(3));
+                            break;
+                        case 6:
+                            lcd.write(byte(4));
+                            break;
+                        case 8:
+                            lcd.write(byte(5));
+                            break;
+                        default:
+                            lcd.write(byte(0));
+                            break;
+                    }
+                }
+
+                // second part of the erase, preparing for the blanking
+                if (barReDraw) barMax = 12;
+            }
+
+            // shrinking bar: erase the old ones print spaces to erase just the diff
+            if (barMax > local) {
+                lcd.setCursor(3 + barMax, 1);
+                spaces(barMax - local);
+            }
+
+            // put the var for the next iteration
+            barMax = local;
+            //reset the redraw flag
+            barReDraw = false;
         }
 
-        // shrinking bar: erase the old ones print spaces to erase just the diff
-        if (barMax > local) {
-            lcd.setCursor(3 + barMax, 1);
-            spaces(barMax - local);
+
+        // take a sample an inject it on the array
+        void takeSample() {
+            // reference is 5v
+            word val;
+            byte adcPin = 1;
+
+            // check if TX
+            if (tx) adcPin = 0;
+            // take sample
+            val = analogRead(adcPin);
+
+            // push it in the array
+            for (byte i = 0; i < BARGRAPH_SAMPLES - 1; i++) pep[i] = pep[i + 1];
+            pep[BARGRAPH_SAMPLES - 1] = val;
         }
 
-        // put the var for the next iteration
-        barMax = local;
-        //reset the redraw flag
-        barReDraw = false;
-    }
 
+        // smeter reading, this take a sample of the smeter/txpower each time; an will
+        // rise a flag when they have rotated the array of measurements 2/3 times to
+        // have a moving average
+        void smeter() {
+            // static smeter array counter
+            volatile static byte smeterCount = 0;
 
-    // take a sample an inject it on the array
-    void takeSample() {
-        // reference is 5v
-        word val;
-        byte adcPin = 1;
+            // no matter what, I must keep taking samples
+            takeSample();
 
-        // check if TX
-        if (tx) adcPin = 0;
-        // take sample
-        val = analogRead(adcPin);
-
-        // push it in the array
-        for (byte i = 0; i < BARGRAPH_SAMPLES - 1; i++) pep[i] = pep[i + 1];
-        pep[BARGRAPH_SAMPLES - 1] = val;
-    }
-
-
-    // smeter reading, this take a sample of the smeter/txpower each time; an will
-    // rise a flag when they have rotated the array of measurements 2/3 times to
-    // have a moving average
-    void smeter() {
-        // static smeter array counter
-        volatile static byte smeterCount = 0;
-
-        // no matter what, I must keep taking samples
-        takeSample();
-
-        // it has rotated already?
-        if (smeterCount > (BARGRAPH_SAMPLES * 2 / 3)) {
-            // rise the flag about the need to show the bar graph and reset the count
-            smeterOk = true;
-            smeterCount = 0;
-        } else {
-            // just increment it
-            smeterCount += 1;
+            // it has rotated already?
+            if (smeterCount > (BARGRAPH_SAMPLES * 2 / 3)) {
+                // rise the flag about the need to show the bar graph and reset the count
+                smeterOk = true;
+                smeterCount = 0;
+            } else {
+                // just increment it
+                smeterCount += 1;
+            }
         }
-    }
+    #endif
 
 #endif  // lcd
