@@ -53,10 +53,10 @@ void si5351aSetFrequency(byte clk, unsigned long frequency) {
         case 128: R = 112; break;
     }
 
-    a = fvco / XTAL_C;
-    f = fvco - a * XTAL_C;
+    a = fvco / CXTAL;
+    f = fvco - a * CXTAL;
     f = f * c;
-    f = f / XTAL_C;
+    f = f / CXTAL;
     b = f;
 
     MSx_P1 = 128 * outdivider - 512;
@@ -66,9 +66,8 @@ void si5351aSetFrequency(byte clk, unsigned long frequency) {
     MSNx_P2 = 128 * b - MSNx_P2 * c;
     MSNx_P3 = c;
 
-    // PLLs and CLK# registers are allocated with a shift, we handle that with
-    // the shifts var to make code smaller
-    if (clk > 0 ) shifts = 8;
+    // CLK# registers are exactly 8 * clk bytes shifted from a base register.
+    shifts = clk * 8;
 
     // plls, A & B registers separated by 8 bytes
     si5351ai2cWrite(26 + shifts, (MSNx_P3 & 65280) >> 8);   // Bits [15:8] of MSNx_P3 in register 26
@@ -79,9 +78,6 @@ void si5351aSetFrequency(byte clk, unsigned long frequency) {
     si5351ai2cWrite(31 + shifts, ((MSNx_P3 & 983040) >> 12) | ((MSNx_P2 & 983040) >> 16)); // Parts of MSNx_P3 and MSNx_P1
     si5351ai2cWrite(32 + shifts, (MSNx_P2 & 65280) >> 8);   // Bits [15:8]  of MSNx_P2 in register 32
     si5351ai2cWrite(33 + shifts, MSNx_P2 & 255);            // Bits [7:0]  of MSNx_P2 in register 33
-
-    // CLK# registers are exactly 8 * clk bytes shifted from a base register.
-    shifts = clk * 8;
 
     // multisynths
     si5351ai2cWrite(42 + shifts, 0);                // Bits [15:8] of MS0_P3 (always 0) in register 42

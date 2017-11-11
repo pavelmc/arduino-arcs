@@ -12,11 +12,9 @@
 
 #ifdef LCD
     #ifdef ABUT
-        // check some values don't go below zero
-        void belowZero(long *value) {
-            // some values are not meant to be below zero, this check and fix that
-            if (*value < 0) *value = 0;
-        }
+        // check some values don't go below zero, as some values are not meant
+        // to be below zero, this check and fix that
+        void belowZero(long *value) { if (*value < 0) *value = 0; }
 
 
         // update the setup values
@@ -26,8 +24,6 @@
                 // just showing, show the config on the LCD
                 updateShowConfig(dir);
             } else {
-                // change the VFO to A by default
-                swapVFO(1);
                 // I'm modifying, switch on the config item
                 switch (config) {
                     case CONFIG_IF:
@@ -52,7 +48,7 @@
                         *ptrVFO += getStep() * dir;
                         belowZero(ptrVFO);
                         break;
-                    case CONFIG_MODE_A:   // whichever VFO
+                    case CONFIG_MODE_A:   // whichever VFO is active
                     case CONFIG_MODE_B:
                         // hot swap it
                         changeMode();
@@ -75,7 +71,7 @@
                         // change the Si5351 PPM
                         u.ppm += getStep() * dir;
                         // instruct the lib to use the new ppm value
-                        XTAL_C = XTAL + u.ppm;
+                        CXTAL = XTAL + u.ppm;
                         // reset the Si5351
                         Si5351_resets();
                         break;
@@ -109,7 +105,7 @@
         void showConfigLabels() {
             switch (config) {
                 case CONFIG_IF:
-                    lcd.print(F("  IF frequency  "));
+                    lcd.print(F(" Main IF freq.  "));
                     break;
                 case CONFIG_IF2:
                     lcd.print(F(" High IF (opt)  "));
@@ -161,6 +157,7 @@
 
         // show the ppm as a signed long
         void showConfigValue(long val) {
+            // add spacers
             spaces(3);
 
             // Show the sign only on config and not VFO & IF
@@ -229,10 +226,7 @@
     // print a string of spaces, to save some flash/eeprom "space"
     void spaces(byte m) {
         // print m spaces in the LCD
-        while (m) {
-            lcd.print(" ");
-            m--;
-        }
+        while (m) { lcd.print(" ");  m--; }
     }
 
 
@@ -385,7 +379,7 @@
 
     // show rit in LCD
     void showRit() {
-        /***************************************************************************
+        /***********************************************************************
          * RIT show something like this on the line of the non active VFO
          *
          *   |0123456789abcdef|
@@ -393,10 +387,10 @@
          *   |RX RIT -9.99 khz|
          *   |----------------|
          *
-         *             WARNING !!!!!!!!!!!!!!!!!!!!1
-         *  If the user change the VFO we need to *RESET* & disable the RIT ASAP.
+         * WARNING !!! If the user change the VFO we need to *RESET*
+         * & disable the RIT ASAP.
          *
-         **************************************************************************/
+         **********************************************************************/
 
         // get the active VFO to calculate the deviation & scale it down
         long diff = (*ptrVFO - tvfo)/10;

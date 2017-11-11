@@ -15,8 +15,8 @@ EEPROM amount vary from board to board, a simple list here:
 
 Larger AVR processors have larger EEPROM sizes, E.g:
 - Arduno Duemilanove: 512b EEPROM storage. (ATMega 168)
-- Arduino Uno:        1kb EEPROM storage. (ATMega 328)
-- Arduino Mega:       4kb EEPROM storage. (ATMega 2560)
+- Arduino Uno:         1kb EEPROM storage. (ATMega 328)
+- Arduino Mega:        4kb EEPROM storage. (ATMega 2560)
 
 Rather than hard-coding the length, you should use the pre-provided length
 function. This will make your code portable to all AVR processors.
@@ -58,7 +58,7 @@ void loadEEPROMConfig() {
     EEPROM.get(0, u);
 
     // force to operation
-    XTAL_C = XTAL + u.ppm;
+    CXTAL = XTAL + u.ppm;
     updateAllFreq();
 
     // force a reset

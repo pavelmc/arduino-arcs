@@ -34,16 +34,19 @@
 /*******************************************************************************
  * Important information you need to know about this code & Si5351
  *
- * We use a Si5351a control code that presume this:
+ * We use a embed Si5351a control code that presume this:
  *  * We use CLK0 & CLK1 ONLY
  *  * CLK0 use PLLA & CLK1 use PLLB
  *  * CLK0 is employed as VFO (to mix with the RF from/to the antenna)
  *  * CLK1 is employed as BFO (to mix with the IF to mod/demodulate the audio)
- *  * We use the full power in all outputs (8mA ~0dB?)
+ *  * We use the full power in all outputs (8mA)
  *
- *  * Please have in mind that this IC has a SQUARE wave output and you need to
- *    apply some kind of low-pass/band-pass filtering to smooth it and get rid
- *    of the nasty harmonics
+ *  * Please have in mind that this IC has a SQUARE wave output and you MAY
+ *    need to apply some kind of low-pass/band-pass filtering to smooth it
+ *    and get rid of the nasty harmonics.
+ *  * If you generate a BFO below 1Mhz you MUST filter the output of that CLK.
+ *    The output of the Si5351 is harmonic rich below 1Mhz and you will NEED
+ *    the filtering because those harmonics are close enough of the fundamental.
  ******************************************************************************/
 
 /****************************** FEATURES SEGMENTATION *************************
@@ -52,6 +55,7 @@
 *
 * For example: one user requested a "headless" mode: no lcd, no buttons, just
 * cat control via serial/usb from the PC. for that we have the headless mode.
+* Tip: uncomment th LCD define and you will have it.
 *******************************************************************************/
 
 // You like to have CAT control (PC control) of the sketch via Serial link?
@@ -65,8 +69,8 @@
 #define ABUT True
 
 // Memories?
-//#define MEMORIES True   // limited to 100 mems
-                          // in some arduino boards can be less.
+//#define MEMORIES True   // hard limited to 99 mems (~80 on the ATMEga168)
+                          // because we have only two spaces to represent that
 
 // Smeter on the LCD?
 #define SMETER True
@@ -106,7 +110,7 @@
     #endif  // cat control
 #endif  // headless
 
-// safety check for no rotary
+// safety check for no rotary, if no rotary then abut has no use.
 #ifndef ROTARY
     // no need for Analog Buttons
     #ifdef ABUT
@@ -119,7 +123,7 @@
     #endif // memories
 #endif // rotary
 
-// safety check for no analog buttons & memories
+// safety check for memories only when analog buttons are in use
 #ifndef ABUT
     #ifdef MEMORIES
         #undef MEMORIES
@@ -127,8 +131,8 @@
 #endif // abut
 
 // default (non optional) libraries loading
-#include <EEPROM.h>         // default
-#include <Wire.h>           // Wire (I2C)
+#include <EEPROM.h>         // Internal EEPROM
+#include <Wire.h>           // I2C
 
 // The eeprom & sketch version; if the eeprom version is lower than the one on
 // the sketch we force an update (init) to make a consistent work on upgrades
@@ -136,22 +140,23 @@ const byte EEP_VER = 8;
 const byte FMW_VER = 16;
 
 // structured data: Main Configuration Parameters
-// nine, all strings ends with a null
 struct userData {
     byte fmwver = FMW_VER;
     byte eepver = EEP_VER;
     long ifreq;     // first or unique IF
     long if2;       // second IF, usually higher than the ifreq
     long a;         // VFO a
-    byte aMode;
+    byte aMode;     // VFO a mode
     long b;         // VFO b
-    byte bMode;
+    byte bMode;     // VFO b mode
     int usb;
     int cw;
     int ppm;
 };
 
 // declaring the main configuration variable for mem storage
+// BEWARE: you can't use it outside a procedure or function
+// the compiler is not happy with that.
 struct userData u;
 
 // The start byte in the eeprom where we put mem[0]
@@ -173,7 +178,7 @@ struct userData u;
 
     // If you have a half step encoder (you need two clicks to make a step)
     // uncomment this to get it working
-    #define HALF_STEP
+    //#define HALF_STEP
 
     // include the libs
     #include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
@@ -201,11 +206,11 @@ struct userData u;
     // define the sampling rate used
     #define BMUX_SAMPLING 10    // 10 samples per second
 
-    // include the lib
-    #include <BMux.h>           //  https://github.com/pavelmc/BMux/
-
     // define the analog pin to handle the buttons
     #define KEYS_PIN  2
+
+    // include the lib
+    #include <BMux.h>           //  https://github.com/pavelmc/BMux/
 
     // instantiate it
     BMux abm;
@@ -213,7 +218,10 @@ struct userData u;
     // Creating the analog buttons for the BMux lib; see the BMux doc for details
     // you may have to tweak this values a little for your particular hardware
     //
-    // define the adc levels of for the buttons values
+    // Also on the examples on the lib there is a sketch that will allow to
+    // compute the exact values for your hardware.
+    //
+    // Define the adc levels of for the buttons values
     // top resistor    4k7  2k2  10k
     #define b1 207  // 1k2  470  2k2
     #define b2 370  // 2k7  1k   4k7
@@ -221,8 +229,8 @@ struct userData u;
     #define b4 697  // 10k  4k7  22k
 
     #ifdef MEMORIES
-        // buttons has a second action related to memories
-        // only if we have memories set
+        // Analog buttons has a second action related to memories
+        // but only if we have memories set
         Button bvfoab   = Button(b1, &btnVFOABClick, &btnVFOMEM);
         Button bmode    = Button(b2, &btnModeClick, &btnVFOsMEM);
         Button brit     = Button(b3, &btnRITClick, &btnEraseMEM);
@@ -231,7 +239,7 @@ struct userData u;
         // memory object definition
         boolean vfoMode = true;
         word mem = 0;               // actual memory channel
-        word memCount = 0;          // how many mems this chip support
+        word memCount;              // how many mems this chip support
                                     // (it's calculated in the setup process)
 
         // memory type
@@ -245,7 +253,7 @@ struct userData u;
         struct mmem memo;
 
     #else
-        // buttons with single functions
+        // Analog buttons with single functions
         Button bvfoab   = Button(b1, &btnVFOABClick);
         Button bmode    = Button(b2, &btnModeClick);
         Button brit     = Button(b3, &btnRITClick);
@@ -279,14 +287,16 @@ struct userData u;
     // lcd library instantiate
     LiquidCrystal lcd(LCD_RS, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
-    // how many samples we take in the smeter, we use a 2/3 trick to get some
-    // inertia and improve the look & feel of the bar
-    #define BARGRAPH_SAMPLES    6
-    word pep[BARGRAPH_SAMPLES] = {};
-                                        // s-meter readings storage
-    boolean smeterOk = false;           // it's ok to show the bar graph
-    word sMeter = 0;                    // hold the value of the Smeter readings
-                                        // in both RX and TX modes
+    #ifdef SMETER
+        // how many samples we take in the smeter, we use a 2/3 trick to get some
+        // inertia and improve the look & feel of the bar
+        #define BARGRAPH_SAMPLES    6
+        word pep[BARGRAPH_SAMPLES] = {};    // s-meter readings storage
+        boolean smeterOk = false;           // it's ok to show the bar graph
+        word sMeter = 0;                    // hold the value of the Smeter readings
+                                            // in both RX and TX modes
+        boolean barReDraw = true;           // Smeter bar needs to be redrawn
+    #endif // smeter
 #endif // nolcd
 
 
@@ -311,17 +321,15 @@ struct userData u;
 #define CONFIG_MAX      8
 
 // Tick interval for the timed actions like the SMeter and the autosave
-#define TICK_INTERVAL  250      // milli seconds, 4 ticks per second
+#define TICK_INTERVAL  250      // in milli seconds, 4 ticks per second
 
-// EERPOM saving interval (if some parameter has changed) in TICK_INTERVAL
+// EERPOM auto saving interval (if some parameter has changed) in TICK_INTERVAL
 // var is word so max is 65535 in 1/4 secs is ~ 16383 sec ~ 273 min ~ 4h 33 min
 #define SAVE_INTERVAL 2400      // 10 minutes = 60 sec * 4 ticks/sec * 10 min
 
 // Si5351a Xtal
-long XTAL = 27000000;       // default FREQ of the XTAL for the Si5351a
-
-// the variables
-long XTAL_C = XTAL + u.ppm;    // corrected xtal with the ppm
+const long XTAL = 27000000;     // default FREQ of the XTAL for the Si5351a
+long CXTAL = XTAL + u.ppm;      // corrected xtal with the ppm
 
 /******************************************************************************
  * The use of an XFO... some users are requesting the use of an XFO in the
@@ -348,8 +356,7 @@ long XTAL_C = XTAL + u.ppm;    // corrected xtal with the ppm
 
 /******  hardware pre-configured values ******/
 void setDefaultVals() {
-    // 1st IF xtal, if you have just one IF this is ZERO
-    // this is the (positive) difference between the high and low IFs in Hz
+    // 1st (or High) IF value, if you have just one IF this is ZERO
     u.if2 =           0;    // Zero if no second IF
 
     // 2nd of unique IF, this is the one you beat to get the audio
@@ -373,8 +380,9 @@ void setDefaultVals() {
     // VFO B default mode
     u.aMode =   MODE_LSB;    // LSB
 
-    // This value is not the real PPM value is just the freq correction for your
-    // particular xtal from the 27.00000 Mhz one, if you can measure it put it here
+    // This value is not the real PPM value is just the freq correction for
+    // yourparticular xtal from the 27.00000 Mhz one, if you can measure it
+    // put it here, this trick is computational simpler and yet accurate
     u.ppm = 2256;     // in Hz, mine is 2.256 Khz up
 }
 
@@ -397,7 +405,6 @@ boolean activeVFO =    true;        // true: A, False: B
 boolean ritActive =    false;       // true: rit active, false: rit disabled
 boolean tx =           false;       // whether we are on TX mode or not
 unsigned long lastMilis = 0;        // to track the last sampled time
-boolean barReDraw =    true;        // bar needs to be redrawn from zero
 boolean split =        false;       // this holds th split state
 boolean catTX =        false;       // CAT command to go to PTT
 word qcounter =        0;           // Timer to be incremented each 1/4 second
@@ -451,7 +458,7 @@ void changeMode() {
 void going2RX() {
     // PTT released, going to RX
     tx = false;
-    digitalWrite(PTT, LOW);
+    digitalWrite(PTT, 0);
 
     // make changes if tx goes active when RIT is active
     if (ritActive) {
