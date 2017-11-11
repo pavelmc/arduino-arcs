@@ -299,6 +299,13 @@ struct userData u;
     #endif // smeter
 #endif // nolcd
 
+// You have two alternatives for the SMeter graphics
+// The default is a simple bar with 24 points (high) resolution
+// The alternative is a low resolution one with 12 points
+// but numbers in the 1-3-5-7-9-+20
+//
+// If you want the alternative just uncomment this code below
+#define SMETER_ALT True
 
 // run mode constants
 #define MODE_LSB 0
