@@ -23,7 +23,7 @@ We are using the ubiquitous Arduino boards for the main brain, a list of the nee
 
 - Arduino as the brain; developed for the Arduino Uno R3 as base, but it's adaptable to other boards, we are using mainly the Mini & Mini Pro now (Yes it's less than 16 kb at the end)
 - LCD 16 columns and 2 lines as display (LiquidCrystal default Arduino lib)
-- Si5351 as VFO and BFO, any of the breakout board out there will work, we choose to use a embedded code for the Si5351 control. Our code is a modified version of one of the examples in the [QRP Labs site](http://qrp-labs.com) (with my mods to allow two outputs instead of only one) and trick learned from [DK7IH](https://radiotransmitter.wordpress.com/category/si5351a/) to eliminate the unpleasant clicks when tunning.
+- Si5351 as VFO and BFO, any of the breakout board out there will work, we choose to use a embedded code for the Si5351 control. Our code is a modified version of one of the examples in the [QRP Labs site](http://qrp-labs.com) (with my mods to allow two outputs instead of only one) and trick learned from [DK7IH](https://radiotransmitter.wordpress.com/category/si5351a/) to eliminate the unpleasant clicks when tunning. You can use it as a full library named [Si5351mcu here](http://github.com/pavelmc/si5351mcu).
 - For the human interface part we use a bunch of [analog push buttons with dual functions](https://github.com/pavelmc/BMUx/) and a [rotary encoder](https://github.com/mathertel/RotaryEncoder) + [push button](https://github.com/thomasfredericks/Bounce2/).
 - Since September of 2016 the sketch has CAT support, if you are using an Arduino R3 or others with a USB port you are done; if not you need any of the [cheap ebay USB to RS-232/TTL converters](http://www.google.com/q=cp-2021+USB+serial+ttl+converter) just watch out for the correct drivers if you use any Windows OS.
 
@@ -46,7 +46,7 @@ You can see the schematic diagram (designed for an Arduino Uno R3 in mind) in th
 - The sketch is coded with **feature segmentation in mind**, you can rule out the CAT support if you don't need it, disable the ugly S-meter or rule out all other HID and just compile with CAT to get a slim CAT radio solution that fits in a tiny ATMega8 core _(I'm no kidding, it do fit in that chip!)_
 - **Memories** Using the internal EEPROM and limited to 100 (0-99), because the channel number is displayed in two LCD chars. Also you will get what your Chip has to offer: bigger chips my exceed the 100 mem channels count and get toped, but other not and you will have less than 100 mem channels.
 
-_**Note 1:** The firmware save the VFO info in a 10 minutes interval._
+_**Note 1:** The firmware save the VFO info in a 10 minutes interval. Also a touch on the "VFO A/B" button will force an update_
 
 _I was once concerned with the EERPOM wear out, but not anymore: The auto-save every 10 minutes **with a heavy use** of the transceiver can lead to about 3 years of life for the internal EEPROM _under datasheet conditions_. But you can expect at least x2 of that amount as the real world data shows (that's at least 6 years with heavy use or more than 10 years with little use)_
 
