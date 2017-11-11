@@ -32,8 +32,14 @@ void setup() {
     #ifdef LCD
         #ifdef SMETER
             // LCD init, create the custom chars first
-            lcd.createChar(0, full);
-            lcd.createChar(1, half);
+            // depending on the selected smeter type
+            #if SMETER_ALT
+
+            #else
+                // default
+                lcd.createChar(0, full);
+                lcd.createChar(1, half);
+            #endif
         #endif  // smeter
 
         // now load the library
