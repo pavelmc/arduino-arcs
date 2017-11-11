@@ -3,7 +3,7 @@
  * This file is part of the Arduino-Arcs project, see
  *      https://github.com/pavelmc/arduino-arcs
  *
- * Copyright (C) 2016 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
+ * Copyright (C) 2016...2017 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
  *
  * This program is free software under the GNU GPL v3.0
  *

@@ -4,7 +4,7 @@
  *           -----------------------------------------------
  * A full QRP/Hombrew transceiver control with RF generation, the Cuban way.
  *
- * Copyright (C) 2016-2017 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
+ * Copyright (C) 2016...2017 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
  *
  * This work is based on the previous work of these great people:
  *  * NT7S (http://nt7s.com)
@@ -55,7 +55,7 @@
 *******************************************************************************/
 
 // You like to have CAT control (PC control) of the sketch via Serial link?
-#define CAT_CONTROL True
+//#define CAT_CONTROL True
 
 // Rotary and push control?
 #define ROTARY True
@@ -65,8 +65,8 @@
 #define ABUT True
 
 // Memories?
-#define MEMORIES True   // limited to 100 mems
-                        // in some arduino boards can be less.
+//#define MEMORIES True   // limited to 100 mems
+                          // in some arduino boards can be less.
 
 // Smeter on the LCD?
 #define SMETER True
@@ -130,21 +130,16 @@
 #include <EEPROM.h>         // default
 #include <Wire.h>           // Wire (I2C)
 
-// the fingerprint to know the EEPROM is initialized, we need to stamp something
-// on it, as the 5th birthday anniversary of my daughter was the date I begin to
-// work on this project, so be it: 2016 June 1st
-#define EEPROMfingerprint "20160601"
-
 // The eeprom & sketch version; if the eeprom version is lower than the one on
 // the sketch we force an update (init) to make a consistent work on upgrades
-#define EEP_VER     8
-#define FMW_VER     16
+const byte EEP_VER = 8;
+const byte FMW_VER = 16;
 
 // structured data: Main Configuration Parameters
 // nine, all strings ends with a null
 struct userData {
-    char finger[9] =  EEPROMfingerprint;
-    byte version = EEP_VER;
+    byte fmwver = FMW_VER;
+    byte eepver = EEP_VER;
     long ifreq;     // first or unique IF
     long if2;       // second IF, usually higher than the ifreq
     long a;         // VFO a
@@ -175,6 +170,10 @@ struct userData u;
 #ifdef ROTARY
     // Enable weak pullups in the rotary lib before inclusion
     #define ENABLE_PULLUPS
+
+    // If you have a half step encoder (you need two clicks to make a step)
+    // uncomment this to get it working
+    #define HALF_STEP
 
     // include the libs
     #include <Rotary.h>         // https://github.com/mathertel/RotaryEncoder/
@@ -369,7 +368,7 @@ void setDefaultVals() {
     u.aMode =   MODE_LSB;    // LSB
 
     // VFO B default value
-    u.a =     7125000;       // 7.125 kHz
+    u.b =     7125000;       // 7.125 kHz
 
     // VFO B default mode
     u.aMode =   MODE_LSB;    // LSB

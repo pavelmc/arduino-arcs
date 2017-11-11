@@ -3,7 +3,7 @@
  * This file is part of the Arduino-Arcs project, see
  *      https://github.com/pavelmc/arduino-arcs
  *
- * Copyright (C) 2016 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
+ * Copyright (C) 2016...2017 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
  *
  * This program is free software under the GNU GPL v3.0
  *
@@ -27,27 +27,19 @@ EEPROM.length()
 
 // check if the EEPROM is initialized
 boolean checkInitEEPROM() {
-    // read the eeprom config data
-    EEPROM.get(0, u);
+    byte t;
+    bool flag = true;   // true if eeprom is initialized and match
 
-    // check for the initializer and version
-    if (u.version == EEP_VER) {
-        // so far version is the same, but the fingerprint has a different trick
-        for (word i=0; i<sizeof(u.finger); i++) {
-            if (u.finger[i] != EEPROMfingerprint[i]) return false;
-        }
-        // if it reach this point is because it's the same
-        return true;
-    }
+    // check the firmware version
+    t = EEPROM.read(0);
+    if (t != FMW_VER) flag = false;
 
-    #ifdef MEMORIES
-        // so far int's a new eeprom version, we need to wipe the MEM area to avoid
-        // problems with the users
-        wipeMEM();
-    #endif // memories
+    // check the eeprom version
+    t = EEPROM.read(1);
+    if (t != EEP_VER) flag = false;
 
-    // return false: default
-    return false;
+    // return it
+    return flag;
 }
 
 

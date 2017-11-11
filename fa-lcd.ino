@@ -3,7 +3,7 @@
  * This file is part of the Arduino-Arcs project, see
  *      https://github.com/pavelmc/arduino-arcs
  *
- * Copyright (C) 2016 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
+ * Copyright (C) 2016...2017 Pavel Milanes (CO7WT) <pavelmc@gmail.com>
  *
  * This program is free software under the GNU GPL v3.0
  *
@@ -518,10 +518,10 @@
 
         // show the bar graph for the RX or TX modes
         void showBarGraph() {
-            // we are working on a 2x16 and we have 13 bars to show (0-12)
+            // we are working on a 2x16 and we have 13 bars to show (0-14)
             // as we are on a double line we have 0-24 in value
             unsigned long ave = 0, i;
-            volatile static byte barMax = 24;
+            volatile static byte barMax = 28;
             byte fb, hb;
 
             // pack for average
@@ -533,7 +533,7 @@
             sMeter = ave;
 
             // scale it down to 0-24 from word
-            byte local = map(ave, 0, 1023, 0, 24);
+            byte local = map(ave, 0, 1023, 0, 28);
 
             // printing only the needed part of the bar, if growing or shrinking
             // if the same no action is required, remember we have to minimize the
