@@ -305,6 +305,7 @@ struct userData u;
 // but numbers in the 1-3-5-7-9-+20
 //
 // If you want the alternative just uncomment this code below
+// the alternative willl cost you about 10 bytes of firmware
 #define SMETER_ALT True
 
 // run mode constants

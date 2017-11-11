@@ -37,12 +37,12 @@ You can see the schematic diagram (designed for an Arduino Uno R3 in mind) in th
     - Variable VFO speed in steps of 10hz, 100hz (Default), 1khz, 10khz, 100khz, 1Mhz (just push of the encoder)
     - Split for contest/pileups
     - VFOs A & B are preserved in the EEPROM across power cycle. _(See Note 1 below)_
-- **S-Meter in the LCD** _(Vref is 5.0V)_
+- **S-Meter in the LCD** _(Vref is 5.0V)_ _(See Note 2 below)_
 - **Relative TX power in the LCD** _(using the same S-Meter tech, no power calcs, yet)_
 - Initially mono-band in 40m, but **adaptable to any band**
 - **Full user customization** of the IF and BFO modes (side bands) via configuration menus. (The VFO is assumed always above the RF and side bands are adjusted, se notes on Si5351 noise)
 - **Hot tunning of the parameters** when in configuration mode for ease the adjust.
-- **Basic CAT control** (like a Yaesu FT-857D) using my GPL 3.0 [ft857d library](https://github.com/pavelmc/ft857d) _(See Note 2 below)_
+- **Basic CAT control** (like a Yaesu FT-857D) using my GPL 3.0 [ft857d library](https://github.com/pavelmc/ft857d) _(See Note 3 below)_
 - The sketch is coded with **feature segmentation in mind**, you can rule out the CAT support if you don't need it, disable the ugly S-meter or rule out all other HID and just compile with CAT to get a slim CAT radio solution that fits in a tiny ATMega8 core _(I'm no kidding, it do fit in that chip!)_
 - **Memories** Using the internal EEPROM and limited to 100 (0-99), because the channel number is displayed in two LCD chars. Also you will get what your Chip has to offer: bigger chips my exceed the 100 mem channels count and get toped, but other not and you will have less than 100 mem channels.
 
@@ -52,7 +52,9 @@ _I was once concerned with the EERPOM wear out, but not anymore: The auto-save e
 
 _Since October 2016 we are now using the new EEPROM.h library (since Arduino IDE 1.6.9 and later); that lib do a trick to preserve the internal EEPROM life against the wear out, so the real life of the EEPROM must be more than 6 years minimum, that for a **heavy daily use**._
 
-_**Note 2:** If you use a regular Arduino board and upload the code via serial port you do have a bootloader in place. In this case when you setup your CAT program (in your PC) you will have to set the "retries" parameter to 3 or more and the "timeout" parameter to 500 msec or more to get the CAT working. (you will have to play with it a bit to get it working)_
+_**Note 2:** You have two options for the SMeter graphics, the default now is a 26 steps solid bars like "|||||||||||||||" and the alternative is the old "1-3-5-7-9----" with a resolution of only 13 steps. You can change it via a #define in the code, read it._
+
+_**Note 3:** If you use a regular Arduino board and upload the code via serial port you do have a bootloader in place. In this case when you setup your CAT program (in your PC) you will have to set the "retries" parameter to 3 or more and the "timeout" parameter to 500 msec or more to get the CAT working. (you will have to play with it a bit to get it working)_
 
 _This is because the CAT setup process in your PC/software will reset the Arduino board (and hence the "radio")_
 
