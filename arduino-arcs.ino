@@ -75,6 +75,15 @@
 // Smeter on the LCD?
 #define SMETER True
 
+// You have two alternatives for the SMeter graphics
+// The default is a simple bar with 24 points (high) resolution
+// The alternative is a low resolution one with 12 points
+// but numbers in the 1-3-5-7-9-+20
+//
+// If you want the alternative just uncomment this code below
+// the alternative willl cost you about 10 bytes of firmware
+//#define SMETER_ALT True
+
 // do you have an LCD?
 #define LCD True
 
@@ -299,15 +308,6 @@ struct userData u;
     #endif // smeter
 #endif // nolcd
 
-// You have two alternatives for the SMeter graphics
-// The default is a simple bar with 24 points (high) resolution
-// The alternative is a low resolution one with 12 points
-// but numbers in the 1-3-5-7-9-+20
-//
-// If you want the alternative just uncomment this code below
-// the alternative willl cost you about 10 bytes of firmware
-#define SMETER_ALT True
-
 // run mode constants
 #define MODE_LSB 0
 #define MODE_USB 1
@@ -519,6 +519,13 @@ void swapVFO(byte force = 2) {
         ptrVFO = &u.b;
         ptrMode = &u.bMode;
     }
+}
+
+
+// print the "A"/"B" letter to match the selected VFO, a trick to save space
+void vfoLetter() {
+    if (activeVFO) lcd.print("A");
+    else           lcd.print("B");
 }
 
 

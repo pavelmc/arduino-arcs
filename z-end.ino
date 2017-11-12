@@ -95,10 +95,11 @@ void setup() {
     } else {
         #ifdef LCD
             // full init, LCD banner
+            lcd.clear();
             lcd.setCursor(0, 0);
-            lcd.print(F("Init EEPROM...  "));
+            lcd.print(F("Init EEPROM"));
             lcd.setCursor(0, 1);
-            lcd.print(F("Please wait...  "));
+            lcd.print(F("Please wait"));
         #endif  // nolcd
 
         // init eeprom.

@@ -37,23 +37,14 @@
                         belowZero(&u.if2);
                         break;
                     case CONFIG_VFO_A:
-                        // change VFOa
-                        swapVFO(0); // set a
-                        *ptrVFO += getStep() * dir;
-                        belowZero(ptrVFO);
-                        break;
                     case CONFIG_VFO_B:
-                        // change VFOb
-                        swapVFO(1); // set b
-                        *ptrVFO += getStep() * dir;
-                        belowZero(ptrVFO);
+                        // update freq
+                        updateFreq(dir);
                         break;
-                    case CONFIG_MODE_A:   // whichever VFO is active
+                    case CONFIG_MODE_A:
                     case CONFIG_MODE_B:
-                        // hot swap it
+                        // update mode
                         changeMode();
-                        // set the default mode in the VFO A
-                        showModeSetup(*ptrMode);
                         break;
                     case CONFIG_USB:
                         // change the mode to USB
@@ -96,6 +87,30 @@
             if (tconfig < 0) tconfig = CONFIG_MAX;
             config = tconfig;
 
+            // force specific VFO/MODE operations by config items
+
+            // force VFO A Operation
+            tbool = (config == CONFIG_VFO_A) or (config == CONFIG_MODE_A);
+            if (tbool) swapVFO(1);
+
+            // force VFO B Operation
+            tbool = (config == CONFIG_VFO_B) or (config == CONFIG_MODE_B);
+            if (tbool) swapVFO(0);
+
+            // force USB
+            if (config == CONFIG_USB) *ptrMode = MODE_USB;
+
+            // force CW
+            if (config == CONFIG_CW) *ptrMode = MODE_CW;
+
+            // force LSB for all config modes with no specific mode
+            tbool  = (config == CONFIG_IF) or (config == CONFIG_IF2);
+            tbool |= (config == CONFIG_PPM);
+            if (tbool) *ptrMode = MODE_LSB;
+
+            // set all freqs to apply any changes
+            updateAllFreq();
+
             // update the LCD
             showConfig();
         }
@@ -111,16 +126,16 @@
                     lcd.print(F(" High IF (opt)  "));
                     break;
                 case CONFIG_VFO_A:
-                    lcd.print(F("   VFO A freq   "));
-                    break;
                 case CONFIG_VFO_B:
-                    lcd.print(F("   VFO B freq   "));
+                    lcd.print(F("   VFO "));
+                    vfoLetter();
+                    lcd.print(F(" freq   "));
                     break;
                 case CONFIG_MODE_A:
-                    lcd.print(F("   VFO A mode   "));
-                    break;
                 case CONFIG_MODE_B:
-                    lcd.print(F("   VFO B mode   "));
+                    lcd.print(F("   VFO "));
+                    vfoLetter();
+                    lcd.print(F(" mode   "));
                     break;
                 case CONFIG_USB:
                     lcd.print(F(" BFO freq. USB  "));
@@ -162,7 +177,8 @@
 
             // Show the sign only on config and not VFO & IF
             boolean t;
-            t = config == CONFIG_VFO_A or config == CONFIG_IF;
+            t  = (config == CONFIG_VFO_A) or (config == CONFIG_VFO_B);
+            t |= (config == CONFIG_IF);
             if (!runMode and !t) showSign(val);
 
             // print it
@@ -189,16 +205,12 @@
                     showConfigValue(u.if2);
                     break;
                 case CONFIG_VFO_A:
-                    showConfigValue(u.a);
-                    break;
                 case CONFIG_VFO_B:
-                    showConfigValue(u.b);
+                    showConfigValue(*ptrVFO);
                     break;
                 case CONFIG_MODE_A:
-                    showModeSetup(u.aMode);
-                    break;
                 case CONFIG_MODE_B:
-                    showModeSetup(u.bMode);
+                    showModeSetup(*ptrMode);
                     break;
                 case CONFIG_USB:
                     showConfigValue(u.usb);
@@ -319,12 +331,8 @@
 
         // first line
         lcd.setCursor(0, 0);
-        // active a?
-        if (activeVFO) {
-            lcd.print("A");
-        } else {
-            lcd.print("B");
-        }
+        // active vfo
+        vfoLetter();
 
         // split?
         if (split) {
@@ -334,7 +342,6 @@
             // print a separator.
             spaces(2);
         }
-
 
         // main lcd routine
         lcdRefresh();
