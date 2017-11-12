@@ -45,6 +45,7 @@ You can see the schematic diagram (designed for an Arduino Uno R3 in mind) in th
 - **Basic CAT control** (like a Yaesu FT-857D) using my GPL 3.0 [ft857d library](https://github.com/pavelmc/ft857d) _(See Note 3 below)_
 - The sketch is coded with **feature segmentation in mind**, you can rule out the CAT support if you don't need it, disable the ugly S-meter or rule out all other HID and just compile with CAT to get a slim CAT radio solution that fits in a tiny ATMega8 core _(I'm no kidding, it do fit in that chip!)_
 - **Memories** Using the internal EEPROM and limited to 100 (0-99), because the channel number is displayed in two LCD chars. Also you will get what your Chip has to offer: bigger chips my exceed the 100 mem channels count and get toped, but other not and you will have less than 100 mem channels.
+- ** Scan in memories ** if you enable the memories in the compilation you have also the possibility of enable the scanning features to loop trough the active memories and stay in each one by a defined amount of time.
 
 _**Note 1:** The firmware save the VFO info in a 10 minutes interval. Also a touch on the "VFO A/B" button will force an update_
 
