@@ -382,7 +382,7 @@ void setDefaultVals() {
     u.ifreq =   10700000;    // 10.7 MHz
 
     // USB shift
-    u.usb =         2400;    // typical value
+    u.usb =         3.200;    // typical value
 
     // CW shift
     u.cw =           600;    // typical value
