@@ -68,7 +68,6 @@ This are the wish list so far, with no particular order.
 - Multi-band support with a function to jump quickly from band to band.
 - Band selector for BPF switching via a external I2C port expander like the boards with the PCF8574, or alternatively a PIC programed to the task.
 - Real Power and SWR measurements.
-- Better S-Meter graphics
 - Support for various LCDs, for example the Nokia 5110, some of the TFTs and some OLEDs.
 
 ## Ino, then Arturo, now Amake ##
