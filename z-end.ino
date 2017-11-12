@@ -226,6 +226,13 @@ void loop() {
             if (dbPTT.fell()) {
                 // line asserted (PTT Closed) going to TX
                 going2TX();
+
+                // clear the memory scan flag if active
+                #ifdef MEMORIES
+                    #ifdef MEM_SCAN
+                    mscan = false;
+                    #endif
+                #endif
             } else {
                 // line left open, going to RX
                 going2RX();
@@ -307,8 +314,10 @@ void loop() {
         // decrement timer
         if (showStepCounter > 0) {
             showStepCounter -= 1;
-            // flag to redraw the bar graph only if zero
-            if (showStepCounter == 0) barReDraw = true;
+            #ifdef SMETER
+                // flag to redraw the bar graph only if zero
+                if (showStepCounter == 0) barReDraw = true;
+            #endif
         }
     }
 
@@ -320,5 +329,12 @@ void loop() {
     #ifdef ABUT
         // analog buttons check
         abm.check();
+    #endif
+
+    #ifdef MEMORIES
+        #ifdef MEM_SCAN
+            // memory scan timming check
+            checkMemScan();
+        #endif
     #endif
 }

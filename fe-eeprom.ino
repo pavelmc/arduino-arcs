@@ -106,8 +106,28 @@ void loadEEPROMConfig() {
 
     // wipe mem, this is loaded in the init process of the eeprom.
     void wipeMEM() {
-        // run for the entire mem area writing the defaults to it, with no-go flag
+        // run for the entire mem area writing the defaults to it,
+        // with no-go flag on it
         for (word i = 0; i <= memCount; i++ ) saveMEM(i, 0);
     }
+
+
+    #ifdef MEM_SCAN
+        // check memscan
+        void checkMemScan() {
+            // check timer until the next mem jump
+            if ((mscan == true) and (scanTime < millis())) {
+                // move to the next mem
+                do {// increase the mem & check it
+                    mem += 1;
+                    if (mem >= memCount) mem = 0;
+                } while(!loadMEM(mem));
+
+                // reset timer
+                scanTime = millis() + MEM_SCAN_INTERVAL;
+            }
+        }
+
+    #endif // mem scan
 
 #endif // memories

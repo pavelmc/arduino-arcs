@@ -19,8 +19,13 @@
         // normal mode
         if (runMode) {
             #ifdef MEMORIES
-                // if we are in mem mode VFO A/B switch has no sense
-                if (!vfoMode) return;
+                // is the scanning feature turned on?
+                #ifdef MEM_SCAN
+                    if (!vfoMode) {
+                        mscan != mscan;
+                        return;
+                    }
+                #endif
             #endif
 
             // we force to deactivate the RIT on VFO change, as it will confuse
@@ -163,8 +168,10 @@
             // going to deactivate: reset the stored VFO
             *ptrVFO = tvfo;
             ritActive = false;
-            // flag to redraw the bar graph
-            barReDraw = true;
+            #ifdef SMETER
+                // flag to redraw the bar graph
+                barReDraw = true;
+            #endif
         }
     }
 

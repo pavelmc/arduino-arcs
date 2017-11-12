@@ -59,7 +59,7 @@
 *******************************************************************************/
 
 // You like to have CAT control (PC control) of the sketch via Serial link?
-//#define CAT_CONTROL True
+#define CAT_CONTROL True
 
 // Rotary and push control?
 #define ROTARY True
@@ -69,8 +69,11 @@
 #define ABUT True
 
 // Memories?
-//#define MEMORIES True   // hard limited to 99 mems (~80 on the ATMEga168)
+#define MEMORIES True   // hard limited to 99 mems (~80 on the ATMEga168)
                           // because we have only two spaces to represent that
+
+// Also you want to scan over enabled memories?
+#define MEM_SCAN True
 
 // Smeter on the LCD?
 #define SMETER True
@@ -261,6 +264,14 @@ struct userData u;
         // declaring the main configuration variable for mem storage
         struct mmem memo;
 
+        // some vars for the memory scan feature if defined
+        #ifdef MEM_SCAN
+            // general memscan flag
+            bool mscan = true;
+            #define MEM_SCAN_INTERVAL  5000;    // in msecs, the time between scan jumps
+            unsigned long scanTime;             // counter against millis
+        #endif
+
     #else
         // Analog buttons with single functions
         Button bvfoab   = Button(b1, &btnVFOABClick);
@@ -297,14 +308,14 @@ struct userData u;
     LiquidCrystal lcd(LCD_RS, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
     #ifdef SMETER
-        // how many samples we take in the smeter, we use a 2/3 trick to get some
-        // inertia and improve the look & feel of the bar
+        // how many samples we take in the smeter, we use a 2/3 trick
+        // to get some inertia and improve the look & feel of the bar
         #define BARGRAPH_SAMPLES    6
-        word pep[BARGRAPH_SAMPLES] = {};    // s-meter readings storage
-        boolean smeterOk = false;           // it's ok to show the bar graph
-        word sMeter = 0;                    // hold the value of the Smeter readings
-                                            // in both RX and TX modes
-        boolean barReDraw = true;           // Smeter bar needs to be redrawn
+        word pep[BARGRAPH_SAMPLES] = {};  // s-meter readings storage
+        boolean smeterOk = false;         // it's ok to show the bar graph
+        word sMeter = 0;                  // the value of the Smeter readings
+                                          // in both RX and TX modes
+        boolean barReDraw = true;         // Smeter bar needs to be redrawn
     #endif // smeter
 #endif // nolcd
 
